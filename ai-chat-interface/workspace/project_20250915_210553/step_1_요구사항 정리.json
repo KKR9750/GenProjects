@@ -1,0 +1,45 @@
+{
+  "project_name": "공학용 계산기",
+  "main_features": [
+    "기본 사칙연산 (덧셈, 뺄셈, 곱셈, 나눗셈)",
+    "과학 함수 (삼각함수, 로그, 지수)",
+    "단위 변환 기능",
+    "공학 상수 제공",
+    "계산 히스토리 관리"
+  ],
+  "target_users": [
+    "공학도",
+    "연구자",
+    "엔지니어",
+    "학생"
+  ],
+  "technology_stack": {
+    "language": "Python",
+    "gui": "tkinter/PyQt",
+    "libraries": "numpy, matplotlib, sympy"
+  },
+  "success_criteria": [
+    "모든 핵심 기능이 정상적으로 작동",
+    "사용자 친화적인 인터페이스 제공",
+    "안정적인 성능 보장",
+    "적절한 오류 처리 구현"
+  ],
+  "detailed_requirements": {
+    "functional_requirements": [
+      "사칙연산 정확도 보장 (소수점 15자리)",
+      "과학함수 계산 정확도 (IEEE 754 표준)",
+      "단위변환 정확성 (SI 단위 기반)",
+      "계산 히스토리 100개 항목 저장"
+    ],
+    "non_functional_requirements": [
+      "응답시간 < 100ms",
+      "메모리 사용량 < 50MB",
+      "Windows/Linux/Mac 호환성"
+    ],
+    "constraints": [
+      "Python 3.8+ 환경",
+      "외부 인터넷 연결 불필요",
+      "추가 라이브러리 최소화"
+    ]
+  }
+}

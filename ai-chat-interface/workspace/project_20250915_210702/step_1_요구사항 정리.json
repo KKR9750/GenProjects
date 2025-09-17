@@ -1,0 +1,33 @@
+{
+  "project_name": "사용자 정의 프로젝트",
+  "main_features": [
+    "핵심 기능 구현",
+    "사용자 인터페이스",
+    "데이터 관리"
+  ],
+  "target_users": [
+    "일반 사용자"
+  ],
+  "technology_stack": {
+    "language": "Python",
+    "gui": "tkinter/PyQt",
+    "libraries": "numpy, matplotlib, sympy"
+  },
+  "success_criteria": [
+    "모든 핵심 기능이 정상적으로 작동",
+    "사용자 친화적인 인터페이스 제공",
+    "안정적인 성능 보장",
+    "적절한 오류 처리 구현"
+  ],
+  "detailed_requirements": {
+    "functional_requirements": [
+      "핵심 기능 구현"
+    ],
+    "non_functional_requirements": [
+      "성능 최적화"
+    ],
+    "constraints": [
+      "기술적 제약사항"
+    ]
+  }
+}

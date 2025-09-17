@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "mcp__playwright__browser_navigate",
+      "Bash(taskkill:*)",
+      "Bash(dir:*)",
+      "mcp__playwright__browser_press_key",
+      "mcp__playwright__browser_click",
+      "mcp__morphllm-fast-apply__read_multiple_files",
+      "Bash(sed:*)",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_take_screenshot",
+      "Bash(node:*)",
+      "Bash(find:*)",
+      "mcp__playwright__browser_wait_for",
+      "mcp__morphllm-fast-apply__list_allowed_directories",
+      "mcp__morphllm-fast-apply__list_directory",
+      "mcp__morphllm-fast-apply__search_files",
+      "mcp__morphllm-fast-apply__tiny_edit_file",
+      "Read(//d/**)",
+      "Bash(tasklist /FI \"\"PID eq 22648\"\")",
+      "Bash(curl:*)",
+      "mcp__sequential-thinking__sequentialthinking"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

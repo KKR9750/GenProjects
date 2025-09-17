@@ -1,0 +1,59 @@
+{
+  "system_architecture": {
+    "architecture_diagram": "MVC 패턴 기반 구조",
+    "component_interaction": "Controller → Model → View 순서로 데이터 흐름",
+    "layer_description": {
+      "Presentation Layer": "GUI 인터페이스 (tkinter)",
+      "Business Layer": "계산 로직 및 비즈니스 규칙",
+      "Data Layer": "히스토리 데이터 관리"
+    }
+  },
+  "class_structure": {
+    "MainClass": {
+      "methods": [
+        "main_function"
+      ],
+      "attributes": [
+        "main_attribute"
+      ]
+    }
+  },
+  "file_structure": {
+    "main.py": "메인 파일",
+    "README.md": "프로젝트 설명"
+  },
+  "api_design": {
+    "Calculator API": {
+      "basic_operations": {
+        "add(a, b)": "덧셈 연산",
+        "subtract(a, b)": "뺄셈 연산",
+        "multiply(a, b)": "곱셈 연산",
+        "divide(a, b)": "나눗셈 연산"
+      },
+      "scientific_operations": {
+        "sin(x)": "사인 함수",
+        "cos(x)": "코사인 함수",
+        "log(x)": "자연로그",
+        "sqrt(x)": "제곱근"
+      }
+    }
+  },
+  "database_design": {
+    "calculation_history": {
+      "id": "INTEGER PRIMARY KEY",
+      "expression": "TEXT NOT NULL",
+      "result": "REAL NOT NULL",
+      "timestamp": "DATETIME DEFAULT CURRENT_TIMESTAMP"
+    }
+  },
+  "interface_design": {
+    "main_window": {
+      "display": "계산 결과 표시 영역",
+      "number_buttons": "0-9 숫자 버튼",
+      "operation_buttons": "+, -, *, / 연산 버튼",
+      "function_buttons": "sin, cos, log 등 함수 버튼",
+      "clear_button": "계산 초기화",
+      "history_panel": "계산 히스토리 표시"
+    }
+  }
+}

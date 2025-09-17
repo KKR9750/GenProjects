@@ -1,0 +1,33 @@
+{
+  "project_id": "project_20250915_211128",
+  "requirement": "공학계산기 프로그램 생성해줘",
+  "created_at": "2025-09-15T21:11:28.901304",
+  "current_step": 1,
+  "steps": {
+    "1": {
+      "name": "요구사항 정리",
+      "role": "ProductManager",
+      "action": "analyze_requirements"
+    },
+    "2": {
+      "name": "프로젝트 분석",
+      "role": "Architect",
+      "action": "analyze_project"
+    },
+    "3": {
+      "name": "시스템 설계",
+      "role": "Architect",
+      "action": "design_system"
+    },
+    "4": {
+      "name": "코드 개발",
+      "role": "Engineer",
+      "action": "develop_code"
+    },
+    "5": {
+      "name": "단위 테스트",
+      "role": "QaEngineer",
+      "action": "create_tests"
+    }
+  }
+}

@@ -11,8 +11,10 @@ import json
 import asyncio
 from pathlib import Path
 
-# MetaGPT 경로 추가
-sys.path.append('D:/MetaGPT')
+# MetaGPT 경로 추가 (상대 경로로 수정)
+current_dir = os.path.dirname(os.path.abspath(__file__))
+metagpt_path = os.path.join(os.path.dirname(current_dir), 'MetaGPT')
+sys.path.append(metagpt_path)
 
 try:
     from metagpt.software_company import SoftwareCompany

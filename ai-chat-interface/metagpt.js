@@ -628,5 +628,6 @@ const MetaGPTInterface = () => {
     );
 };
 
-// React 앱 렌더링
-ReactDOM.render(<MetaGPTInterface />, document.getElementById('root'));
+// React 18 createRoot API 사용
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<MetaGPTInterface />);

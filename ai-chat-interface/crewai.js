@@ -14,6 +14,12 @@ const CrewAIInterface = () => {
     const [projects, setProjects] = useState([]);
     const [activeProject, setActiveProject] = useState(null);
     const [connectionStatus, setConnectionStatus] = useState('connecting');
+    const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+    const [newProjectData, setNewProjectData] = useState({
+        name: '',
+        description: '',
+        project_type: 'web_app'
+    });
 
     const roles = [
         { id: 'researcher', name: 'Researcher', description: '정보 수집 및 분석 전문가', icon: '🔍' },
@@ -43,11 +49,118 @@ const CrewAIInterface = () => {
         }
     };
 
+    // 새 프로젝트 생성
+    const createProject = async () => {
+        if (!newProjectData.name.trim()) {
+            window.UIHelpers.showNotification('프로젝트 이름을 입력하세요', 'warning');
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+
+            // 프로젝트 생성
+            const projectData = {
+                ...newProjectData,
+                selected_ai: 'crew-ai'
+            };
+
+            const result = await window.apiClient.createProject(projectData);
+
+            if (result.success) {
+                // 역할-LLM 매핑 저장
+                const mappings = [
+                    { role_name: 'Researcher', llm_model: roleLLMMapping.researcher },
+                    { role_name: 'Writer', llm_model: roleLLMMapping.writer },
+                    { role_name: 'Planner', llm_model: roleLLMMapping.planner }
+                ];
+
+                await window.apiClient.setRoleLLMMapping(result.project.id, mappings);
+
+                setActiveProject(result.project);
+                setShowNewProjectModal(false);
+                setNewProjectData({ name: '', description: '', project_type: 'web_app' });
+                loadProjects();
+
+                window.UIHelpers.showNotification('프로젝트가 성공적으로 생성되었습니다', 'success');
+            } else {
+                window.UIHelpers.showNotification(result.error || '프로젝트 생성에 실패했습니다', 'error');
+            }
+        } catch (error) {
+            console.error('프로젝트 생성 실패:', error);
+            window.UIHelpers.showNotification('프로젝트 생성 중 오류가 발생했습니다', 'error');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // LLM 매핑 저장
+    const saveLLMMapping = async () => {
+        if (!activeProject) {
+            window.UIHelpers.showNotification('프로젝트를 먼저 선택하세요', 'warning');
+            return;
+        }
+
+        try {
+            const mappings = [
+                { role_name: 'Researcher', llm_model: roleLLMMapping.researcher },
+                { role_name: 'Writer', llm_model: roleLLMMapping.writer },
+                { role_name: 'Planner', llm_model: roleLLMMapping.planner }
+            ];
+
+            const result = await window.apiClient.setRoleLLMMapping(activeProject.id, mappings);
+
+            if (result.success) {
+                window.UIHelpers.showNotification('LLM 매핑이 저장되었습니다', 'success');
+                // 로컬 스토리지에도 저장
+                window.StorageHelpers.setItem(`crewai_llm_mapping_${activeProject.id}`, roleLLMMapping);
+            } else {
+                window.UIHelpers.showNotification(result.error || 'LLM 매핑 저장에 실패했습니다', 'error');
+            }
+        } catch (error) {
+            console.error('LLM 매핑 저장 실패:', error);
+            window.UIHelpers.showNotification('LLM 매핑 저장 중 오류가 발생했습니다', 'error');
+        }
+    };
+
+    // 프로젝트 LLM 매핑 로드
+    const loadProjectLLMMapping = async (projectId) => {
+        try {
+            const result = await window.apiClient.getRoleLLMMapping(projectId);
+
+            if (result.success && result.mappings.length > 0) {
+                const mapping = {};
+                result.mappings.forEach(item => {
+                    const roleKey = item.role_name.toLowerCase();
+                    mapping[roleKey] = item.llm_model;
+                });
+
+                setRoleLLMMapping(mapping);
+            } else {
+                // 로컬 스토리지에서 로드
+                const localMapping = window.StorageHelpers.getItem(`crewai_llm_mapping_${projectId}`);
+                if (localMapping) {
+                    setRoleLLMMapping(localMapping);
+                }
+            }
+        } catch (error) {
+            console.error('LLM 매핑 로드 실패:', error);
+        }
+    };
+
     // 프로젝트 목록 로드
     const loadProjects = async () => {
         try {
-            const response = await fetch('/api/crewai/projects');
-            const data = await response.json();
+            const result = await window.apiClient.getProjects();
+
+            if (result.success) {
+                // CrewAI 프로젝트만 필터링
+                const crewaiProjects = result.projects.filter(p => p.selected_ai === 'crew-ai');
+                setProjects(crewaiProjects);
+            } else {
+                // 레거시 API 시도
+                const response = await fetch('/api/crewai/projects');
+                const data = await response.json();
 
             if (data.success) {
                 const formattedProjects = (data.data || []).map(project => ({
@@ -61,6 +174,7 @@ const CrewAIInterface = () => {
                     role_llm_mapping: project.role_llm_mapping || roleLLMMapping
                 }));
                 setProjects(formattedProjects);
+            }
             }
         } catch (error) {
             console.error('프로젝트 로드 실패:', error);
@@ -160,10 +274,12 @@ const CrewAIInterface = () => {
     };
 
     // 프로젝트 선택
-    const selectProject = (project) => {
+    const selectProject = async (project) => {
         setActiveProject(project);
-        setRoleLLMMapping(project.role_llm_mapping || roleLLMMapping);
         setShowProjects(false);
+
+        // 프로젝트별 LLM 매핑 로드
+        await loadProjectLLMMapping(project.id);
 
         // 프로젝트 정보를 채팅에 추가
         const projectMessage = {
@@ -268,10 +384,19 @@ const CrewAIInterface = () => {
                     </button>
                     <button
                         className="new-project-btn"
-                        onClick={startNewProject}
+                        onClick={() => setShowNewProjectModal(true)}
                     >
                         ➕ 새 프로젝트
                     </button>
+                    {activeProject && (
+                        <button
+                            className="save-mapping-btn"
+                            onClick={saveLLMMapping}
+                            disabled={isLoading}
+                        >
+                            💾 LLM 매핑 저장
+                        </button>
+                    )}
                 </div>
             </header>
 
@@ -466,9 +591,108 @@ const CrewAIInterface = () => {
                     </div>
                 </div>
             </div>
+
+            {/* 새 프로젝트 생성 모달 */}
+            {showNewProjectModal && (
+                <div className="modal-overlay" onClick={() => setShowNewProjectModal(false)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>새 CrewAI 프로젝트 생성</h2>
+                            <button
+                                className="modal-close"
+                                onClick={() => setShowNewProjectModal(false)}
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="modal-body">
+                            <div className="form-group">
+                                <label>프로젝트 이름</label>
+                                <input
+                                    type="text"
+                                    value={newProjectData.name}
+                                    onChange={(e) => setNewProjectData({
+                                        ...newProjectData,
+                                        name: e.target.value
+                                    })}
+                                    placeholder="프로젝트 이름을 입력하세요"
+                                    className="form-input"
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>프로젝트 설명</label>
+                                <textarea
+                                    value={newProjectData.description}
+                                    onChange={(e) => setNewProjectData({
+                                        ...newProjectData,
+                                        description: e.target.value
+                                    })}
+                                    placeholder="프로젝트 설명을 입력하세요"
+                                    className="form-textarea"
+                                    rows="3"
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>프로젝트 타입</label>
+                                <select
+                                    value={newProjectData.project_type}
+                                    onChange={(e) => setNewProjectData({
+                                        ...newProjectData,
+                                        project_type: e.target.value
+                                    })}
+                                    className="form-select"
+                                >
+                                    <option value="web_app">웹 애플리케이션</option>
+                                    <option value="mobile_app">모바일 앱</option>
+                                    <option value="api">API 서버</option>
+                                    <option value="desktop">데스크톱 앱</option>
+                                    <option value="data_analysis">데이터 분석</option>
+                                </select>
+                            </div>
+
+                            <div className="form-group">
+                                <label>현재 역할-LLM 매핑</label>
+                                <div className="llm-mapping-preview">
+                                    {roles.map(role => (
+                                        <div key={role.id} className="mapping-item">
+                                            <span className="role-name">{role.name}</span>
+                                            <span className="llm-name">
+                                                {llmOptions.find(llm => llm.id === roleLLMMapping[role.id])?.name || 'Unknown'}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                                <p className="helper-text">
+                                    프로젝트 생성 후 좌측 패널에서 LLM 매핑을 수정할 수 있습니다.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="modal-footer">
+                            <button
+                                className="modal-button secondary"
+                                onClick={() => setShowNewProjectModal(false)}
+                            >
+                                취소
+                            </button>
+                            <button
+                                className="modal-button primary"
+                                onClick={createProject}
+                                disabled={isLoading || !newProjectData.name.trim()}
+                            >
+                                {isLoading ? '생성 중...' : '프로젝트 생성'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
 
-// React 앱 렌더링
-ReactDOM.render(<CrewAIInterface />, document.getElementById('root'));
+// React 18 createRoot API 사용
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<CrewAIInterface />);

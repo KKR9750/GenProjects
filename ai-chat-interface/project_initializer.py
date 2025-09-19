@@ -15,7 +15,8 @@ class ProjectInitializer:
     """프로젝트 초기화 및 즉시 시작 시스템"""
 
     def __init__(self):
-        self.projects_dir = os.path.join(os.path.dirname(__file__), 'projects')
+        # 프로젝트를 D:\GenProjects\Projects 하위에 저장
+        self.projects_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'Projects')
         self.ensure_projects_directory()
 
     def ensure_projects_directory(self):

@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>프로젝트 템플릿 - AI Chat Interface</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .templates-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .templates-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .templates-header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .templates-header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .filter-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .filter-controls {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .filter-group label {
+            font-weight: 600;
+            color: #444;
+        }
+
+        .filter-group select, .filter-group input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .templates-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .template-card {
+            background: white;
+            border: 1px solid #e1e5e9;
+            border-radius: 12px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .template-card:hover {
+            border-color: #4F46E5;
+            box-shadow: 0 8px 25px rgba(79, 70, 229, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .template-card.selected {
+            border-color: #4F46E5;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .template-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .template-name {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #2d3748;
+        }
+
+        .template-card.selected .template-name {
+            color: white;
+        }
+
+        .template-description {
+            color: #4a5568;
+            line-height: 1.5;
+            margin-bottom: 15px;
+            font-size: 0.95rem;
+        }
+
+        .template-card.selected .template-description {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .template-meta {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            font-size: 0.85rem;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: #718096;
+        }
+
+        .template-card.selected .meta-item {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .template-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 20px;
+        }
+
+        .tag {
+            background: #edf2f7;
+            color: #4a5568;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .template-card.selected .tag {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .template-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+        }
+
+        .template-card.selected .btn-primary {
+            background: white;
+            color: #4F46E5;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #4F46E5;
+            border: 1px solid #4F46E5;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: #4F46E5;
+            color: white;
+        }
+
+        .template-card.selected .btn-secondary {
+            border-color: white;
+            color: white;
+        }
+
+        .template-card.selected .btn-secondary:hover {
+            background: white;
+            color: #4F46E5;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .category-filter {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .category-chip {
+            background: #e2e8f0;
+            color: #2d3748;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .category-chip:hover {
+            background: #cbd5e0;
+        }
+
+        .category-chip.active {
+            background: #4F46E5;
+            color: white;
+            border-color: #4F46E5;
+        }
+
+        .stats-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 15px;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #4F46E5;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .templates-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .filter-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-group {
+                width: 100%;
+            }
+        }
+
+        .project-creation-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            height: 80px;
+            resize: vertical;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 30px;
+        }
+
+        .recommended-llm {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+
+        .recommended-llm h4 {
+            margin-bottom: 10px;
+            color: #2d3748;
+        }
+
+        .llm-mapping {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .role-name {
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .llm-model {
+            background: #4F46E5;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="templates-container">
+        <div class="templates-header">
+            <h1>🎯 프로젝트 템플릿 선택</h1>
+            <p>원하는 프로젝트 유형을 선택하여 빠르게 시작하세요</p>
+        </div>
+
+        <!-- 통계 섹션 -->
+        <div class="stats-section" id="statsSection">
+            <div class="stats-grid" id="statsGrid">
+                <!-- 통계 데이터가 여기에 로드됩니다 -->
+            </div>
+        </div>
+
+        <!-- 필터 섹션 -->
+        <div class="filter-section">
+            <div class="filter-controls">
+                <div class="filter-group search-box">
+                    <label for="searchInput">🔍 검색</label>
+                    <input type="text" id="searchInput" placeholder="템플릿 이름, 설명, 태그로 검색...">
+                </div>
+                <div class="filter-group">
+                    <label for="complexityFilter">복잡도</label>
+                    <select id="complexityFilter">
+                        <option value="">전체</option>
+                        <option value="low">낮음</option>
+                        <option value="medium">중간</option>
+                        <option value="high">높음</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="aiFilter">추천 AI</label>
+                    <select id="aiFilter">
+                        <option value="">전체</option>
+                        <option value="crew-ai">CrewAI</option>
+                        <option value="meta-gpt">MetaGPT</option>
+                    </select>
+                </div>
+            </div>
+            <div class="category-filter" id="categoryFilter">
+                <!-- 카테고리 필터가 여기에 로드됩니다 -->
+            </div>
+        </div>
+
+        <!-- 템플릿 그리드 -->
+        <div id="templatesGrid" class="templates-grid">
+            <!-- 템플릿 카드들이 여기에 로드됩니다 -->
+        </div>
+
+        <!-- 로딩 상태 -->
+        <div id="loadingState" class="loading">
+            <p>템플릿을 불러오는 중...</p>
+        </div>
+
+        <!-- 에러 상태 -->
+        <div id="errorState" class="error" style="display: none;">
+            <p id="errorMessage">템플릿을 불러오는 중 오류가 발생했습니다.</p>
+        </div>
+    </div>
+
+    <!-- 프로젝트 생성 모달 -->
+    <div class="project-creation-modal" id="projectModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">프로젝트 생성</h3>
+                <p id="modalSubtitle">선택한 템플릿으로 새 프로젝트를 생성합니다</p>
+            </div>
+
+            <form id="projectForm">
+                <div class="form-group">
+                    <label for="projectName">프로젝트 이름 *</label>
+                    <input type="text" id="projectName" required placeholder="예: 나의 웹 애플리케이션">
+                </div>
+
+                <div class="form-group">
+                    <label for="projectDescription">프로젝트 설명</label>
+                    <textarea id="projectDescription" placeholder="프로젝트에 대한 간단한 설명을 입력하세요..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="selectedAI">AI 프레임워크</label>
+                    <select id="selectedAI">
+                        <option value="crew-ai">CrewAI</option>
+                        <option value="meta-gpt">MetaGPT</option>
+                    </select>
+                </div>
+
+                <!-- 추천 LLM 매핑 -->
+                <div class="recommended-llm" id="recommendedLLM" style="display: none;">
+                    <h4>🤖 추천 LLM 모델 매핑</h4>
+                    <div id="llmMappings">
+                        <!-- LLM 매핑이 여기에 표시됩니다 -->
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeProjectModal()">취소</button>
+                    <button type="submit" class="btn-primary">프로젝트 생성</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let templates = {};
+        let categories = [];
+        let selectedTemplate = null;
+        let filteredTemplates = {};
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTemplates();
+            setupEventListeners();
+        });
+
+        // 이벤트 리스너 설정
+        function setupEventListeners() {
+            document.getElementById('searchInput').addEventListener('input', filterTemplates);
+            document.getElementById('complexityFilter').addEventListener('change', filterTemplates);
+            document.getElementById('aiFilter').addEventListener('change', filterTemplates);
+            document.getElementById('selectedAI').addEventListener('change', updateLLMMapping);
+            document.getElementById('projectForm').addEventListener('submit', createProject);
+        }
+
+        // 템플릿 데이터 로드
+        async function loadTemplates() {
+            try {
+                showLoading();
+
+                // 템플릿과 통계를 병렬로 로드
+                const [templatesResponse, statsResponse, projectTypesResponse, frameworksResponse] = await Promise.all([
+                    fetch('/api/templates/'),
+                    fetch('/api/templates/statistics'),
+                    fetch('/api/templates/project-types'),
+                    fetch('/api/templates/frameworks')
+                ]);
+
+                if (!templatesResponse.ok) throw new Error('템플릿 로드 실패');
+
+                const templatesData = await templatesResponse.json();
+
+                // API에서 받은 배열을 객체로 변환
+                templates = {};
+                templatesData.templates.forEach(template => {
+                    templates[template.id] = template;
+                });
+
+                filteredTemplates = { ...templates };
+
+                // 프로젝트 유형 로드
+                if (projectTypesResponse.ok) {
+                    const projectTypesData = await projectTypesResponse.json();
+                    categories = projectTypesData.project_types.map(type => ({
+                        id: type.value,
+                        name: type.display_name,
+                        icon: getProjectTypeIcon(type.value)
+                    }));
+                }
+
+                // 통계 표시
+                if (statsResponse.ok) {
+                    const statsData = await statsResponse.json();
+                    renderStats(statsData.statistics);
+                }
+
+                renderCategories();
+                renderTemplates();
+                hideLoading();
+
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        // 프로젝트 유형별 아이콘 반환
+        function getProjectTypeIcon(projectType) {
+            const icons = {
+                'web_app': '🌐',
+                'mobile_app': '📱',
+                'api_server': '🔧',
+                'desktop_app': '🖥️',
+                'data_analysis': '📊',
+                'ml_project': '🤖',
+                'blockchain': '⛓️',
+                'game_dev': '🎮',
+                'ecommerce': '🛒',
+                'crm_system': '👥'
+            };
+            return icons[projectType] || '📁';
+        }
+
+        // 통계 렌더링
+        function renderStats(statsData) {
+            const statsGrid = document.getElementById('statsGrid');
+            statsGrid.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">${statsData.total_templates || 0}</div>
+                    <div class="stat-label">총 템플릿</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${statsData.total_projects_created || 0}</div>
+                    <div class="stat-label">생성된 프로젝트</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${(statsData.framework_usage && statsData.framework_usage.crew_ai) || 0}</div>
+                    <div class="stat-label">CrewAI 프로젝트</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${(statsData.framework_usage && statsData.framework_usage.meta_gpt) || 0}</div>
+                    <div class="stat-label">MetaGPT 프로젝트</div>
+                </div>
+            `;
+        }
+
+        // 카테고리 필터 렌더링
+        function renderCategories() {
+            const categoryFilter = document.getElementById('categoryFilter');
+            const allChip = '<div class="category-chip active" data-category="">전체</div>';
+            const categoryChips = categories.map(cat =>
+                `<div class="category-chip" data-category="${cat.id}">${cat.icon} ${cat.name}</div>`
+            ).join('');
+
+            categoryFilter.innerHTML = allChip + categoryChips;
+
+            // 카테고리 클릭 이벤트
+            categoryFilter.addEventListener('click', function(e) {
+                if (e.target.classList.contains('category-chip')) {
+                    // 활성 카테고리 변경
+                    document.querySelectorAll('.category-chip').forEach(chip => chip.classList.remove('active'));
+                    e.target.classList.add('active');
+
+                    // 카테고리별 필터링
+                    const category = e.target.dataset.category;
+                    filterByCategory(category);
+                }
+            });
+        }
+
+        // 템플릿 렌더링
+        function renderTemplates() {
+            const grid = document.getElementById('templatesGrid');
+
+            if (Object.keys(filteredTemplates).length === 0) {
+                grid.innerHTML = '<div class="loading">검색 조건에 맞는 템플릿이 없습니다.</div>';
+                return;
+            }
+
+            const templateCards = Object.entries(filteredTemplates).map(([id, template]) => {
+                // 템플릿 데이터 구조에 맞게 조정
+                const tags = (template.tags || []).map(tag => `<span class="tag">${tag}</span>`).join('');
+                const framework = template.framework === 'crew_ai' ? 'CrewAI' : 'MetaGPT';
+                const projectTypeIcon = getProjectTypeIcon(template.project_type);
+
+                return `
+                    <div class="template-card" data-template-id="${id}" onclick="selectTemplate('${id}')">
+                        <div class="template-icon">${projectTypeIcon}</div>
+                        <div class="template-name">${template.display_name}</div>
+                        <div class="template-description">${template.description}</div>
+                        <div class="template-meta">
+                            <div class="meta-item">⏱️ ${template.estimated_duration || '미정'}</div>
+                            <div class="meta-item">📊 ${template.complexity || '중간'}</div>
+                            <div class="meta-item">🤖 ${framework}</div>
+                        </div>
+                        <div class="template-tags">${tags}</div>
+                        <div class="template-actions">
+                            <button class="btn-primary" onclick="openProjectModal('${id}'); event.stopPropagation();">
+                                프로젝트 생성
+                            </button>
+                            <button class="btn-secondary" onclick="viewTemplateDetails('${id}'); event.stopPropagation();">
+                                자세히 보기
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            grid.innerHTML = templateCards;
+        }
+
+        // 템플릿 선택
+        function selectTemplate(templateId) {
+            // 이전 선택 제거
+            document.querySelectorAll('.template-card').forEach(card => card.classList.remove('selected'));
+
+            // 새 선택 추가
+            const card = document.querySelector(`[data-template-id="${templateId}"]`);
+            if (card) {
+                card.classList.add('selected');
+                selectedTemplate = templateId;
+            }
+        }
+
+        // 필터링
+        function filterTemplates() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const complexity = document.getElementById('complexityFilter').value;
+            const aiFramework = document.getElementById('aiFilter').value;
+            const activeCategory = document.querySelector('.category-chip.active').dataset.category;
+
+            filteredTemplates = {};
+
+            Object.entries(templates).forEach(([id, template]) => {
+                let matches = true;
+
+                // 검색어 필터
+                if (searchTerm) {
+                    const searchText = (template.display_name + ' ' + template.description + ' ' + (template.tags || []).join(' ')).toLowerCase();
+                    matches = matches && searchText.includes(searchTerm);
+                }
+
+                // 복잡도 필터
+                if (complexity) {
+                    matches = matches && template.complexity === complexity;
+                }
+
+                // AI 프레임워크 필터
+                if (aiFramework) {
+                    const templateFramework = template.framework === 'crew_ai' ? 'crew-ai' : 'meta-gpt';
+                    matches = matches && templateFramework === aiFramework;
+                }
+
+                // 카테고리 필터
+                if (activeCategory) {
+                    matches = matches && template.project_type === activeCategory;
+                }
+
+                if (matches) {
+                    filteredTemplates[id] = template;
+                }
+            });
+
+            renderTemplates();
+        }
+
+        // 카테고리별 필터링
+        function filterByCategory(category) {
+            if (!category) {
+                filteredTemplates = { ...templates };
+            } else {
+                filteredTemplates = {};
+                Object.entries(templates).forEach(([id, template]) => {
+                    if (template.project_type === category) {
+                        filteredTemplates[id] = template;
+                    }
+                });
+            }
+            renderTemplates();
+        }
+
+        // 프로젝트 생성 모달 열기
+        function openProjectModal(templateId) {
+            selectedTemplate = templateId;
+            const template = templates[templateId];
+            const projectTypeIcon = getProjectTypeIcon(template.project_type);
+
+            document.getElementById('modalTitle').textContent = `${projectTypeIcon} ${template.display_name} 프로젝트 생성`;
+            document.getElementById('modalSubtitle').textContent = template.description;
+            document.getElementById('selectedAI').value = template.framework;
+
+            updateLLMMapping();
+            document.getElementById('projectModal').style.display = 'flex';
+        }
+
+        // 모달 닫기
+        function closeProjectModal() {
+            document.getElementById('projectModal').style.display = 'none';
+            document.getElementById('projectForm').reset();
+        }
+
+        // LLM 매핑 업데이트
+        function updateLLMMapping() {
+            if (!selectedTemplate) return;
+
+            const template = templates[selectedTemplate];
+            const selectedAI = document.getElementById('selectedAI').value;
+            const mappings = template.llm_mappings;
+
+            if (mappings && mappings.length > 0) {
+                const llmMappingsDiv = document.getElementById('llmMappings');
+                const mappingHtml = mappings.map(mapping => `
+                    <div class="llm-mapping">
+                        <div class="role-name">${mapping.role}</div>
+                        <div class="llm-model">${mapping.llm_model}</div>
+                    </div>
+                `).join('');
+
+                llmMappingsDiv.innerHTML = mappingHtml;
+                document.getElementById('recommendedLLM').style.display = 'block';
+            } else {
+                document.getElementById('recommendedLLM').style.display = 'none';
+            }
+        }
+
+        // 프로젝트 생성
+        async function createProject(e) {
+            e.preventDefault();
+
+            const formData = {
+                project_name: document.getElementById('projectName').value,
+                custom_settings: {
+                    description: document.getElementById('projectDescription').value,
+                    selected_framework: document.getElementById('selectedAI').value
+                }
+            };
+
+            try {
+                const response = await fetch(`/api/templates/${selectedTemplate}/create-project`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('프로젝트가 성공적으로 생성되었습니다!');
+                    closeProjectModal();
+
+                    // 프로젝트 페이지로 이동
+                    const framework = formData.custom_settings.selected_framework === 'crew_ai' ? 'crewai' : 'metagpt';
+                    window.location.href = `/${framework}`;
+                } else {
+                    alert('프로젝트 생성 실패: ' + result.error);
+                }
+            } catch (error) {
+                alert('프로젝트 생성 중 오류가 발생했습니다: ' + error.message);
+            }
+        }
+
+        // 템플릿 상세 보기
+        function viewTemplateDetails(templateId) {
+            const template = templates[templateId];
+            const projectTypeIcon = getProjectTypeIcon(template.project_type);
+            const framework = template.framework === 'crew_ai' ? 'CrewAI' : 'MetaGPT';
+
+            const llmMappingText = template.llm_mappings.map(mapping =>
+                `${mapping.role}: ${mapping.llm_model}`
+            ).join('\n');
+
+            alert(`${projectTypeIcon} ${template.display_name}\n\n${template.description}\n\n프로젝트 유형: ${template.project_type}\n프레임워크: ${framework}\n예상 기간: ${template.estimated_duration || '미정'}\n복잡도: ${template.complexity || '중간'}\n\nLLM 매핑:\n${llmMappingText}`);
+        }
+
+        // UI 상태 관리
+        function showLoading() {
+            document.getElementById('loadingState').style.display = 'block';
+            document.getElementById('templatesGrid').style.display = 'none';
+            document.getElementById('errorState').style.display = 'none';
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('templatesGrid').style.display = 'grid';
+        }
+
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorState').style.display = 'block';
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('templatesGrid').style.display = 'none';
+        }
+
+        // ESC 키로 모달 닫기
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeProjectModal();
+            }
+        });
+
+        // 모달 배경 클릭으로 닫기
+        document.getElementById('projectModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeProjectModal();
+            }
+        });
+    </script>
+</body>
+</html>

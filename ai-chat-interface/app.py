@@ -6,6 +6,7 @@ Single Python server integrating CrewAI and MetaGPT
 
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit
 import os
 import sys
 import json
@@ -26,6 +27,10 @@ load_dotenv()
 # Import database module
 from database import db
 from security_utils import validate_request_data, check_request_security
+from template_api import template_bp
+from ollama_client import ollama_client
+from websocket_manager import init_websocket_manager, get_websocket_manager
+from realtime_progress_tracker import global_progress_tracker
 
 # Add current directory to Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -43,6 +48,13 @@ sys.path.append(metagpt_path)
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 
+# Flask-SocketIO 설정
+socketio = SocketIO(app,
+                   cors_allowed_origins=['http://localhost:3000', 'http://127.0.0.1:3000'],
+                   async_mode='threading',
+                   logger=True,
+                   engineio_logger=True)
+
 # CORS 설정 강화
 CORS(app,
      origins=['http://localhost:3000', 'http://127.0.0.1:3000'],
@@ -50,6 +62,17 @@ CORS(app,
      allow_headers=['Content-Type', 'Authorization'],
      supports_credentials=True,
      max_age=3600)
+
+# Register blueprints
+app.register_blueprint(template_bp)
+
+# Import and register template routes
+try:
+    from template_api_routes import template_routes
+    app.register_blueprint(template_routes)
+    print("✅ 템플릿 API 라우트 등록 완료")
+except ImportError as e:
+    print(f"⚠️ 템플릿 API 라우트 등록 실패: {e}")
 
 # Supabase 클라이언트 설정
 supabase_url = os.getenv("SUPABASE_URL")
@@ -221,6 +244,11 @@ def crewai_interface():
 def metagpt_interface():
     """MetaGPT 인터페이스"""
     return send_from_directory('.', 'metagpt.html')
+
+@app.route('/templates')
+def templates_interface():
+    """프로젝트 템플릿 인터페이스"""
+    return send_from_directory('.', 'templates.html')
 
 
 @app.route('/<path:filename>')
@@ -2256,6 +2284,215 @@ def metagpt_status():
         }), 500
 
 # ==================== END METAGPT INTEGRATION ====================
+
+# ==================== OLLAMA INTEGRATION ====================
+
+@app.route('/api/ollama/status', methods=['GET'])
+@rate_limit(max_requests=30, window_seconds=60)
+def ollama_status():
+    """Ollama 서비스 상태 확인"""
+    try:
+        is_available = ollama_client.is_available()
+
+        return jsonify({
+            'success': True,
+            'available': is_available,
+            'service': 'Ollama Local',
+            'endpoint': ollama_client.base_url,
+            'message': 'Ollama 서비스가 실행 중입니다' if is_available else 'Ollama 서비스에 연결할 수 없습니다'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'available': False,
+            'error': f'Ollama 상태 확인 오류: {str(e)}'
+        }), 500
+
+@app.route('/api/ollama/models', methods=['GET'])
+@rate_limit(max_requests=20, window_seconds=60)
+def ollama_models():
+    """Ollama 사용 가능한 모델 목록 조회"""
+    try:
+        result = ollama_client.get_models()
+
+        if result['success']:
+            return jsonify({
+                'success': True,
+                'models': result['models'],
+                'count': result['count'],
+                'service': 'Ollama Local'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result['error'],
+                'models': []
+            }), 500
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Ollama 모델 조회 오류: {str(e)}',
+            'models': []
+        }), 500
+
+@app.route('/api/ollama/models/<model_name>', methods=['GET'])
+@rate_limit(max_requests=10, window_seconds=60)
+def ollama_model_info(model_name):
+    """특정 Ollama 모델 정보 조회"""
+    try:
+        result = ollama_client.get_model_info(model_name)
+
+        if result['success']:
+            return jsonify({
+                'success': True,
+                'model': result
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result['error']
+            }), 404
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Ollama 모델 정보 조회 오류: {str(e)}'
+        }), 500
+
+@app.route('/api/ollama/generate', methods=['POST'])
+@rate_limit(max_requests=10, window_seconds=300)  # 5분간 10회 제한
+@validate_json_input(['model', 'prompt'])
+def ollama_generate():
+    """Ollama를 통한 텍스트 생성"""
+    try:
+        data = request.get_json()
+        model = data['model']
+        prompt = data['prompt']
+        system = data.get('system', '')
+        temperature = data.get('temperature', 0.7)
+        max_tokens = data.get('max_tokens', 1000)
+
+        result = ollama_client.generate_completion(
+            model=model,
+            prompt=prompt,
+            system=system,
+            temperature=temperature,
+            max_tokens=max_tokens
+        )
+
+        if result['success']:
+            return jsonify({
+                'success': True,
+                'response': result['response'],
+                'model': result['model'],
+                'provider': result['provider'],
+                'performance': {
+                    'total_duration': result.get('total_duration', 0),
+                    'load_duration': result.get('load_duration', 0),
+                    'prompt_eval_count': result.get('prompt_eval_count', 0),
+                    'eval_count': result.get('eval_count', 0)
+                }
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result['error']
+            }), 500
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Ollama 텍스트 생성 오류: {str(e)}'
+        }), 500
+
+@app.route('/api/ollama/chat', methods=['POST'])
+@rate_limit(max_requests=10, window_seconds=300)  # 5분간 10회 제한
+@validate_json_input(['model', 'messages'])
+def ollama_chat():
+    """Ollama를 통한 채팅 완성"""
+    try:
+        data = request.get_json()
+        model = data['model']
+        messages = data['messages']
+        temperature = data.get('temperature', 0.7)
+        max_tokens = data.get('max_tokens', 1000)
+
+        result = ollama_client.chat_completion(
+            model=model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens
+        )
+
+        if result['success']:
+            return jsonify({
+                'success': True,
+                'message': result['message'],
+                'model': result['model'],
+                'provider': result['provider'],
+                'performance': {
+                    'total_duration': result.get('total_duration', 0),
+                    'load_duration': result.get('load_duration', 0),
+                    'prompt_eval_count': result.get('prompt_eval_count', 0),
+                    'eval_count': result.get('eval_count', 0)
+                }
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result['error']
+            }), 500
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Ollama 채팅 완성 오류: {str(e)}'
+        }), 500
+
+@app.route('/api/llm/models', methods=['GET'])
+@rate_limit(max_requests=20, window_seconds=60)
+def get_all_llm_models():
+    """모든 LLM 모델 목록 조회 (클라우드 + 로컬)"""
+    try:
+        # 기본 클라우드 LLM 모델들
+        cloud_models = [
+            { 'id': 'gpt-4', 'name': 'GPT-4', 'description': '범용 고성능 모델', 'provider': 'OpenAI', 'type': 'cloud' },
+            { 'id': 'gpt-4o', 'name': 'GPT-4o', 'description': '멀티모달 최신 모델', 'provider': 'OpenAI', 'type': 'cloud' },
+            { 'id': 'claude-3', 'name': 'Claude-3 Sonnet', 'description': '추론 특화 모델', 'provider': 'Anthropic', 'type': 'cloud' },
+            { 'id': 'claude-3-haiku', 'name': 'Claude-3 Haiku', 'description': '빠른 응답 모델', 'provider': 'Anthropic', 'type': 'cloud' },
+            { 'id': 'gemini-pro', 'name': 'Gemini Pro', 'description': '멀티모달 모델', 'provider': 'Google', 'type': 'cloud' },
+            { 'id': 'deepseek-coder', 'name': 'DeepSeek Coder', 'description': '코딩 전문 모델', 'provider': 'DeepSeek', 'type': 'cloud' },
+            { 'id': 'codellama', 'name': 'Code Llama', 'description': '코드 생성 특화', 'provider': 'Meta', 'type': 'cloud' }
+        ]
+
+        all_models = cloud_models.copy()
+
+        # Ollama 로컬 모델들 추가
+        if ollama_client.is_available():
+            ollama_result = ollama_client.get_models()
+            if ollama_result['success']:
+                for model in ollama_result['models']:
+                    model['type'] = 'local'
+                    all_models.append(model)
+
+        return jsonify({
+            'success': True,
+            'models': all_models,
+            'count': len(all_models),
+            'cloud_count': len(cloud_models),
+            'local_count': len(all_models) - len(cloud_models),
+            'ollama_available': ollama_client.is_available()
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'LLM 모델 목록 조회 오류: {str(e)}',
+            'models': []
+        }), 500
+
+# ==================== END OLLAMA INTEGRATION ====================
 
 
 if __name__ == '__main__':

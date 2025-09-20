@@ -1,0 +1,81 @@
+{
+  "id": "ml_project_metagpt",
+  "name": "customer_churn_prediction",
+  "display_name": "고객 이탈 예측 ML 모델",
+  "description": "머신러닝을 활용한 고객 이탈 예측 시스템 (Python + Scikit-learn)",
+  "project_type": "ml_project",
+  "framework": "meta_gpt",
+  "icon": "🤖",
+  "tags": [
+    "machine-learning",
+    "prediction",
+    "python",
+    "scikit-learn",
+    "model"
+  ],
+  "difficulty": "advanced",
+  "estimated_duration": "2-3 weeks",
+  "default_settings": {
+    "language": "Python",
+    "ml_libraries": [
+      "Scikit-learn",
+      "Pandas",
+      "NumPy"
+    ],
+    "model_types": [
+      "Random Forest",
+      "XGBoost",
+      "Neural Network"
+    ],
+    "evaluation_metrics": [
+      "Accuracy",
+      "Precision",
+      "Recall",
+      "F1-Score"
+    ]
+  },
+  "llm_mappings": [
+    {
+      "role": "Product Manager",
+      "llm_model": "gpt-4",
+      "description": "ML 프로젝트 요구사항 정의",
+      "reason": "GPT-4는 비즈니스 요구사항을 ML 문제로 정의하는데 탁월"
+    },
+    {
+      "role": "Architect",
+      "llm_model": "claude-3",
+      "description": "ML 파이프라인 아키텍처",
+      "reason": "Claude-3는 ML 시스템 아키텍처 설계에 우수"
+    },
+    {
+      "role": "Engineer",
+      "llm_model": "deepseek-coder",
+      "description": "ML 모델 구현",
+      "reason": "DeepSeek Coder는 ML 코드 구현에 특화"
+    },
+    {
+      "role": "QA Engineer",
+      "llm_model": "gemini-pro",
+      "description": "모델 검증 및 테스트",
+      "reason": "Gemini Pro는 ML 모델 평가와 검증에 효과적"
+    }
+  ],
+  "required_skills": [
+    "Machine Learning",
+    "Python",
+    "Statistics",
+    "Data Preprocessing"
+  ],
+  "deliverables": [
+    "데이터 분석 보고서",
+    "ML 모델",
+    "평가 리포트",
+    "배포 가이드"
+  ],
+  "created_at": "2025-09-19T22:58:51.398678",
+  "updated_at": "2025-09-19T22:58:51.398678",
+  "author": "AI Chat Interface",
+  "version": "1.0",
+  "is_featured": false,
+  "usage_count": 0
+}

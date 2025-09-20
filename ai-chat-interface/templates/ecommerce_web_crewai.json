@@ -1,0 +1,68 @@
+{
+  "id": "ecommerce_web_crewai",
+  "name": "ecommerce_web_app",
+  "display_name": "E-commerce 웹 애플리케이션",
+  "description": "온라인 쇼핑몰 웹사이트 개발 (React + Node.js + PostgreSQL)",
+  "project_type": "web_app",
+  "framework": "crew_ai",
+  "icon": "🛒",
+  "tags": [
+    "ecommerce",
+    "web",
+    "react",
+    "nodejs",
+    "database"
+  ],
+  "difficulty": "intermediate",
+  "estimated_duration": "1-2 weeks",
+  "default_settings": {
+    "frontend": "React.js",
+    "backend": "Node.js + Express",
+    "database": "PostgreSQL",
+    "payment": "Stripe",
+    "features": [
+      "product catalog",
+      "shopping cart",
+      "user authentication",
+      "order management"
+    ]
+  },
+  "llm_mappings": [
+    {
+      "role": "Researcher",
+      "llm_model": "gemini-pro",
+      "description": "시장 조사 및 사용자 분석",
+      "reason": "Gemini Pro는 대용량 데이터 분석과 시장 조사에 특화"
+    },
+    {
+      "role": "Writer",
+      "llm_model": "gpt-4",
+      "description": "기술 문서 및 사용자 가이드 작성",
+      "reason": "GPT-4는 명확한 문서 작성에 뛰어남"
+    },
+    {
+      "role": "Planner",
+      "llm_model": "claude-3",
+      "description": "프로젝트 계획 및 아키텍처 설계",
+      "reason": "Claude-3는 체계적인 계획 수립에 우수함"
+    }
+  ],
+  "required_skills": [
+    "React",
+    "Node.js",
+    "Database Design",
+    "API Development"
+  ],
+  "deliverables": [
+    "시장 조사 보고서",
+    "기술 명세서",
+    "프로젝트 계획서",
+    "구현 가이드"
+  ],
+  "created_at": "2025-09-19T22:58:51.398678",
+  "updated_at": "2025-09-19T22:58:51.398678",
+  "author": "AI Chat Interface",
+  "version": "1.0",
+  "is_featured": true,
+  "usage_count": 0
+}

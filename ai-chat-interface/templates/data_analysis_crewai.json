@@ -1,0 +1,76 @@
+{
+  "id": "data_analysis_crewai",
+  "name": "sales_data_analysis",
+  "display_name": "매출 데이터 분석 프로젝트",
+  "description": "매출 데이터 분석 및 인사이트 도출 (Python + Pandas + Visualization)",
+  "project_type": "data_analysis",
+  "framework": "crew_ai",
+  "icon": "📊",
+  "tags": [
+    "data",
+    "analysis",
+    "python",
+    "visualization",
+    "business-intelligence"
+  ],
+  "difficulty": "beginner",
+  "estimated_duration": "3-5 days",
+  "default_settings": {
+    "language": "Python",
+    "tools": [
+      "Pandas",
+      "NumPy",
+      "Matplotlib",
+      "Seaborn",
+      "Jupyter"
+    ],
+    "data_sources": [
+      "CSV",
+      "Database",
+      "API"
+    ],
+    "outputs": [
+      "reports",
+      "dashboards",
+      "recommendations"
+    ]
+  },
+  "llm_mappings": [
+    {
+      "role": "Researcher",
+      "llm_model": "gemini-pro",
+      "description": "데이터 탐색 및 패턴 분석",
+      "reason": "Gemini Pro는 대용량 데이터 패턴 분석에 뛰어남"
+    },
+    {
+      "role": "Writer",
+      "llm_model": "gpt-4",
+      "description": "분석 리포트 작성",
+      "reason": "GPT-4는 데이터 인사이트를 명확한 리포트로 작성"
+    },
+    {
+      "role": "Planner",
+      "llm_model": "claude-3",
+      "description": "분석 전략 및 방법론 수립",
+      "reason": "Claude-3는 체계적인 분석 접근법 설계에 우수"
+    }
+  ],
+  "required_skills": [
+    "Python",
+    "Data Analysis",
+    "Statistics",
+    "Visualization"
+  ],
+  "deliverables": [
+    "데이터 탐색 보고서",
+    "분석 결과 리포트",
+    "시각화 대시보드",
+    "비즈니스 추천사항"
+  ],
+  "created_at": "2025-09-19T22:58:51.398678",
+  "updated_at": "2025-09-19T22:58:51.398678",
+  "author": "AI Chat Interface",
+  "version": "1.0",
+  "is_featured": false,
+  "usage_count": 0
+}

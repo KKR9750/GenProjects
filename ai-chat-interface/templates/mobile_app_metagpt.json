@@ -1,0 +1,75 @@
+{
+  "id": "mobile_app_metagpt",
+  "name": "mobile_health_app",
+  "display_name": "헬스케어 모바일 앱",
+  "description": "건강 관리 및 피트니스 추적 모바일 애플리케이션 (React Native)",
+  "project_type": "mobile_app",
+  "framework": "meta_gpt",
+  "icon": "📱",
+  "tags": [
+    "mobile",
+    "healthcare",
+    "fitness",
+    "react-native"
+  ],
+  "difficulty": "intermediate",
+  "estimated_duration": "2-3 weeks",
+  "default_settings": {
+    "platform": "React Native",
+    "target_os": [
+      "iOS",
+      "Android"
+    ],
+    "backend": "Firebase",
+    "features": [
+      "activity tracking",
+      "health metrics",
+      "goal setting",
+      "social sharing"
+    ]
+  },
+  "llm_mappings": [
+    {
+      "role": "Product Manager",
+      "llm_model": "gpt-4",
+      "description": "제품 요구사항 분석",
+      "reason": "GPT-4는 사용자 니즈 분석과 기능 정의에 탁월"
+    },
+    {
+      "role": "Architect",
+      "llm_model": "claude-3",
+      "description": "시스템 아키텍처 설계",
+      "reason": "Claude-3는 모바일 앱 아키텍처 설계에 우수"
+    },
+    {
+      "role": "Engineer",
+      "llm_model": "deepseek-coder",
+      "description": "React Native 개발",
+      "reason": "DeepSeek Coder는 모바일 개발 코드 생성에 특화"
+    },
+    {
+      "role": "QA Engineer",
+      "llm_model": "llama-3",
+      "description": "테스트 케이스 작성",
+      "reason": "Llama-3는 포괄적인 테스트 시나리오 생성에 적합"
+    }
+  ],
+  "required_skills": [
+    "React Native",
+    "Mobile UI/UX",
+    "Firebase",
+    "API Integration"
+  ],
+  "deliverables": [
+    "PRD 문서",
+    "시스템 설계서",
+    "구현 코드",
+    "테스트 계획서"
+  ],
+  "created_at": "2025-09-19T22:58:51.398678",
+  "updated_at": "2025-09-19T22:58:51.398678",
+  "author": "AI Chat Interface",
+  "version": "1.0",
+  "is_featured": true,
+  "usage_count": 0
+}

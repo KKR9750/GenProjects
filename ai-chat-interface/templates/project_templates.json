@@ -1,0 +1,305 @@
+{
+  "templates": {
+    "web_app": {
+      "id": "web_app",
+      "name": "웹 애플리케이션",
+      "description": "React/Vue.js + Node.js/Python 풀스택 웹 애플리케이션",
+      "icon": "🌐",
+      "category": "Frontend",
+      "tags": ["react", "vue", "nodejs", "python", "fullstack"],
+      "estimated_duration": "2-4주",
+      "complexity": "medium",
+      "recommended_ai": "meta-gpt",
+      "default_llm_mapping": {
+        "crewai": {
+          "Researcher": "gpt-4",
+          "Writer": "claude-3",
+          "Planner": "gpt-4o"
+        },
+        "metagpt": {
+          "Product Manager": "gpt-4",
+          "Architect": "claude-3",
+          "Project Manager": "gpt-4o",
+          "Engineer": "deepseek-coder",
+          "QA Engineer": "claude-3-haiku"
+        }
+      },
+      "project_structure": {
+        "frontend": ["src/", "public/", "package.json"],
+        "backend": ["app/", "requirements.txt", "config/"],
+        "docs": ["README.md", "API.md", "DEPLOYMENT.md"]
+      },
+      "default_requirements": [
+        "사용자 인증 시스템",
+        "반응형 웹 디자인",
+        "데이터베이스 연동",
+        "REST API 구현",
+        "관리자 패널"
+      ],
+      "tech_stack_suggestions": {
+        "frontend": ["React.js", "Vue.js", "Next.js", "Nuxt.js"],
+        "backend": ["Node.js + Express", "Python + Flask", "Python + Django"],
+        "database": ["PostgreSQL", "MySQL", "MongoDB"],
+        "deployment": ["Vercel", "Netlify", "AWS", "Docker"]
+      }
+    },
+    "mobile_app": {
+      "id": "mobile_app",
+      "name": "모바일 애플리케이션",
+      "description": "React Native/Flutter 크로스 플랫폼 모바일 앱",
+      "icon": "📱",
+      "category": "Mobile",
+      "tags": ["react-native", "flutter", "ios", "android", "mobile"],
+      "estimated_duration": "3-6주",
+      "complexity": "high",
+      "recommended_ai": "crew-ai",
+      "default_llm_mapping": {
+        "crewai": {
+          "Researcher": "gemini-pro",
+          "Writer": "gpt-4",
+          "Planner": "claude-3"
+        },
+        "metagpt": {
+          "Product Manager": "gpt-4",
+          "Architect": "claude-3",
+          "Project Manager": "gpt-4o",
+          "Engineer": "deepseek-coder",
+          "QA Engineer": "llama-3"
+        }
+      },
+      "project_structure": {
+        "mobile": ["src/", "assets/", "package.json", "app.json"],
+        "backend": ["api/", "models/", "config/"],
+        "docs": ["README.md", "SETUP.md", "STORE_DEPLOYMENT.md"]
+      },
+      "default_requirements": [
+        "크로스 플랫폼 호환성",
+        "푸시 알림 시스템",
+        "오프라인 동기화",
+        "사용자 프로필 관리",
+        "앱스토어 배포 준비"
+      ],
+      "tech_stack_suggestions": {
+        "framework": ["React Native", "Flutter", "Expo"],
+        "backend": ["Node.js + Express", "Python + FastAPI", "Firebase"],
+        "database": ["Firebase Firestore", "PostgreSQL", "MongoDB"],
+        "deployment": ["App Store", "Google Play", "TestFlight"]
+      }
+    },
+    "api_server": {
+      "id": "api_server",
+      "name": "API 서버",
+      "description": "RESTful/GraphQL API 백엔드 서버",
+      "icon": "⚡",
+      "category": "Backend",
+      "tags": ["api", "rest", "graphql", "microservices", "backend"],
+      "estimated_duration": "1-3주",
+      "complexity": "medium",
+      "recommended_ai": "meta-gpt",
+      "default_llm_mapping": {
+        "crewai": {
+          "Researcher": "claude-3",
+          "Writer": "gpt-4",
+          "Planner": "gpt-4o"
+        },
+        "metagpt": {
+          "Product Manager": "gpt-4",
+          "Architect": "claude-3",
+          "Project Manager": "gpt-4o",
+          "Engineer": "deepseek-coder",
+          "QA Engineer": "claude-3-haiku"
+        }
+      },
+      "project_structure": {
+        "api": ["routes/", "controllers/", "models/", "middleware/"],
+        "config": ["database.js", "auth.js", "cors.js"],
+        "docs": ["README.md", "API_DOCS.md", "DEPLOYMENT.md"],
+        "tests": ["unit/", "integration/", "load/"]
+      },
+      "default_requirements": [
+        "RESTful API 설계",
+        "인증 및 권한 관리",
+        "데이터 검증 및 보안",
+        "API 문서 자동 생성",
+        "성능 모니터링"
+      ],
+      "tech_stack_suggestions": {
+        "framework": ["Express.js", "FastAPI", "Django REST", "Spring Boot"],
+        "database": ["PostgreSQL", "MongoDB", "Redis"],
+        "auth": ["JWT", "OAuth2", "Auth0"],
+        "deployment": ["Docker", "AWS Lambda", "Google Cloud Run"]
+      }
+    },
+    "desktop_app": {
+      "id": "desktop_app",
+      "name": "데스크톱 애플리케이션",
+      "description": "Electron/Tauri 크로스 플랫폼 데스크톱 앱",
+      "icon": "🖥️",
+      "category": "Desktop",
+      "tags": ["electron", "tauri", "desktop", "cross-platform"],
+      "estimated_duration": "2-5주",
+      "complexity": "high",
+      "recommended_ai": "crew-ai",
+      "default_llm_mapping": {
+        "crewai": {
+          "Researcher": "gpt-4",
+          "Writer": "claude-3",
+          "Planner": "gemini-pro"
+        },
+        "metagpt": {
+          "Product Manager": "gpt-4",
+          "Architect": "claude-3",
+          "Project Manager": "gpt-4o",
+          "Engineer": "deepseek-coder",
+          "QA Engineer": "llama-3"
+        }
+      },
+      "project_structure": {
+        "frontend": ["src/", "assets/", "public/"],
+        "electron": ["main.js", "preload.js", "package.json"],
+        "backend": ["api/", "database/", "services/"],
+        "docs": ["README.md", "BUILD.md", "DISTRIBUTION.md"]
+      },
+      "default_requirements": [
+        "크로스 플랫폼 호환성",
+        "네이티브 시스템 통합",
+        "자동 업데이트 시스템",
+        "로컬 데이터 저장",
+        "패키징 및 배포"
+      ],
+      "tech_stack_suggestions": {
+        "framework": ["Electron", "Tauri", "Flutter Desktop"],
+        "frontend": ["React", "Vue", "Svelte"],
+        "backend": ["Node.js", "Rust", "Python"],
+        "packaging": ["electron-builder", "electron-forge"]
+      }
+    },
+    "data_analysis": {
+      "id": "data_analysis",
+      "name": "데이터 분석 프로젝트",
+      "description": "Python 기반 데이터 분석 및 시각화 프로젝트",
+      "icon": "📊",
+      "category": "Data Science",
+      "tags": ["python", "pandas", "jupyter", "visualization", "ml"],
+      "estimated_duration": "1-4주",
+      "complexity": "medium",
+      "recommended_ai": "crew-ai",
+      "default_llm_mapping": {
+        "crewai": {
+          "Researcher": "gpt-4",
+          "Writer": "claude-3",
+          "Planner": "gemini-pro"
+        },
+        "metagpt": {
+          "Product Manager": "gpt-4",
+          "Architect": "claude-3",
+          "Project Manager": "gpt-4o",
+          "Engineer": "deepseek-coder",
+          "QA Engineer": "claude-3-haiku"
+        }
+      },
+      "project_structure": {
+        "notebooks": ["analysis.ipynb", "visualization.ipynb"],
+        "data": ["raw/", "processed/", "external/"],
+        "src": ["data_processing.py", "models.py", "visualization.py"],
+        "docs": ["README.md", "DATA_SOURCES.md", "METHODOLOGY.md"]
+      },
+      "default_requirements": [
+        "데이터 수집 및 전처리",
+        "탐색적 데이터 분석",
+        "시각화 및 대시보드",
+        "통계 분석 및 모델링",
+        "결과 보고서 작성"
+      ],
+      "tech_stack_suggestions": {
+        "analysis": ["Pandas", "NumPy", "Scikit-learn"],
+        "visualization": ["Matplotlib", "Seaborn", "Plotly", "Streamlit"],
+        "notebook": ["Jupyter", "Google Colab"],
+        "deployment": ["Streamlit Cloud", "Heroku", "AWS"]
+      }
+    },
+    "e_commerce": {
+      "id": "e_commerce",
+      "name": "전자상거래 플랫폼",
+      "description": "온라인 쇼핑몰 및 결제 시스템 통합 플랫폼",
+      "icon": "🛒",
+      "category": "E-commerce",
+      "tags": ["ecommerce", "payment", "inventory", "shopping"],
+      "estimated_duration": "4-8주",
+      "complexity": "high",
+      "recommended_ai": "meta-gpt",
+      "default_llm_mapping": {
+        "crewai": {
+          "Researcher": "gpt-4",
+          "Writer": "claude-3",
+          "Planner": "gpt-4o"
+        },
+        "metagpt": {
+          "Product Manager": "gpt-4",
+          "Architect": "claude-3",
+          "Project Manager": "gpt-4o",
+          "Engineer": "deepseek-coder",
+          "QA Engineer": "claude-3-haiku"
+        }
+      },
+      "project_structure": {
+        "frontend": ["components/", "pages/", "styles/", "utils/"],
+        "backend": ["api/", "models/", "services/", "middleware/"],
+        "admin": ["dashboard/", "inventory/", "orders/", "users/"],
+        "docs": ["README.md", "API.md", "SETUP.md", "SECURITY.md"]
+      },
+      "default_requirements": [
+        "상품 카탈로그 관리",
+        "장바구니 및 주문 시스템",
+        "결제 게이트웨이 연동",
+        "재고 관리 시스템",
+        "관리자 대시보드"
+      ],
+      "tech_stack_suggestions": {
+        "frontend": ["Next.js", "React", "Vue.js"],
+        "backend": ["Node.js", "Python Django", "PHP Laravel"],
+        "payment": ["Stripe", "PayPal", "토스페이먼츠"],
+        "database": ["PostgreSQL", "MongoDB"],
+        "deployment": ["Vercel", "AWS", "Digital Ocean"]
+      }
+    }
+  },
+  "categories": [
+    {
+      "id": "frontend",
+      "name": "프론트엔드",
+      "description": "사용자 인터페이스 중심 프로젝트",
+      "icon": "🎨"
+    },
+    {
+      "id": "backend",
+      "name": "백엔드",
+      "description": "서버 및 API 중심 프로젝트",
+      "icon": "⚙️"
+    },
+    {
+      "id": "mobile",
+      "name": "모바일",
+      "description": "모바일 앱 개발 프로젝트",
+      "icon": "📱"
+    },
+    {
+      "id": "desktop",
+      "name": "데스크톱",
+      "description": "데스크톱 애플리케이션 프로젝트",
+      "icon": "🖥️"
+    },
+    {
+      "id": "data_science",
+      "name": "데이터 사이언스",
+      "description": "데이터 분석 및 머신러닝 프로젝트",
+      "icon": "📊"
+    },
+    {
+      "id": "e_commerce",
+      "name": "전자상거래",
+      "description": "온라인 비즈니스 플랫폼 프로젝트",
+      "icon": "🛒"
+    }
+  ]
+}

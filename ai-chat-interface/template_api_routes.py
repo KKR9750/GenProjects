@@ -7,6 +7,8 @@ Template API Routes
 from flask import Blueprint, request, jsonify
 from project_template_system import template_manager, ProjectType, Framework
 from project_initializer import project_initializer
+from project_executor import project_executor
+from error_handler import error_handler, handle_api_error
 import uuid
 from datetime import datetime
 
@@ -107,6 +109,7 @@ def search_templates():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @template_routes.route('/<template_id>/create-project', methods=['POST'])
+@handle_api_error
 def create_project_from_template(template_id):
     """템플릿으로부터 프로젝트 생성"""
     try:
@@ -125,11 +128,20 @@ def create_project_from_template(template_id):
             template_id, project_name, custom_settings
         )
 
+        # 자동 실행 옵션 확인
+        auto_execute = custom_settings.get('auto_execute', True)
+        execution_result = None
+
+        if auto_execute:
+            execution_result = project_executor.execute_project(project_data['id'])
+
         return jsonify({
             'success': True,
             'project': project_data,
+            'execution': execution_result,
             'message': f'프로젝트 "{project_name}"이 성공적으로 생성되었습니다',
-            'ready_to_start': True
+            'ready_to_start': True,
+            'auto_executed': auto_execute
         })
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 404
@@ -238,5 +250,58 @@ def get_project_status(project_id):
                 'success': False,
                 'message': '프로젝트를 찾을 수 없습니다'
             }), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@template_routes.route('/projects/<project_id>/execute', methods=['POST'])
+@handle_api_error
+def execute_project(project_id):
+    """프로젝트 실행 시작"""
+    try:
+        data = request.get_json() or {}
+        auto_start = data.get('auto_start', True)
+
+        result = project_executor.execute_project(project_id, auto_start)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@template_routes.route('/projects/<project_id>/execution/status', methods=['GET'])
+def get_execution_status(project_id):
+    """프로젝트 실행 상태 조회"""
+    try:
+        status = project_executor.get_execution_status(project_id)
+        if status:
+            return jsonify({
+                'success': True,
+                'execution': status
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': '실행 정보를 찾을 수 없습니다'
+            }), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@template_routes.route('/projects/<project_id>/execution/cancel', methods=['POST'])
+def cancel_execution(project_id):
+    """프로젝트 실행 취소"""
+    try:
+        result = project_executor.cancel_execution(project_id)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@template_routes.route('/executions', methods=['GET'])
+def list_executions():
+    """모든 프로젝트 실행 상태 목록"""
+    try:
+        executions = project_executor.list_executions()
+        return jsonify({
+            'success': True,
+            'executions': executions,
+            'count': len(executions)
+        })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500

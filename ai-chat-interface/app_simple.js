@@ -35,20 +35,42 @@ const AIChatInterface = () => {
         }
     ];
 
-    const llmOptions = [
-        { id: 'gpt-4', name: 'GPT-4', description: '범용 고성능 모델' },
-        { id: 'gpt-4o', name: 'GPT-4o', description: '멀티모달 최신 모델' },
-        { id: 'claude-3', name: 'Claude-3 Sonnet', description: '추론 특화 모델' },
-        { id: 'claude-3-haiku', name: 'Claude-3 Haiku', description: '빠른 응답 모델' },
-        { id: 'gemini-pro', name: 'Gemini Pro', description: '멀티모달 모델' },
-        { id: 'gemini-ultra', name: 'Gemini Ultra', description: '최고 성능 모델' },
-        { id: 'llama-3', name: 'Llama-3 70B', description: '오픈소스 모델' },
-        { id: 'llama-3-8b', name: 'Llama-3 8B', description: '경량 오픈소스 모델' },
-        { id: 'mistral-large', name: 'Mistral Large', description: '효율성 중심 모델' },
-        { id: 'mistral-7b', name: 'Mistral 7B', description: '경량 효율 모델' },
-        { id: 'deepseek-coder', name: 'DeepSeek Coder', description: '코딩 전문 모델' },
-        { id: 'codellama', name: 'Code Llama', description: '코드 생성 특화' }
-    ];
+    // LLM 모델 목록 (동적으로 로드됨)
+    let llmOptions = [];
+
+    // LLM 모델 동적 로드
+    const loadLLMModels = async () => {
+        try {
+            const response = await fetch('/api/llm/models');
+            const data = await response.json();
+
+            if (data.success) {
+                llmOptions = data.models.map(model => ({
+                    id: model.id,
+                    name: model.name,
+                    description: model.description || '',
+                    provider: model.provider,
+                    type: model.type || 'cloud',
+                    parameter_size: model.parameter_size
+                }));
+                console.log('LLM 모델 로드 완료:', llmOptions.length, '개');
+            } else {
+                console.error('LLM 모델 로드 실패:', data.error);
+                // 기본 모델 설정
+                llmOptions = [
+                    { id: 'gpt-4', name: 'GPT-4', description: '범용 고성능 모델', provider: 'OpenAI', type: 'cloud' },
+                    { id: 'claude-3', name: 'Claude-3 Sonnet', description: '추론 특화 모델', provider: 'Anthropic', type: 'cloud' }
+                ];
+            }
+        } catch (error) {
+            console.error('LLM 모델 로드 오류:', error);
+            // 기본 모델 설정
+            llmOptions = [
+                { id: 'gpt-4', name: 'GPT-4', description: '범용 고성능 모델', provider: 'OpenAI', type: 'cloud' },
+                { id: 'claude-3', name: 'Claude-3 Sonnet', description: '추론 특화 모델', provider: 'Anthropic', type: 'cloud' }
+            ];
+        }
+    };
 
     // 선택된 AI의 역할 목록 가져오기
     const getCurrentRoles = () => {
@@ -93,13 +115,19 @@ const AIChatInterface = () => {
 
     // 컴포넌트 마운트 시 초기 설정
     useEffect(() => {
-        if (!selectedRole) {
-            const currentAI = aiOptions.find(ai => ai.id === selectedAI);
-            if (currentAI && currentAI.roles.length > 0) {
-                setSelectedRole(currentAI.roles[0].id);
-                initializeRoleLLMMapping(selectedAI);
+        const initializeInterface = async () => {
+            await loadLLMModels();
+
+            if (!selectedRole) {
+                const currentAI = aiOptions.find(ai => ai.id === selectedAI);
+                if (currentAI && currentAI.roles.length > 0) {
+                    setSelectedRole(currentAI.roles[0].id);
+                    initializeRoleLLMMapping(selectedAI);
+                }
             }
-        }
+        };
+
+        initializeInterface();
     }, [selectedAI, selectedRole]);
 
     const handleSendMessage = () => {
@@ -140,7 +168,7 @@ const AIChatInterface = () => {
     const loadProjects = async () => {
         try {
             // CrewAI DB에서 프로젝트 목록 가져오기
-            const response = await fetch('http://localhost:5000/api/projects');
+            const response = await fetch('http://localhost:3001/api/projects');
             const data = await response.json();
 
             if (data.success) {
@@ -239,7 +267,8 @@ const AIChatInterface = () => {
                             >
                                 {llmOptions.map(llm => (
                                     <option key={llm.id} value={llm.id} title={llm.description}>
-                                        {llm.name} - {llm.description}
+                                        {llm.type === 'local' ? '🏠' : '☁️'} {llm.name} ({llm.provider})
+                                        {llm.parameter_size ? ` [${llm.parameter_size}]` : ''}
                                     </option>
                                 ))}
                             </select>
@@ -255,7 +284,10 @@ const AIChatInterface = () => {
                                             {role.name}
                                         </span>
                                         <span className="llm-name">
-                                            {llmOptions.find(llm => llm.id === (roleLLMMapping[role.id] || 'gpt-4'))?.name}
+                                            {(() => {
+                                                const llm = llmOptions.find(llm => llm.id === (roleLLMMapping[role.id] || 'gpt-4'));
+                                                return llm ? `${llm.type === 'local' ? '🏠' : '☁️'} ${llm.name}` : 'Unknown';
+                                            })()}
                                         </span>
                                     </div>
                                 ))}
@@ -400,5 +432,6 @@ const AIChatInterface = () => {
     );
 };
 
-// React 앱 렌더링
-ReactDOM.render(<AIChatInterface />, document.getElementById('root'));
+// React 18 createRoot API 사용
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<AIChatInterface />);

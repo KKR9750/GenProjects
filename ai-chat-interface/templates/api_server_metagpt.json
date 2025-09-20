@@ -1,0 +1,74 @@
+{
+  "id": "api_server_metagpt",
+  "name": "rest_api_server",
+  "display_name": "RESTful API 서버",
+  "description": "확장 가능한 RESTful API 서버 개발 (Python + FastAPI + PostgreSQL)",
+  "project_type": "api_server",
+  "framework": "meta_gpt",
+  "icon": "🔗",
+  "tags": [
+    "api",
+    "backend",
+    "fastapi",
+    "python",
+    "rest"
+  ],
+  "difficulty": "beginner",
+  "estimated_duration": "1 week",
+  "default_settings": {
+    "framework": "FastAPI",
+    "language": "Python",
+    "database": "PostgreSQL",
+    "authentication": "JWT",
+    "features": [
+      "CRUD operations",
+      "authentication",
+      "documentation",
+      "rate limiting"
+    ]
+  },
+  "llm_mappings": [
+    {
+      "role": "Product Manager",
+      "llm_model": "gpt-4",
+      "description": "API 요구사항 정의",
+      "reason": "GPT-4는 API 스펙 정의에 우수함"
+    },
+    {
+      "role": "Architect",
+      "llm_model": "claude-3",
+      "description": "API 설계 및 아키텍처",
+      "reason": "Claude-3는 API 아키텍처 설계에 특화"
+    },
+    {
+      "role": "Engineer",
+      "llm_model": "deepseek-coder",
+      "description": "FastAPI 코드 구현",
+      "reason": "DeepSeek Coder는 Python/FastAPI 개발에 최적화"
+    },
+    {
+      "role": "QA Engineer",
+      "llm_model": "gemini-pro",
+      "description": "API 테스트 자동화",
+      "reason": "Gemini Pro는 테스트 자동화 구현에 효과적"
+    }
+  ],
+  "required_skills": [
+    "Python",
+    "FastAPI",
+    "Database Design",
+    "API Design"
+  ],
+  "deliverables": [
+    "API 명세서",
+    "데이터베이스 스키마",
+    "구현 코드",
+    "테스트 슈트"
+  ],
+  "created_at": "2025-09-19T22:58:51.398678",
+  "updated_at": "2025-09-19T22:58:51.398678",
+  "author": "AI Chat Interface",
+  "version": "1.0",
+  "is_featured": false,
+  "usage_count": 0
+}

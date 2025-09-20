@@ -1,0 +1,123 @@
+{
+  "summary": {
+    "total_tests": 16,
+    "passed_tests": 16,
+    "failed_tests": 0,
+    "success_rate": 100.0,
+    "timestamp": "2025-09-18T10:46:54.465356"
+  },
+  "results": [
+    {
+      "test_name": "Database Connection",
+      "success": true,
+      "message": "시뮬레이션 모드: Supabase 연결이 설정되지 않았습니다",
+      "details": null,
+      "timestamp": "2025-09-18T10:46:54.461944"
+    },
+    {
+      "test_name": "Input Validation",
+      "success": true,
+      "message": "유효한 입력 데이터 검증 성공",
+      "details": null,
+      "timestamp": "2025-09-18T10:46:54.463631"
+    },
+    {
+      "test_name": "Malicious Input Detection",
+      "success": true,
+      "message": "악성 입력 차단 성공",
+      "details": null,
+      "timestamp": "2025-09-18T10:46:54.463631"
+    },
+    {
+      "test_name": "SQL Injection Detection",
+      "success": true,
+      "message": "SQL 인젝션 패턴 감지 성공",
+      "details": null,
+      "timestamp": "2025-09-18T10:46:54.463631"
+    },
+    {
+      "test_name": "JWT Generation",
+      "success": true,
+      "message": "JWT 토큰 생성 성공",
+      "details": null,
+      "timestamp": "2025-09-18T10:46:54.464154"
+    },
+    {
+      "test_name": "JWT Verification",
+      "success": true,
+      "message": "JWT 토큰 검증 성공",
+      "details": null,
+      "timestamp": "2025-09-18T10:46:54.464154"
+    },
+    {
+      "test_name": "Invalid JWT Rejection",
+      "success": true,
+      "message": "잘못된 JWT 토큰 거부 성공",
+      "details": null,
+      "timestamp": "2025-09-18T10:46:54.464154"
+    },
+    {
+      "test_name": "Project Creation",
+      "success": true,
+      "message": "프로젝트 생성 성공",
+      "details": null,
+      "timestamp": "2025-09-18T10:46:54.464154"
+    },
+    {
+      "test_name": "Project Retrieval",
+      "success": true,
+      "message": "프로젝트 조회 성공",
+      "details": null,
+      "timestamp": "2025-09-18T10:46:54.464154"
+    },
+    {
+      "test_name": "LLM Mapping Setup",
+      "success": true,
+      "message": "LLM 매핑 설정 성공",
+      "details": null,
+      "timestamp": "2025-09-18T10:46:54.464154"
+    },
+    {
+      "test_name": "LLM Mapping Retrieval",
+      "success": true,
+      "message": "LLM 매핑 조회 성공",
+      "details": null,
+      "timestamp": "2025-09-18T10:46:54.464154"
+    },
+    {
+      "test_name": "Projects List",
+      "success": true,
+      "message": "프로젝트 목록 조회 성공 (2개)",
+      "details": null,
+      "timestamp": "2025-09-18T10:46:54.464154"
+    },
+    {
+      "test_name": "API Utils File",
+      "success": true,
+      "message": "api-utils.js 파일 존재 확인",
+      "details": null,
+      "timestamp": "2025-09-18T10:46:54.464154"
+    },
+    {
+      "test_name": "API Utils in dashboard.html",
+      "success": true,
+      "message": "dashboard.html에 API 유틸리티 포함됨",
+      "details": null,
+      "timestamp": "2025-09-18T10:46:54.464802"
+    },
+    {
+      "test_name": "API Utils in crewai.html",
+      "success": true,
+      "message": "crewai.html에 API 유틸리티 포함됨",
+      "details": null,
+      "timestamp": "2025-09-18T10:46:54.464802"
+    },
+    {
+      "test_name": "API Utils in metagpt.html",
+      "success": true,
+      "message": "metagpt.html에 API 유틸리티 포함됨",
+      "details": null,
+      "timestamp": "2025-09-18T10:46:54.465356"
+    }
+  ]
+}

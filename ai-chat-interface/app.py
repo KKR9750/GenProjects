@@ -109,8 +109,8 @@ def set_security_headers(response):
 PORT = 3000
 
 # 라우팅 설정
-CREWAI_URL = "http://localhost:5000"  # 내부 CrewAI 서버
-METAGPT_URL = "http://localhost:8000"  # 내부 MetaGPT 서버
+CREWAI_URL = "http://localhost:3001"  # 내부 CrewAI 서버
+METAGPT_URL = "http://localhost:3002"  # 내부 MetaGPT 서버
 
 # Global variables
 execution_status = {}
@@ -250,6 +250,11 @@ def templates_interface():
     """프로젝트 템플릿 인터페이스"""
     return send_from_directory('.', 'templates.html')
 
+@app.route('/projects')
+def projects_interface():
+    """프로젝트 관리 대시보드"""
+    return send_from_directory('.', 'projects.html')
+
 
 @app.route('/<path:filename>')
 def serve_static(filename):
@@ -338,7 +343,7 @@ def handle_crewai_request():
                 'result': f'CrewAI team analyzed "{requirement}" project.\n\nProceeding with collaboration-based approach.',
                 'models_used': selected_models,
                 'agents_involved': ["Manager", "Researcher", "Designer", "Developer", "Tester"],
-                'note': 'CrewAI server is not running, responding in simulation mode. To start CrewAI server, please run it on port 5000.'
+                'note': 'CrewAI server is not running, responding in simulation mode. To start CrewAI server, please run it on port 3001.'
             })
 
     except requests.RequestException as e:
@@ -849,7 +854,7 @@ def start_crewai_service():
             return jsonify({
                 'success': True,
                 'message': 'CrewAI service started.',
-                'url': 'http://localhost:5000'
+                'url': 'http://localhost:3001'
             })
         else:
             return jsonify({
@@ -869,7 +874,7 @@ def get_services_status():
     return jsonify({
         'crewai': {
             'status': check_crewai_service(),
-            'url': 'http://localhost:5000'
+            'url': 'http://localhost:3001'
         },
         'metagpt': {
             'status': check_metagpt_service(),

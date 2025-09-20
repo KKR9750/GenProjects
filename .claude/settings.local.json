@@ -24,7 +24,21 @@
       "Read(//d/**)",
       "Bash(tasklist /FI \"\"PID eq 22648\"\")",
       "Bash(curl:*)",
-      "mcp__sequential-thinking__sequentialthinking"
+      "mcp__sequential-thinking__sequentialthinking",
+      "Bash(pip install:*)",
+      "Bash(cmd /c:*)",
+      "Bash(pkill:*)",
+      "Bash(netstat:*)",
+      "Bash(unset SUPABASE_URL)",
+      "Bash(unset SUPABASE_ANON_KEY)",
+      "Bash(export SUPABASE_URL=\"https://vpbkitxgisxbqtxrwjvo.supabase.co\")",
+      "Bash(export:*)",
+      "Bash(nslookup:*)",
+      "Bash(set SUPABASE_URL=https://vpbkitxgisxbqtxrwjvo.supabase.co)",
+      "Bash(set:*)",
+      "Bash(ping:*)",
+      "Bash(tasklist)",
+      "Bash(ollama:*)"
     ],
     "deny": [],
     "ask": []

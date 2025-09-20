@@ -70,15 +70,48 @@ const MetaGPTInterface = () => {
         { id: 'qa-engineer', name: 'QA Engineer', description: '테스트 및 품질 보증', icon: '🧪', color: '#8B5CF6' }
     ];
 
-    const llmOptions = [
-        { id: 'gpt-4', name: 'GPT-4', description: '범용 고성능 모델', provider: 'OpenAI' },
-        { id: 'gpt-4o', name: 'GPT-4o', description: '멀티모달 최신 모델', provider: 'OpenAI' },
-        { id: 'claude-3', name: 'Claude-3 Sonnet', description: '추론 특화 모델', provider: 'Anthropic' },
-        { id: 'claude-3-haiku', name: 'Claude-3 Haiku', description: '빠른 응답 모델', provider: 'Anthropic' },
-        { id: 'gemini-pro', name: 'Gemini Pro', description: '멀티모달 모델', provider: 'Google' },
-        { id: 'deepseek-coder', name: 'DeepSeek Coder', description: '코딩 전문 모델', provider: 'DeepSeek' },
-        { id: 'codellama', name: 'Code Llama', description: '코드 생성 특화', provider: 'Meta' }
-    ];
+    // LLM 모델 목록 (동적으로 로드됨)
+    let llmOptions = [];
+
+    // LLM 모델 목록 로드
+    const loadLLMModels = async () => {
+        try {
+            const response = await fetch('/api/llm/models');
+            const data = await response.json();
+
+            if (data.success) {
+                llmOptions = data.models.map(model => ({
+                    id: model.id,
+                    name: model.name,
+                    description: model.description || '',
+                    provider: model.provider,
+                    type: model.type || 'cloud',
+                    parameter_size: model.parameter_size || '',
+                    family: model.family || '',
+                    quantization: model.quantization || ''
+                }));
+
+                console.log(`LLM 모델 로드 완료: ${llmOptions.length}개 (클라우드: ${data.cloud_count}, 로컬: ${data.local_count})`);
+                return true;
+            } else {
+                console.error('LLM 모델 로드 실패:', data.error);
+                // 기본 모델 사용
+                llmOptions = [
+                    { id: 'gpt-4', name: 'GPT-4', description: '범용 고성능 모델', provider: 'OpenAI', type: 'cloud' },
+                    { id: 'claude-3', name: 'Claude-3 Sonnet', description: '추론 특화 모델', provider: 'Anthropic', type: 'cloud' }
+                ];
+                return false;
+            }
+        } catch (error) {
+            console.error('LLM 모델 로드 오류:', error);
+            // 기본 모델 사용
+            llmOptions = [
+                { id: 'gpt-4', name: 'GPT-4', description: '범용 고성능 모델', provider: 'OpenAI', type: 'cloud' },
+                { id: 'claude-3', name: 'Claude-3 Sonnet', description: '추론 특화 모델', provider: 'Anthropic', type: 'cloud' }
+            ];
+            return false;
+        }
+    };
 
     // 프로젝트 목록 로드
     const loadProjects = async () => {
@@ -280,7 +313,9 @@ const MetaGPTInterface = () => {
     };
 
     useEffect(() => {
-        loadProjects();
+        loadLLMModels().then(() => {
+            loadProjects();
+        });
     }, []);
 
     const renderMessage = (message) => {
@@ -474,7 +509,8 @@ const MetaGPTInterface = () => {
                                         >
                                             {llmOptions.map(llm => (
                                                 <option key={llm.id} value={llm.id}>
-                                                    {llm.name}
+                                                    {llm.type === 'local' ? '🏠' : '☁️'} {llm.name} ({llm.provider})
+                                                    {llm.parameter_size ? ` [${llm.parameter_size}]` : ''}
                                                 </option>
                                             ))}
                                         </select>

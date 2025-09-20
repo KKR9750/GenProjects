@@ -1,15 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-MetaGPT Bridge for Web Interface
-웹 인터페이스와 MetaGPT를 연결하는 브릿지 스크립트
+MetaGPT Bridge for Web Interface with Real-time Progress Tracking
+웹 인터페이스와 MetaGPT를 연결하는 브릿지 스크립트 (실시간 진행 상황 추적 포함)
 """
 
 import sys
 import os
 import json
 import asyncio
+import uuid
 from pathlib import Path
+from datetime import datetime
+import threading
+import time
 
 # MetaGPT 경로 추가 (상대 경로로 수정)
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -25,13 +29,65 @@ except ImportError as e:
     print(json.dumps({"error": f"MetaGPT import failed: {str(e)}"}))
     sys.exit(1)
 
-class MetaGPTBridge:
+# 실시간 진행 상황 추적기 import
+try:
+    from realtime_progress_tracker import MetaGPTProgressHelper, global_progress_tracker
+except ImportError:
+    print("Warning: 실시간 진행 상황 추적기를 사용할 수 없습니다.")
+    MetaGPTProgressHelper = None
+    global_progress_tracker = None
+
+class MetaGPTBridgeWithProgress:
     def __init__(self):
         self.company = None
+        self.project_id = None
+        self.progress_tracker = MetaGPTProgressHelper
+        self.current_stage = 0
+        self.total_stages = 5
+        self.stage_names = [
+            "Product Manager Analysis",
+            "Architecture Design",
+            "Project Planning",
+            "Code Development",
+            "Quality Assurance"
+        ]
+
+    def set_project_id(self, project_id: str):
+        """프로젝트 ID 설정"""
+        self.project_id = project_id
+        if self.progress_tracker:
+            self.progress_tracker.start_project(project_id)
+
+    def track_progress(self, stage: str, role: str, progress: int, message: str = ""):
+        """진행 상황 추적"""
+        if self.progress_tracker and self.project_id:
+            if role == "Product Manager":
+                self.progress_tracker.update_pm_progress(self.project_id, progress, message)
+            elif role == "Architect":
+                self.progress_tracker.update_architect_progress(self.project_id, progress, message)
+            elif role == "Engineer":
+                self.progress_tracker.update_engineer_progress(self.project_id, progress, message)
+            elif role == "QA Engineer":
+                self.progress_tracker.update_qa_progress(self.project_id, progress, message)
+
+        # 콘솔 로그도 출력
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] {role}: {message} ({progress}%)")
+
+    def complete_stage(self, stage: str, deliverables: list = None):
+        """단계 완료 처리"""
+        if self.progress_tracker and self.project_id:
+            global_progress_tracker.complete_stage(self.project_id, stage, deliverables)
+
+    def report_error(self, error_type: str, error_message: str, stage: str = "", role: str = ""):
+        """오류 보고"""
+        if self.progress_tracker and self.project_id:
+            global_progress_tracker.report_error(self.project_id, error_type, error_message, stage, role)
 
     async def initialize_company(self, requirement):
         """MetaGPT 회사 초기화"""
         try:
+            self.track_progress("초기화", "System", 10, "MetaGPT 회사 초기화 중...")
+
             self.company = SoftwareCompany()
 
             # 역할들을 추가
@@ -43,8 +99,10 @@ class MetaGPTBridge:
                 QaEngineer()
             ])
 
+            self.track_progress("초기화", "System", 100, "MetaGPT 회사 초기화 완료")
             return True
         except Exception as e:
+            self.report_error("initialization_error", f"Company initialization failed: {e}")
             logger.error(f"Company initialization failed: {e}")
             return False
 

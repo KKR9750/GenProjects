@@ -27,8 +27,8 @@ const CrewAIInterface = () => {
         { id: 'planner', name: 'Planner', description: '전략 수립 및 계획 전문가', icon: '📋' }
     ];
 
-    // LLM 모델 목록 (동적으로 로드됨)
-    let llmOptions = [];
+    // LLM 모델 목록 (React 상태로 관리)
+    const [llmOptions, setLlmOptions] = useState([]);
 
     // LLM 모델 동적 로드
     const loadLLMModels = async () => {
@@ -37,7 +37,7 @@ const CrewAIInterface = () => {
             const data = await response.json();
 
             if (data.success) {
-                llmOptions = data.models.map(model => ({
+                const models = data.models.map(model => ({
                     id: model.id,
                     name: model.name,
                     description: model.description || '',
@@ -45,22 +45,25 @@ const CrewAIInterface = () => {
                     type: model.type || 'cloud',
                     parameter_size: model.parameter_size
                 }));
-                console.log('LLM 모델 로드 완료:', llmOptions.length, '개');
+                setLlmOptions(models);
+                console.log('LLM 모델 로드 완료:', models.length, '개');
             } else {
                 console.error('LLM 모델 로드 실패:', data.error);
                 // 기본 모델 설정
-                llmOptions = [
+                const defaultModels = [
                     { id: 'gpt-4', name: 'GPT-4', description: '범용 고성능 모델', provider: 'OpenAI', type: 'cloud' },
                     { id: 'claude-3', name: 'Claude-3 Sonnet', description: '추론 특화 모델', provider: 'Anthropic', type: 'cloud' }
                 ];
+                setLlmOptions(defaultModels);
             }
         } catch (error) {
             console.error('LLM 모델 로드 오류:', error);
             // 기본 모델 설정
-            llmOptions = [
+            const defaultModels = [
                 { id: 'gpt-4', name: 'GPT-4', description: '범용 고성능 모델', provider: 'OpenAI', type: 'cloud' },
                 { id: 'claude-3', name: 'Claude-3 Sonnet', description: '추론 특화 모델', provider: 'Anthropic', type: 'cloud' }
             ];
+            setLlmOptions(defaultModels);
         }
     };
 
@@ -209,25 +212,33 @@ const CrewAIInterface = () => {
 
     // 역할별 LLM 변경
     const handleRoleLLMChange = (roleId, llmId) => {
-        setRoleLLMMapping(prev => ({
-            ...prev,
+        const newMapping = {
+            ...roleLLMMapping,
             [roleId]: llmId
-        }));
+        };
+        setRoleLLMMapping(newMapping);
 
-        // 활성 프로젝트가 있다면 업데이트
+        // 활성 프로젝트가 있다면 데이터베이스에 즉시 저장
         if (activeProject) {
-            updateProjectLLMMapping(activeProject.id, { ...roleLLMMapping, [roleId]: llmId });
+            updateProjectLLMMapping(activeProject.id, newMapping);
         }
     };
 
-    // 프로젝트 LLM 매핑 업데이트
+    // 프로젝트 LLM 매핑 업데이트 (데이터베이스 저장)
     const updateProjectLLMMapping = async (projectId, mapping) => {
         try {
-            await fetch(`/api/crewai/projects/${projectId}/llm-mapping`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ role_llm_mapping: mapping })
-            });
+            const mappings = [
+                { role_name: 'Researcher', llm_model: mapping.researcher },
+                { role_name: 'Writer', llm_model: mapping.writer },
+                { role_name: 'Planner', llm_model: mapping.planner }
+            ];
+
+            const result = await window.apiClient.saveRoleLLMMapping(projectId, mappings);
+            if (result.success) {
+                console.log('LLM 매핑 저장 완료');
+            } else {
+                console.error('LLM 매핑 저장 실패:', result.error);
+            }
         } catch (error) {
             console.error('LLM 매핑 업데이트 실패:', error);
         }
@@ -335,6 +346,12 @@ const CrewAIInterface = () => {
             await loadLLMModels();
             checkConnection();
             loadProjects();
+
+            // 기본 LLM 매핑 로드 (프로젝트 선택 전)
+            const savedMapping = window.StorageHelpers.getItem('crewai_default_llm_mapping');
+            if (savedMapping) {
+                setRoleLLMMapping(savedMapping);
+            }
         };
 
         initializeInterface();
@@ -504,6 +521,13 @@ const CrewAIInterface = () => {
 
                         <div className="llm-mapping">
                             <h3>⚙️ 역할별 LLM 설정</h3>
+                            <div className="llm-status" style={{ fontSize: '12px', marginBottom: '10px', padding: '8px', background: 'rgba(0,0,0,0.05)', borderRadius: '6px' }}>
+                                {llmOptions.length > 0 ? (
+                                    <span style={{ color: 'green' }}>✅ {llmOptions.length}개 모델 로드됨</span>
+                                ) : (
+                                    <span style={{ color: 'orange' }}>⏳ LLM 모델 로딩 중...</span>
+                                )}
+                            </div>
                             <div className="mapping-list">
                                 {roles.map(role => (
                                     <div key={role.id} className="mapping-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -515,16 +539,21 @@ const CrewAIInterface = () => {
                                         </div>
                                         <select
                                             className="llm-select"
-                                            style={{ fontSize: '8px', padding: '4px 4px' }}
+                                            style={{ fontSize: '12px', padding: '6px 8px', minWidth: '160px' }}
                                             value={roleLLMMapping[role.id] || 'gpt-4'}
                                             onChange={(e) => handleRoleLLMChange(role.id, e.target.value)}
+                                            disabled={llmOptions.length === 0}
                                         >
-                                            {llmOptions.map(llm => (
-                                                <option key={llm.id} value={llm.id}>
-                                                    {llm.type === 'local' ? '🏠' : '☁️'} {llm.name} ({llm.provider})
-                                                    {llm.parameter_size ? ` [${llm.parameter_size}]` : ''}
-                                                </option>
-                                            ))}
+                                            {llmOptions.length === 0 ? (
+                                                <option value="">모델 로딩 중...</option>
+                                            ) : (
+                                                llmOptions.map(llm => (
+                                                    <option key={llm.id} value={llm.id}>
+                                                        {llm.type === 'local' ? '🏠' : '☁️'} {llm.name} ({llm.provider})
+                                                        {llm.parameter_size ? ` [${llm.parameter_size}]` : ''}
+                                                    </option>
+                                                ))
+                                            )}
                                         </select>
                                     </div>
                                 ))}

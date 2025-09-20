@@ -70,8 +70,8 @@ const MetaGPTInterface = () => {
         { id: 'qa-engineer', name: 'QA Engineer', description: '테스트 및 품질 보증', icon: '🧪', color: '#8B5CF6' }
     ];
 
-    // LLM 모델 목록 (동적으로 로드됨)
-    let llmOptions = [];
+    // LLM 모델 목록 (React 상태로 관리)
+    const [llmOptions, setLlmOptions] = useState([]);
 
     // LLM 모델 목록 로드
     const loadLLMModels = async () => {
@@ -80,7 +80,7 @@ const MetaGPTInterface = () => {
             const data = await response.json();
 
             if (data.success) {
-                llmOptions = data.models.map(model => ({
+                const models = data.models.map(model => ({
                     id: model.id,
                     name: model.name,
                     description: model.description || '',
@@ -90,25 +90,28 @@ const MetaGPTInterface = () => {
                     family: model.family || '',
                     quantization: model.quantization || ''
                 }));
+                setLlmOptions(models);
 
-                console.log(`LLM 모델 로드 완료: ${llmOptions.length}개 (클라우드: ${data.cloud_count}, 로컬: ${data.local_count})`);
+                console.log(`LLM 모델 로드 완료: ${models.length}개 (클라우드: ${data.cloud_count}, 로컬: ${data.local_count})`);
                 return true;
             } else {
                 console.error('LLM 모델 로드 실패:', data.error);
                 // 기본 모델 사용
-                llmOptions = [
+                const defaultModels = [
                     { id: 'gpt-4', name: 'GPT-4', description: '범용 고성능 모델', provider: 'OpenAI', type: 'cloud' },
                     { id: 'claude-3', name: 'Claude-3 Sonnet', description: '추론 특화 모델', provider: 'Anthropic', type: 'cloud' }
                 ];
+                setLlmOptions(defaultModels);
                 return false;
             }
         } catch (error) {
             console.error('LLM 모델 로드 오류:', error);
             // 기본 모델 사용
-            llmOptions = [
+            const defaultModels = [
                 { id: 'gpt-4', name: 'GPT-4', description: '범용 고성능 모델', provider: 'OpenAI', type: 'cloud' },
                 { id: 'claude-3', name: 'Claude-3 Sonnet', description: '추론 특화 모델', provider: 'Anthropic', type: 'cloud' }
             ];
+            setLlmOptions(defaultModels);
             return false;
         }
     };
@@ -491,6 +494,13 @@ const MetaGPTInterface = () => {
 
                         <div className="llm-mapping">
                             <h3>⚙️ 역할별 LLM 설정</h3>
+                            <div className="llm-status" style={{ fontSize: '12px', marginBottom: '10px', padding: '8px', background: 'rgba(0,0,0,0.05)', borderRadius: '6px' }}>
+                                {llmOptions.length > 0 ? (
+                                    <span style={{ color: 'green' }}>✅ {llmOptions.length}개 모델 로드됨</span>
+                                ) : (
+                                    <span style={{ color: 'orange' }}>⏳ LLM 모델 로딩 중...</span>
+                                )}
+                            </div>
                             <div className="mapping-list">
                                 {roles.map(role => (
                                     <div key={role.id} className="mapping-item">
@@ -506,13 +516,18 @@ const MetaGPTInterface = () => {
                                             className="llm-select"
                                             value={roleLLMMapping[role.id] || 'gpt-4'}
                                             onChange={(e) => handleRoleLLMChange(role.id, e.target.value)}
+                                            disabled={llmOptions.length === 0}
                                         >
-                                            {llmOptions.map(llm => (
-                                                <option key={llm.id} value={llm.id}>
-                                                    {llm.type === 'local' ? '🏠' : '☁️'} {llm.name} ({llm.provider})
-                                                    {llm.parameter_size ? ` [${llm.parameter_size}]` : ''}
-                                                </option>
-                                            ))}
+                                            {llmOptions.length === 0 ? (
+                                                <option value="">모델 로딩 중...</option>
+                                            ) : (
+                                                llmOptions.map(llm => (
+                                                    <option key={llm.id} value={llm.id}>
+                                                        {llm.type === 'local' ? '🏠' : '☁️'} {llm.name} ({llm.provider})
+                                                        {llm.parameter_size ? ` [${llm.parameter_size}]` : ''}
+                                                    </option>
+                                                ))
+                                            )}
                                         </select>
                                     </div>
                                 ))}

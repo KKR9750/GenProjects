@@ -74,6 +74,14 @@ try:
 except ImportError as e:
     print(f"⚠️ 템플릿 API 라우트 등록 실패: {e}")
 
+# Import and register admin routes
+try:
+    from admin_api import admin_bp
+    app.register_blueprint(admin_bp)
+    print("✅ 관리자 API 라우트 등록 완료")
+except ImportError as e:
+    print(f"⚠️ 관리자 API 라우트 등록 실패: {e}")
+
 # Supabase 클라이언트 설정
 supabase_url = os.getenv("SUPABASE_URL")
 supabase_key = os.getenv("SUPABASE_ANON_KEY")
@@ -254,6 +262,11 @@ def templates_interface():
 def projects_interface():
     """프로젝트 관리 대시보드"""
     return send_from_directory('.', 'projects.html')
+
+@app.route('/admin')
+def admin_interface():
+    """관리자 대시보드"""
+    return send_from_directory('.', 'admin.html')
 
 
 @app.route('/<path:filename>')

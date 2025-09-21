@@ -289,28 +289,28 @@ body {
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 8px;
     height: 100%;
 }
 
 .workflow-progress h3, .llm-mapping h3, .active-project-info h3 {
     color: #333;
     font-size: 0.8rem;
-    margin-bottom: 15px;
+    margin-bottom: 8px;
     font-weight: 600;
 }
 
 .steps-list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 4px;
 }
 
 .step-item {
     background: rgba(255, 255, 255, 0.8);
     border: 2px solid transparent;
     border-radius: 8px;
-    padding: 8px;
+    padding: 4px 8px;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
@@ -388,7 +388,7 @@ body {
 .mapping-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 6px;
 }
 
 .mapping-item {
@@ -396,7 +396,7 @@ body {
     align-items: center;
     gap: 4px;
     background: rgba(255, 255, 255, 0.8);
-    padding: 4px;
+    padding: 2px 4px;
     border-radius: 5px;
     border: 1px solid rgba(0, 0, 0, 0.1);
 }

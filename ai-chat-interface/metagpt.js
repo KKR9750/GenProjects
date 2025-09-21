@@ -164,10 +164,13 @@ const MetaGPTInterface = () => {
 
         setIsLoading(true);
 
+        // inputText 값을 먼저 보존
+        const currentInputText = inputText;
+
         const stepInfo = steps.find(s => s.id === stepNumber);
         const userMessage = {
             id: Date.now(),
-            text: stepNumber === 1 ? inputText : `${stepNumber}단계 (${stepInfo.name}) 진행 요청`,
+            text: stepNumber === 1 ? currentInputText : `${stepNumber}단계 (${stepInfo.name}) 진행 요청`,
             sender: 'user',
             step: stepNumber,
             timestamp: new Date()
@@ -181,7 +184,7 @@ const MetaGPTInterface = () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    requirement: stepNumber === 1 ? inputText : activeProject?.requirement,
+                    requirement: stepNumber === 1 ? currentInputText : activeProject?.requirement,
                     step: stepNumber,
                     selectedModels: roleLLMMapping,
                     projectId: activeProject?.id
@@ -191,9 +194,32 @@ const MetaGPTInterface = () => {
             const data = await response.json();
 
             if (data.success) {
+                // Format the response text properly
+                let responseText = data.message;
+                if (!responseText && data.result) {
+                    if (typeof data.result === 'string') {
+                        responseText = data.result;
+                    } else {
+                        // Format object result into readable text
+                        responseText = `${data.step_name || `${stepNumber}단계`} 완료\n\n`;
+                        if (data.result.project_name) {
+                            responseText += `프로젝트: ${data.result.project_name}\n\n`;
+                        }
+                        if (data.result.main_features) {
+                            responseText += `주요 기능:\n${data.result.main_features.map(f => `• ${f}`).join('\n')}\n\n`;
+                        }
+                        if (data.result.technology_stack) {
+                            responseText += `기술 스택:\n• 언어: ${data.result.technology_stack.language}\n• GUI: ${data.result.technology_stack.gui}\n`;
+                        }
+                    }
+                }
+                if (!responseText) {
+                    responseText = `${stepNumber}단계가 완료되었습니다.`;
+                }
+
                 const aiMessage = {
                     id: Date.now() + 1,
-                    text: data.message || data.result || `${stepNumber}단계가 완료되었습니다.`,
+                    text: responseText,
                     sender: 'ai',
                     step: stepNumber,
                     role: stepInfo.role,
@@ -284,7 +310,7 @@ const MetaGPTInterface = () => {
     const handleKeyPress = (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            if (currentStep === 1 && !activeProject) {
+            if (currentStep === 1) {
                 startStep(1);
             }
         }
@@ -324,8 +350,20 @@ const MetaGPTInterface = () => {
             return;
         }
 
+        // 새 프로젝트 객체 생성
+        const newProject = {
+            id: Date.now(),
+            name: newProjectData.name,
+            description: newProjectData.description,
+            type: newProjectData.type,
+            status: '진행중',
+            current_step: 1,
+            progress_percentage: 0,
+            created_at: new Date().toISOString()
+        };
+
         // 프로젝트 상태 초기화
-        setActiveProject(null);
+        setActiveProject(newProject);
         setCurrentStep(1);
         setSelectedRole('product-manager');
         setMessages([]);
@@ -334,14 +372,15 @@ const MetaGPTInterface = () => {
         setStepResults({});
         setShowNewProjectModal(false);
 
-        // 초기 메시지 설정
+        // 초기 메시지 설정 (올바른 구조로 수정)
         const initialMessage = {
-            role: 'system',
-            content: `새 ${newProjectData.type === 'web_app' ? '웹 애플리케이션' :
+            id: Date.now(),
+            text: `새 ${newProjectData.type === 'web_app' ? '웹 애플리케이션' :
                      newProjectData.type === 'mobile_app' ? '모바일 앱' :
                      newProjectData.type === 'api' ? 'API 서버' :
                      newProjectData.type === 'desktop' ? '데스크톱 앱' : '데이터 분석'} 프로젝트 "${newProjectData.name}"이 시작되었습니다.\n\n${newProjectData.description}`,
-            timestamp: new Date().toISOString()
+            sender: 'system',
+            timestamp: new Date()
         };
         setMessages([initialMessage]);
     };
@@ -383,7 +422,7 @@ const MetaGPTInterface = () => {
                 )}
                 <div className={`message-bubble ${message.error ? 'error' : ''} ${message.approval !== undefined ? 'approval' : ''}`}>
                     <div className="message-content">
-                        {message.text.split('\n').map((line, i) => (
+                        {(message.text || '').toString().split('\n').map((line, i) => (
                             <div key={i}>{line}</div>
                         ))}
                         {message.deliverables && (
@@ -576,24 +615,6 @@ const MetaGPTInterface = () => {
                             </div>
                         </div>
 
-                        {activeProject && (
-                            <div className="active-project-info">
-                                <h3>📋 현재 프로젝트</h3>
-                                <div className="project-summary">
-                                    <div className="project-name">{activeProject.name}</div>
-                                    <div className="project-progress">
-                                        <div className="progress-text">{activeProject.current_step}/5 단계</div>
-                                        <div className="progress-bar">
-                                            <div
-                                                className="progress-fill"
-                                                style={{ width: `${(activeProject.current_step / 5) * 100}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="project-status">{activeProject.status}</div>
-                                </div>
-                            </div>
-                        )}
                     </div>
 
                     <div className="chat-main">
@@ -659,7 +680,7 @@ const MetaGPTInterface = () => {
                         </div>
 
                         <div className="chat-input">
-                            {currentStep === 1 && !activeProject ? (
+                            {currentStep === 1 ? (
                                 <div className="input-container">
                                     <div className="input-header">
                                         <div className="current-step">

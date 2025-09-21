@@ -11,10 +11,10 @@ const Dashboard = () => {
     const [authToken, setAuthToken] = useState(null);
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [authData, setAuthData] = useState({
-        user_id: 'demo-user',
-        email: 'demo@example.com',
-        role: 'user'
+        user_id: localStorage.getItem('saved_user_id') || '',
+        password: ''
     });
+    const [currentUser, setCurrentUser] = useState(null);
 
     const systems = [
         {
@@ -81,19 +81,54 @@ const Dashboard = () => {
     // 인증 토큰 생성
     const generateAuthToken = async () => {
         try {
-            const result = await window.apiClient.generateAuthToken(authData);
+            // 입력 검증
+            if (!authData.user_id.trim()) {
+                window.UIHelpers.showNotification('사용자 ID를 입력해주세요', 'error');
+                return;
+            }
+
+            if (!authData.password.trim()) {
+                window.UIHelpers.showNotification('비밀번호를 입력해주세요', 'error');
+                return;
+            }
+
+            // 사용자ID 저장
+            localStorage.setItem('saved_user_id', authData.user_id);
+
+            // 새로운 로그인 API 사용
+            const loginData = {
+                user_id: authData.user_id,
+                password: authData.password
+            };
+
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(loginData)
+            });
+
+            const result = await response.json();
 
             if (result.success) {
+                // 토큰을 localStorage와 apiClient에 저장
                 setAuthToken(result.token);
+                localStorage.setItem('auth_token', result.token);
+                window.apiClient.setToken(result.token);
+                // 사용자 정보 저장
+                setCurrentUser(result.user);
+                localStorage.setItem('current_user', JSON.stringify(result.user));
                 setShowAuthModal(false);
-                window.UIHelpers.showNotification('인증 토큰이 생성되었습니다', 'success');
-
+                window.UIHelpers.showNotification('로그인 성공!', 'success');
+                // 비밀번호 필드 초기화
+                setAuthData(prev => ({ ...prev, password: '' }));
             } else {
-                window.UIHelpers.showNotification(result.error || '토큰 생성에 실패했습니다', 'error');
+                window.UIHelpers.showNotification(result.error || '로그인에 실패했습니다', 'error');
             }
         } catch (error) {
-            console.error('토큰 생성 실패:', error);
-            window.UIHelpers.showNotification('토큰 생성 중 오류가 발생했습니다', 'error');
+            console.error('로그인 실패:', error);
+            window.UIHelpers.showNotification('로그인 중 오류가 발생했습니다', 'error');
         }
     };
 
@@ -124,16 +159,41 @@ const Dashboard = () => {
     // 로그아웃
     const logout = () => {
         setAuthToken(null);
+        setCurrentUser(null);
         window.apiClient.removeToken();
+        localStorage.removeItem('current_user');
+        localStorage.removeItem('auth_token');
+
+        // 로그아웃 알림 표시
         window.UIHelpers.showNotification('로그아웃되었습니다', 'info');
+
+        // 로그인 모달 표시
+        setShowAuthModal(true);
+
+        // 비밀번호 필드 초기화
+        setAuthData(prev => ({ ...prev, password: '' }));
     };
 
     useEffect(() => {
-        // 페이지 로드 시 기존 토큰 확인
+        // 페이지 로드 시 기존 토큰과 사용자 정보 확인
         const existingToken = localStorage.getItem('auth_token');
+        const existingUser = localStorage.getItem('current_user');
+
         if (existingToken) {
             setAuthToken(existingToken);
             window.apiClient.setToken(existingToken);
+
+            // 저장된 사용자 정보가 있으면 로드
+            if (existingUser) {
+                try {
+                    setCurrentUser(JSON.parse(existingUser));
+                } catch (e) {
+                    console.error('사용자 정보 파싱 오류:', e);
+                }
+            }
+        } else {
+            // 토큰이 없으면 자동으로 로그인 모달 표시
+            setShowAuthModal(true);
         }
 
         checkSystemStatus();
@@ -209,7 +269,13 @@ const Dashboard = () => {
                         e('div', { className: 'auth-section' },
                             authToken ?
                                 e('div', { className: 'auth-info' },
-                                    e('span', { className: 'auth-status' }, '🔐 인증됨'),
+                                    e('div', { className: 'user-info' },
+                                        e('span', { className: 'user-greeting' },
+                                            `👋 ${currentUser?.display_name || currentUser?.user_id || '사용자'}님`
+                                        ),
+                                        currentUser?.role === 'admin' &&
+                                            e('span', { className: 'admin-badge' }, '🛡️ 관리자')
+                                    ),
                                     e('button', {
                                         className: 'auth-button logout',
                                         onClick: logout
@@ -219,6 +285,13 @@ const Dashboard = () => {
                                     className: 'auth-button login',
                                     onClick: () => setShowAuthModal(true)
                                 }, '🔑 로그인')
+                        ),
+                        e('div', { className: 'admin-section' },
+                            e('button', {
+                                className: 'admin-button',
+                                onClick: () => window.location.href = '/admin',
+                                title: '관리자 대시보드로 이동'
+                            }, '🛡️ 관리자')
                         ),
                         e('button', {
                             className: 'refresh-button',
@@ -305,23 +378,23 @@ const Dashboard = () => {
         ),
         // Auth Modal
         showAuthModal && e('div', {
-            className: 'modal-overlay',
-            onClick: () => setShowAuthModal(false)
+            className: `modal-overlay ${!authToken ? 'required-auth' : ''}`,
+            onClick: authToken ? () => setShowAuthModal(false) : null
         },
             e('div', {
                 className: 'modal-content',
                 onClick: (ev) => ev.stopPropagation()
             },
                 e('div', { className: 'modal-header' },
-                    e('h2', null, '🔑 JWT 인증 토큰 생성'),
-                    e('button', {
+                    e('h2', null, authToken ? '🔑 JWT 인증 토큰 생성' : '🔑 로그인이 필요합니다'),
+                    authToken && e('button', {
                         className: 'modal-close',
                         onClick: () => setShowAuthModal(false)
                     }, '✕')
                 ),
                 e('div', { className: 'modal-body' },
-                    e('p', { className: 'modal-description' },
-                        '데이터베이스에 안전하게 접근하기 위한 JWT 토큰을 생성합니다. 개발 환경에서는 아래 정보로 데모 토큰을 생성할 수 있습니다.'
+                    authToken && e('p', { className: 'modal-description' },
+                        'JWT 토큰을 새로 생성하시겠습니까?'
                     ),
                     e('div', { className: 'form-group' },
                         e('label', null, '사용자 ID'),
@@ -333,59 +406,39 @@ const Dashboard = () => {
                                 user_id: ev.target.value
                             }),
                             placeholder: '사용자 ID를 입력하세요',
-                            className: 'form-input'
+                            className: 'form-input',
+                            autoComplete: 'username'
                         })
                     ),
                     e('div', { className: 'form-group' },
-                        e('label', null, '이메일'),
+                        e('label', null, '비밀번호'),
                         e('input', {
-                            type: 'email',
-                            value: authData.email,
+                            type: 'password',
+                            value: authData.password,
                             onChange: (ev) => setAuthData({
                                 ...authData,
-                                email: ev.target.value
+                                password: ev.target.value
                             }),
-                            placeholder: '이메일을 입력하세요',
-                            className: 'form-input'
+                            onKeyPress: (ev) => {
+                                if (ev.key === 'Enter') {
+                                    generateAuthToken();
+                                }
+                            },
+                            placeholder: '비밀번호를 입력하세요',
+                            className: 'form-input',
+                            autoComplete: 'current-password'
                         })
                     ),
-                    e('div', { className: 'form-group' },
-                        e('label', null, '역할'),
-                        e('select', {
-                            value: authData.role,
-                            onChange: (ev) => setAuthData({
-                                ...authData,
-                                role: ev.target.value
-                            }),
-                            className: 'form-select'
-                        },
-                            e('option', { value: 'user' }, '사용자'),
-                            e('option', { value: 'admin' }, '관리자'),
-                            e('option', { value: 'developer' }, '개발자')
-                        )
-                    ),
-                    e('div', { className: 'info-box' },
-                        e('div', { className: 'info-icon' }, 'ℹ️'),
-                        e('div', { className: 'info-content' },
-                            e('h4', null, 'JWT 토큰 정보'),
-                            e('ul', null,
-                                e('li', null, '토큰은 24시간 동안 유효합니다'),
-                                e('li', null, '브라우저의 로컬 스토리지에 안전하게 저장됩니다'),
-                                e('li', null, 'API 요청 시 자동으로 헤더에 포함됩니다'),
-                                e('li', null, '만료 시 자동으로 로그아웃됩니다')
-                            )
-                        )
-                    )
                 ),
                 e('div', { className: 'modal-footer' },
-                    e('button', {
+                    authToken && e('button', {
                         className: 'modal-button secondary',
                         onClick: () => setShowAuthModal(false)
                     }, '취소'),
                     e('button', {
                         className: 'modal-button primary',
                         onClick: generateAuthToken
-                    }, '토큰 생성')
+                    }, authToken ? '토큰 생성' : '로그인')
                 )
             )
         )

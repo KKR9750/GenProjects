@@ -38,7 +38,9 @@
       "Bash(set:*)",
       "Bash(ping:*)",
       "Bash(tasklist)",
-      "Bash(ollama:*)"
+      "Bash(ollama:*)",
+      "Bash(git commit:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

@@ -6,11 +6,35 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ==================== CORE TABLES ====================
 
--- 1. Projects table
+-- 1. Users table
+CREATE TABLE IF NOT EXISTS users (
+    user_id VARCHAR(50) PRIMARY KEY,
+    email VARCHAR(100),
+    display_name VARCHAR(100),
+
+    -- Authentication
+    password_hash VARCHAR(255),
+    role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('admin', 'user', 'viewer')),
+    is_active BOOLEAN DEFAULT true,
+
+    -- Profile
+    avatar_url TEXT,
+    preferences JSONB DEFAULT '{}',
+    last_login_at TIMESTAMP,
+
+    -- Metadata
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 2. Projects table
 CREATE TABLE IF NOT EXISTS projects (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(100) NOT NULL,
     description TEXT,
+
+    -- User Ownership
+    created_by_user_id VARCHAR(50) REFERENCES users(user_id) ON DELETE SET NULL,
 
     -- AI Framework Selection
     selected_ai VARCHAR(20) DEFAULT 'crew-ai' CHECK (selected_ai IN ('crew-ai', 'meta-gpt')),
@@ -129,10 +153,17 @@ CREATE TABLE IF NOT EXISTS deliverable_access_log (
 
 -- ==================== INDEXES ====================
 
+-- Users indexes
+CREATE INDEX IF NOT EXISTS idx_users_user_id ON users(user_id);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_active);
+
 -- Projects indexes
 CREATE INDEX IF NOT EXISTS idx_projects_selected_ai ON projects(selected_ai);
 CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status, current_stage);
 CREATE INDEX IF NOT EXISTS idx_projects_created_at ON projects(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_projects_created_by ON projects(created_by_user_id);
 
 -- Project Stages indexes
 CREATE INDEX IF NOT EXISTS idx_project_stages_project_id ON project_stages(project_id);
@@ -163,6 +194,7 @@ END;
 $$ language 'plpgsql';
 
 -- Apply triggers to tables
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_projects_updated_at BEFORE UPDATE ON projects FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_project_stages_updated_at BEFORE UPDATE ON project_stages FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_role_mapping_updated_at BEFORE UPDATE ON project_role_llm_mapping FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

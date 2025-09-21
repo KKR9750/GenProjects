@@ -6,6 +6,8 @@ Supabase integration with PostgreSQL
 
 import os
 import json
+import socket
+import urllib.parse
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from supabase import create_client, Client
@@ -33,6 +35,15 @@ class Database:
             self.service_client = None
         else:
             try:
+                # 네트워크 연결 진단 실행
+                network_diagnosis = self._diagnose_network_connection()
+                if not network_diagnosis["can_connect"]:
+                    print(f"WARNING: 네트워크 연결 문제 감지: {network_diagnosis['details']}")
+                    print("시뮬레이션 모드로 실행합니다.")
+                    self.supabase = None
+                    self.service_client = None
+                    return
+
                 self.supabase: Client = create_client(self.supabase_url, self.supabase_key)
                 self.service_client: Client = create_client(
                     self.supabase_url,
@@ -40,7 +51,9 @@ class Database:
                 )
                 print("SUCCESS: Supabase 연결 성공")
             except Exception as e:
+                network_info = self._diagnose_network_connection()
                 print(f"ERROR: Supabase 연결 실패: {e}")
+                print(f"네트워크 진단: {network_info['details']}")
                 self.supabase = None
                 self.service_client = None
 
@@ -48,13 +61,94 @@ class Database:
         """Check if database is connected"""
         return self.supabase is not None
 
+    def _diagnose_network_connection(self) -> Dict[str, Any]:
+        """네트워크 연결 상태를 진단합니다"""
+        if not self.supabase_url:
+            return {
+                "can_connect": False,
+                "details": "Supabase URL이 설정되지 않았습니다"
+            }
+
+        try:
+            # URL에서 호스트명 추출
+            parsed_url = urllib.parse.urlparse(self.supabase_url)
+            hostname = parsed_url.hostname
+            port = parsed_url.port or (443 if parsed_url.scheme == 'https' else 80)
+
+            # DNS 조회 시도
+            try:
+                ip_address = socket.gethostbyname(hostname)
+                dns_success = True
+                dns_error = None
+            except socket.gaierror as e:
+                ip_address = None
+                dns_success = False
+                dns_error = str(e)
+
+            # TCP 연결 시도 (DNS가 성공한 경우에만)
+            tcp_success = False
+            tcp_error = None
+            if dns_success:
+                try:
+                    with socket.create_connection((hostname, port), timeout=10):
+                        tcp_success = True
+                except (socket.timeout, socket.error) as e:
+                    tcp_error = str(e)
+
+            # 진단 결과 정리
+            details = {
+                "url": self.supabase_url,
+                "hostname": hostname,
+                "port": port,
+                "dns_resolution": {
+                    "success": dns_success,
+                    "ip_address": ip_address,
+                    "error": dns_error
+                },
+                "tcp_connection": {
+                    "success": tcp_success,
+                    "error": tcp_error
+                }
+            }
+
+            # 연결 가능 여부 판단
+            can_connect = dns_success and tcp_success
+
+            # 상세한 진단 메시지 생성
+            if not dns_success:
+                if "11001" in str(dns_error):
+                    diagnosis_msg = f"DNS 조회 실패 - 인터넷 연결을 확인하세요. 호스트: {hostname}"
+                else:
+                    diagnosis_msg = f"DNS 조회 실패: {dns_error}"
+            elif not tcp_success:
+                diagnosis_msg = f"TCP 연결 실패 - 방화벽 또는 네트워크 정책을 확인하세요. 포트: {port}, 오류: {tcp_error}"
+            else:
+                diagnosis_msg = "네트워크 연결 정상"
+
+            details["diagnosis"] = diagnosis_msg
+
+            return {
+                "can_connect": can_connect,
+                "details": details
+            }
+
+        except Exception as e:
+            return {
+                "can_connect": False,
+                "details": f"네트워크 진단 중 오류 발생: {str(e)}"
+            }
+
     def test_connection(self) -> Dict[str, Any]:
-        """Test database connection"""
+        """Test database connection with detailed diagnostics"""
         if not self.is_connected():
+            # 네트워크 진단 실행
+            network_diagnosis = self._diagnose_network_connection()
             return {
                 "connected": False,
                 "message": "Supabase 연결이 설정되지 않았습니다",
-                "simulation_mode": True
+                "simulation_mode": True,
+                "network_diagnosis": network_diagnosis["details"],
+                "recommendations": self._get_connection_recommendations(network_diagnosis)
             }
 
         try:
@@ -66,11 +160,235 @@ class Database:
                 "timestamp": datetime.now().isoformat()
             }
         except Exception as e:
+            # 연결 실패 시 네트워크 진단 실행
+            network_diagnosis = self._diagnose_network_connection()
             return {
                 "connected": False,
                 "message": f"데이터베이스 연결 테스트 실패: {str(e)}",
-                "error": str(e)
+                "error": str(e),
+                "network_diagnosis": network_diagnosis["details"],
+                "recommendations": self._get_connection_recommendations(network_diagnosis)
             }
+
+    def _get_connection_recommendations(self, network_diagnosis: Dict[str, Any]) -> List[str]:
+        """네트워크 진단 결과에 따른 권장사항을 반환합니다"""
+        recommendations = []
+
+        if not network_diagnosis.get("can_connect", False):
+            details = network_diagnosis.get("details", {})
+
+            if isinstance(details, dict):
+                dns_info = details.get("dns_resolution", {})
+                tcp_info = details.get("tcp_connection", {})
+
+                if not dns_info.get("success", False):
+                    dns_error = dns_info.get("error", "")
+                    if "11001" in dns_error:
+                        recommendations.extend([
+                            "인터넷 연결 상태를 확인하세요",
+                            "DNS 서버 설정을 확인하세요 (8.8.8.8, 1.1.1.1 등)",
+                            "방화벽에서 DNS 쿼리가 차단되지 않았는지 확인하세요",
+                            "프록시 설정이 있다면 우회 설정을 확인하세요"
+                        ])
+                    else:
+                        recommendations.append(f"DNS 오류: {dns_error}")
+
+                elif not tcp_info.get("success", False):
+                    tcp_error = tcp_info.get("error", "")
+                    port = details.get("port", 443)
+                    recommendations.extend([
+                        f"포트 {port}에 대한 방화벽 설정을 확인하세요",
+                        "회사 네트워크의 경우 IT 관리자에게 문의하세요",
+                        "프록시 설정이 HTTPS 트래픽을 허용하는지 확인하세요",
+                        f"TCP 연결 오류: {tcp_error}"
+                    ])
+            else:
+                recommendations.append("네트워크 연결 문제가 감지되었습니다")
+
+        if not recommendations:
+            recommendations.append("네트워크 연결은 정상이나 Supabase 서비스 문제일 수 있습니다")
+
+        return recommendations
+
+    # ==================== USER MANAGEMENT ====================
+
+    def create_user(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new user"""
+        if not self.is_connected():
+            return {"success": False, "error": "Database not connected"}
+
+        try:
+            # Hash password if provided
+            password_hash = None
+            if user_data.get('password'):
+                password_hash = bcrypt.hashpw(
+                    user_data['password'].encode('utf-8'),
+                    bcrypt.gensalt()
+                ).decode('utf-8')
+
+            insert_data = {
+                "user_id": user_data.get("user_id"),
+                "email": user_data.get("email"),
+                "display_name": user_data.get("display_name"),
+                "password_hash": password_hash,
+                "role": user_data.get("role", "user"),
+                "is_active": user_data.get("is_active", True),
+                "created_at": datetime.now().isoformat(),
+                "updated_at": datetime.now().isoformat()
+            }
+
+            result = self.supabase.table('users').insert(insert_data).execute()
+
+            if result.data:
+                return {"success": True, "user": result.data[0]}
+            else:
+                return {"success": False, "error": "Failed to create user"}
+
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def get_users(self, role_filter: str = None) -> Dict[str, Any]:
+        """Get all users with optional role filter"""
+        if not self.is_connected():
+            return {"success": False, "error": "Database not connected"}
+
+        try:
+            query = self.supabase.table('users').select('*')
+
+            if role_filter:
+                query = query.eq('role', role_filter)
+
+            result = query.order('created_at', desc=True).execute()
+
+            # Remove password hashes from response
+            users = []
+            for user in result.data or []:
+                user_copy = user.copy()
+                user_copy.pop('password_hash', None)
+                users.append(user_copy)
+
+            return {"success": True, "users": users}
+
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def get_user(self, user_id: str) -> Dict[str, Any]:
+        """Get user by user_id"""
+        if not self.is_connected():
+            return {"success": False, "error": "Database not connected"}
+
+        try:
+            result = self.supabase.table('users').select('*').eq('user_id', user_id).execute()
+
+            if result.data:
+                user = result.data[0].copy()
+                user.pop('password_hash', None)  # Remove password hash
+                return {"success": True, "user": user}
+            else:
+                return {"success": False, "error": "User not found"}
+
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def update_user(self, user_id: str, user_data: Dict[str, Any], admin_user_id: str = None) -> Dict[str, Any]:
+        """Update user (admin can update any user, users can update themselves)"""
+        if not self.is_connected():
+            return {"success": False, "error": "Database not connected"}
+
+        try:
+            # Check if admin or self-update
+            if admin_user_id:
+                admin_result = self.supabase.table('users').select('role').eq('user_id', admin_user_id).execute()
+                is_admin = admin_result.data and admin_result.data[0].get('role') == 'admin'
+
+                if not is_admin and admin_user_id != user_id:
+                    return {"success": False, "error": "Permission denied"}
+
+            # Prepare update data
+            update_data = {"updated_at": datetime.now().isoformat()}
+
+            if 'email' in user_data:
+                update_data['email'] = user_data['email']
+            if 'display_name' in user_data:
+                update_data['display_name'] = user_data['display_name']
+            if 'password' in user_data and user_data['password']:
+                update_data['password_hash'] = bcrypt.hashpw(
+                    user_data['password'].encode('utf-8'),
+                    bcrypt.gensalt()
+                ).decode('utf-8')
+
+            # Only admin can change role and is_active
+            if admin_user_id:
+                admin_result = self.supabase.table('users').select('role').eq('user_id', admin_user_id).execute()
+                if admin_result.data and admin_result.data[0].get('role') == 'admin':
+                    if 'role' in user_data:
+                        update_data['role'] = user_data['role']
+                    if 'is_active' in user_data:
+                        update_data['is_active'] = user_data['is_active']
+
+            result = self.supabase.table('users').update(update_data).eq('user_id', user_id).execute()
+
+            if result.data:
+                user = result.data[0].copy()
+                user.pop('password_hash', None)
+                return {"success": True, "user": user}
+            else:
+                return {"success": False, "error": "User not found"}
+
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def delete_user(self, user_id: str, admin_user_id: str) -> Dict[str, Any]:
+        """Delete user (admin only)"""
+        if not self.is_connected():
+            return {"success": False, "error": "Database not connected"}
+
+        try:
+            # Check if admin
+            admin_result = self.supabase.table('users').select('role').eq('user_id', admin_user_id).execute()
+            if not admin_result.data or admin_result.data[0].get('role') != 'admin':
+                return {"success": False, "error": "Admin access required"}
+
+            # Don't allow deleting yourself
+            if admin_user_id == user_id:
+                return {"success": False, "error": "Cannot delete your own account"}
+
+            result = self.supabase.table('users').delete().eq('user_id', user_id).execute()
+
+            return {"success": True, "message": "User deleted successfully"}
+
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def verify_user(self, user_id: str, password: str) -> Dict[str, Any]:
+        """Verify user credentials"""
+        if not self.is_connected():
+            return {"success": False, "error": "Database not connected"}
+
+        try:
+            result = self.supabase.table('users').select('*').eq('user_id', user_id).eq('is_active', True).execute()
+
+            if not result.data:
+                return {"success": False, "error": "User not found or inactive"}
+
+            user = result.data[0]
+
+            # Check password if hash exists
+            if user.get('password_hash'):
+                if not bcrypt.checkpw(password.encode('utf-8'), user['password_hash'].encode('utf-8')):
+                    return {"success": False, "error": "Invalid password"}
+
+            # Update last login
+            self.supabase.table('users').update({
+                'last_login_at': datetime.now().isoformat()
+            }).eq('user_id', user_id).execute()
+
+            user_copy = user.copy()
+            user_copy.pop('password_hash', None)
+            return {"success": True, "user": user_copy}
+
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     # ==================== PROJECT MANAGEMENT ====================
 
@@ -84,6 +402,7 @@ class Database:
             insert_data = {
                 "name": project_data.get("name"),
                 "description": project_data.get("description", ""),
+                "created_by_user_id": project_data.get("created_by_user_id"),
                 "selected_ai": project_data.get("selected_ai", "crew-ai"),
                 "project_type": project_data.get("project_type", "web_app"),
                 "target_audience": project_data.get("target_audience", ""),
@@ -118,16 +437,27 @@ class Database:
                 "error": f"프로젝트 생성 중 오류 발생: {str(e)}"
             }
 
-    def get_projects(self, limit: int = 20) -> Dict[str, Any]:
-        """Get list of projects"""
+    def get_projects(self, user_id: str = None, limit: int = 20) -> Dict[str, Any]:
+        """Get list of projects (admin sees all, users see only their own)"""
         if not self.is_connected():
             return self._simulate_get_projects()
 
         try:
-            result = self.supabase.table('projects').select(
-                'id, name, description, selected_ai, project_type, status, '
+            query = self.supabase.table('projects').select(
+                'id, name, description, created_by_user_id, selected_ai, project_type, status, '
                 'current_stage, progress_percentage, created_at, updated_at'
-            ).order('created_at', desc=True).limit(limit).execute()
+            )
+
+            # Check if user is admin
+            if user_id:
+                user_result = self.supabase.table('users').select('role').eq('user_id', user_id).execute()
+                is_admin = user_result.data and user_result.data[0].get('role') == 'admin'
+
+                # If not admin, only show user's own projects
+                if not is_admin:
+                    query = query.eq('created_by_user_id', user_id)
+
+            result = query.order('created_at', desc=True).limit(limit).execute()
 
             return {
                 "success": True,

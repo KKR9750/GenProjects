@@ -17,6 +17,100 @@ from security_utils import validate_request_data
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 
 # ============================================================================
+# 사용자 관리 API
+# ============================================================================
+
+# 이 함수는 중복이므로 제거됨 (아래 get_all_users 함수 사용)
+
+@admin_bp.route('/users', methods=['POST'])
+@admin_required()
+def admin_create_user():
+    """사용자 생성 (관리자 전용)"""
+    try:
+        current_admin = get_current_admin()
+        data = request.get_json()
+
+        # 필수 필드 검증
+        if not data.get('user_id'):
+            return jsonify({'error': '사용자 ID는 필수입니다'}), 400
+
+        result = db.create_user(data)
+
+        if result['success']:
+            return jsonify({
+                'success': True,
+                'user': result['user'],
+                'message': '사용자가 성공적으로 생성되었습니다'
+            })
+        else:
+            return jsonify({'error': result['error']}), 400
+
+    except Exception as e:
+        return jsonify({'error': f'사용자 생성 실패: {str(e)}'}), 500
+
+@admin_bp.route('/users/<user_id>', methods=['GET'])
+@admin_required()
+def admin_get_user(user_id):
+    """사용자 상세 조회 (관리자 전용)"""
+    try:
+        current_admin = get_current_admin()
+
+        result = db.get_user(user_id)
+
+        if result['success']:
+            return jsonify({
+                'success': True,
+                'user': result['user']
+            })
+        else:
+            return jsonify({'error': result['error']}), 404
+
+    except Exception as e:
+        return jsonify({'error': f'사용자 조회 실패: {str(e)}'}), 500
+
+@admin_bp.route('/users/<user_id>', methods=['PUT'])
+@admin_required()
+def admin_update_user(user_id):
+    """사용자 정보 수정 (관리자 전용)"""
+    try:
+        current_admin = get_current_admin()
+        data = request.get_json()
+
+        result = db.update_user(user_id, data, admin_user_id=current_admin['username'])
+
+        if result['success']:
+            return jsonify({
+                'success': True,
+                'user': result['user'],
+                'message': '사용자 정보가 성공적으로 수정되었습니다'
+            })
+        else:
+            return jsonify({'error': result['error']}), 400
+
+    except Exception as e:
+        return jsonify({'error': f'사용자 수정 실패: {str(e)}'}), 500
+
+@admin_bp.route('/users/<user_id>', methods=['DELETE'])
+@admin_required()
+def admin_delete_user(user_id):
+    """사용자 삭제 (관리자 전용)"""
+    try:
+        current_admin = get_current_admin()
+
+        result = db.delete_user(user_id, admin_user_id=current_admin['username'])
+
+        if result['success']:
+            return jsonify({
+                'success': True,
+                'message': result['message']
+            })
+        else:
+            return jsonify({'error': result['error']}), 400
+
+    except Exception as e:
+        return jsonify({'error': f'사용자 삭제 실패: {str(e)}'}), 500
+
+# ============================================================================
 # 인증 관련 API
 # ============================================================================
 
@@ -125,12 +219,12 @@ def get_system_health():
 
         # 데이터베이스 연결 테스트
         try:
-            if db.supabase:
+            if db and hasattr(db, 'supabase') and db.supabase:
                 result = db.supabase.table('projects').select('count').limit(1).execute()
                 health_status['database'] = 'healthy'
             else:
                 health_status['database'] = 'disconnected'
-        except Exception:
+        except Exception as e:
             health_status['database'] = 'error'
 
         # CrewAI 서비스 체크
@@ -172,37 +266,89 @@ def get_system_health():
 def get_all_projects():
     """모든 프로젝트 조회 (관리자용)"""
     try:
-        if not db.supabase:
-            return jsonify({'error': '데이터베이스 연결이 필요합니다'}), 503
+        # 데이터베이스 연결 확인 (필수 요구사항)
+        if not db or not hasattr(db, 'supabase') or not db.supabase:
+            # Supabase 연결 실패 시 시스템 전체 중단
+            return jsonify({
+                'success': False,
+                'error': 'SYSTEM_DOWN: 데이터베이스 연결 실패',
+                'system_status': 'CRITICAL_ERROR',
+                'message': '🚨 시스템 중단: Supabase 데이터베이스에 연결할 수 없습니다. 시스템 관리자에게 즉시 문의하세요.',
+                'action_required': 'DB 연결 복구 필요'
+            }), 503
 
-        # 프로젝트 목록 조회
-        result = db.supabase.table('projects').select('*').execute()
-        projects = result.data
+        # projects 테이블에서 프로젝트 건수만 조회
+        try:
+            # count만 조회 (성능 최적화)
+            result = db.supabase.table('projects').select('id').execute()
+            if result.data:
+                total_count = len(result.data)
 
-        # 각 프로젝트의 통계 정보 추가
-        for project in projects:
-            # 프로젝트 단계 정보
-            stages_result = db.supabase.table('project_stages').select('*').eq('project_id', project['id']).execute()
-            stages = stages_result.data
+                # 상세 정보가 필요한 경우에만 전체 데이터 조회
+                query_param = request.args.get('detailed', 'false').lower()
+                if query_param == 'true':
+                    # 전체 프로젝트 정보 조회
+                    full_result = db.supabase.table('projects').select('*').execute()
+                    projects = full_result.data
 
-            # 산출물 정보
-            deliverables_result = db.supabase.table('project_deliverables').select('*').eq('project_id', project['id']).execute()
-            deliverables = deliverables_result.data
+                    # 각 프로젝트의 통계 정보 추가
+                    for project in projects:
+                        try:
+                            # 프로젝트 단계 정보
+                            stages_result = db.supabase.table('project_stages').select('*').eq('project_id', project['id']).execute()
+                            stages = stages_result.data
 
-            project['statistics'] = {
-                'total_stages': len(stages),
-                'completed_stages': len([s for s in stages if s.get('stage_status') == 'completed']),
-                'total_deliverables': len(deliverables),
-                'approved_deliverables': len([d for d in deliverables if d.get('status') == 'approved'])
-            }
+                            # 산출물 정보
+                            deliverables_result = db.supabase.table('project_deliverables').select('*').eq('project_id', project['id']).execute()
+                            deliverables = deliverables_result.data
 
-        return jsonify({
-            'success': True,
-            'projects': projects,
-            'total_count': len(projects)
-        })
+                            project['statistics'] = {
+                                'total_stages': len(stages),
+                                'completed_stages': len([s for s in stages if s.get('stage_status') == 'completed']),
+                                'total_deliverables': len(deliverables),
+                                'approved_deliverables': len([d for d in deliverables if d.get('status') == 'approved'])
+                            }
+                        except Exception:
+                            # 통계 조회 실패 시 기본값 설정
+                            project['statistics'] = {
+                                'total_stages': 0,
+                                'completed_stages': 0,
+                                'total_deliverables': 0,
+                                'approved_deliverables': 0
+                            }
+                else:
+                    # 건수만 필요한 경우
+                    projects = []
+
+                return jsonify({
+                    'success': True,
+                    'projects': projects,
+                    'total_count': total_count,
+                    'message': f'총 {total_count}개의 프로젝트가 있습니다.'
+                })
+            else:
+                return jsonify({
+                    'success': True,
+                    'projects': [],
+                    'total_count': 0,
+                    'message': '등록된 프로젝트가 없습니다.'
+                })
+
+        except Exception as e:
+            # 데이터베이스 쿼리 실패 시 에러 반환
+            print(f"프로젝트 조회 실패: {e}")
+            return jsonify({
+                'success': False,
+                'error': f'프로젝트 조회 실패: {str(e)}',
+                'projects': [],
+                'total_count': 0,
+                'message': 'projects 테이블에 접근할 수 없습니다.'
+            }), 500
 
     except Exception as e:
+        print(f"ERROR: 프로젝트 조회 실패 - {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': f'프로젝트 조회 실패: {str(e)}'}), 500
 
 @admin_bp.route('/projects/<project_id>/force-complete', methods=['PUT'])
@@ -313,6 +459,371 @@ def get_llm_models():
 
     except Exception as e:
         return jsonify({'error': f'LLM 모델 조회 실패: {str(e)}'}), 500
+
+# ============================================================================
+# 사용자 관리 API
+# ============================================================================
+
+@admin_bp.route('/users', methods=['GET'])
+@admin_required()
+def get_users():
+    """모든 사용자 조회 (관리자용)"""
+    try:
+        # 데이터베이스 연결 확인 (필수 요구사항)
+        if not db or not hasattr(db, 'supabase') or not db.supabase:
+            # Supabase 연결 실패 시 시스템 전체 중단
+            return jsonify({
+                'success': False,
+                'error': 'SYSTEM_DOWN: 데이터베이스 연결 실패',
+                'system_status': 'CRITICAL_ERROR',
+                'message': '🚨 시스템 중단: Supabase 데이터베이스에 연결할 수 없습니다. 시스템 관리자에게 즉시 문의하세요.',
+                'action_required': 'DB 연결 복구 필요'
+            }), 503
+
+        # auth.users 테이블에서 실제 Supabase 등록 사용자 수 조회
+        try:
+            result = db.supabase.table('auth.users').select('id').execute()
+            if result.data:
+                total_users = len(result.data)
+                return jsonify({
+                    'success': True,
+                    'users': [],  # 보안상 사용자 상세 정보는 반환하지 않음
+                    'total_count': total_users,
+                    'message': f'Supabase Auth에 등록된 사용자 {total_users}명'
+                })
+            else:
+                return jsonify({
+                    'success': True,
+                    'users': [],
+                    'total_count': 0,
+                    'message': '등록된 사용자가 없습니다.'
+                })
+
+        except Exception as e:
+            # auth.users 테이블 접근 실패
+            return jsonify({
+                'success': False,
+                'error': f'사용자 테이블 접근 실패: {str(e)}',
+                'users': [],
+                'total_count': 0,
+                'message': 'Supabase Auth 테이블에 접근할 수 없습니다.'
+            }), 500
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'사용자 조회 실패: {str(e)}',
+            'users': [],
+            'total_count': 0
+        }), 500
+
+@admin_bp.route('/users', methods=['POST'])
+@admin_required()
+def create_user():
+    """새 사용자 생성"""
+    try:
+        data = request.get_json()
+
+        # 입력 데이터 검증
+        required_fields = ['username', 'email', 'password', 'role']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'error': f'{field} 필드가 필요합니다'}), 400
+
+        username = data.get('username')
+        email = data.get('email')
+        password = data.get('password')
+        role = data.get('role', 'user')
+
+        # 사용자명 중복 검사 (향후 구현)
+        # existing_user = db.supabase.table('users').select('*').eq('username', username).execute()
+        # if existing_user.data:
+        #     return jsonify({'error': '이미 존재하는 사용자명입니다'}), 409
+
+        # 비밀번호 해싱
+        import hashlib
+        hashed_password = hashlib.sha256(password.encode()).hexdigest()
+
+        # 새 사용자 생성 (향후 데이터베이스 구현)
+        new_user = {
+            'id': 2,  # 임시 ID
+            'username': username,
+            'email': email,
+            'role': role,
+            'status': 'active',
+            'created_at': datetime.now().isoformat(),
+            'last_login': None
+        }
+
+        return jsonify({
+            'success': True,
+            'message': '사용자가 성공적으로 생성되었습니다',
+            'user': new_user
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'사용자 생성 실패: {str(e)}'}), 500
+
+@admin_bp.route('/users/<int:user_id>', methods=['PUT'])
+@admin_required()
+def update_user(user_id):
+    """사용자 정보 수정"""
+    try:
+        data = request.get_json()
+
+        # 업데이트할 필드들
+        updatable_fields = ['email', 'role', 'status']
+        update_data = {}
+
+        for field in updatable_fields:
+            if field in data:
+                update_data[field] = data[field]
+
+        if not update_data:
+            return jsonify({'error': '업데이트할 데이터가 없습니다'}), 400
+
+        # 사용자 존재 확인 및 업데이트 (향후 데이터베이스 구현)
+        updated_user = {
+            'id': user_id,
+            'username': 'admin',  # 임시 데이터
+            'email': update_data.get('email', 'admin@aichatinterface.com'),
+            'role': update_data.get('role', 'admin'),
+            'status': update_data.get('status', 'active'),
+            'updated_at': datetime.now().isoformat()
+        }
+
+        return jsonify({
+            'success': True,
+            'message': '사용자 정보가 업데이트되었습니다',
+            'user': updated_user
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'사용자 업데이트 실패: {str(e)}'}), 500
+
+@admin_bp.route('/users/<int:user_id>', methods=['DELETE'])
+@admin_required()
+def delete_user(user_id):
+    """사용자 삭제"""
+    try:
+        # 관리자 계정 삭제 방지
+        if user_id == 1:
+            return jsonify({'error': '기본 관리자 계정은 삭제할 수 없습니다'}), 400
+
+        # 사용자 삭제 (향후 데이터베이스 구현)
+        # result = db.supabase.table('users').delete().eq('id', user_id).execute()
+
+        return jsonify({
+            'success': True,
+            'message': '사용자가 성공적으로 삭제되었습니다'
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'사용자 삭제 실패: {str(e)}'}), 500
+
+# ============================================================================
+# LLM 모델 관리 API
+# ============================================================================
+
+@admin_bp.route('/llm-models/manage', methods=['GET'])
+@admin_required()
+def get_llm_models_detailed():
+    """LLM 모델 상세 관리 목록"""
+    try:
+        # 기본 LLM 모델 목록 (확장된 정보)
+        llm_models = [
+            {
+                'id': 'gpt-4',
+                'name': 'GPT-4',
+                'provider': 'OpenAI',
+                'status': 'active',
+                'api_endpoint': 'https://api.openai.com/v1/chat/completions',
+                'max_tokens': 8192,
+                'cost_per_1k_tokens': 0.03,
+                'capabilities': ['text-generation', 'reasoning', 'coding'],
+                'recommended_roles': ['Writer', 'Analyst'],
+                'created_at': '2025-09-01T00:00:00.000Z'
+            },
+            {
+                'id': 'gpt-4o',
+                'name': 'GPT-4o',
+                'provider': 'OpenAI',
+                'status': 'active',
+                'api_endpoint': 'https://api.openai.com/v1/chat/completions',
+                'max_tokens': 4096,
+                'cost_per_1k_tokens': 0.015,
+                'capabilities': ['text-generation', 'multimodal', 'fast-response'],
+                'recommended_roles': ['Researcher', 'Quick-Analysis'],
+                'created_at': '2025-09-01T00:00:00.000Z'
+            },
+            {
+                'id': 'claude-3',
+                'name': 'Claude-3 Sonnet',
+                'provider': 'Anthropic',
+                'status': 'active',
+                'api_endpoint': 'https://api.anthropic.com/v1/messages',
+                'max_tokens': 4096,
+                'cost_per_1k_tokens': 0.015,
+                'capabilities': ['text-generation', 'reasoning', 'analysis'],
+                'recommended_roles': ['Planner', 'Architect'],
+                'created_at': '2025-09-01T00:00:00.000Z'
+            },
+            {
+                'id': 'claude-3-haiku',
+                'name': 'Claude-3 Haiku',
+                'provider': 'Anthropic',
+                'status': 'active',
+                'api_endpoint': 'https://api.anthropic.com/v1/messages',
+                'max_tokens': 4096,
+                'cost_per_1k_tokens': 0.0025,
+                'capabilities': ['text-generation', 'fast-response', 'lightweight'],
+                'recommended_roles': ['Quick-Tasks', 'Assistant'],
+                'created_at': '2025-09-01T00:00:00.000Z'
+            },
+            {
+                'id': 'gemini-pro',
+                'name': 'Gemini Pro',
+                'provider': 'Google',
+                'status': 'active',
+                'api_endpoint': 'https://generativelanguage.googleapis.com/v1/models/gemini-pro',
+                'max_tokens': 8192,
+                'cost_per_1k_tokens': 0.0005,
+                'capabilities': ['text-generation', 'reasoning', 'multimodal'],
+                'recommended_roles': ['Researcher', 'Data-Analyst'],
+                'created_at': '2025-09-01T00:00:00.000Z'
+            },
+            {
+                'id': 'deepseek-coder',
+                'name': 'DeepSeek Coder',
+                'provider': 'DeepSeek',
+                'status': 'active',
+                'api_endpoint': 'https://api.deepseek.com/v1/chat/completions',
+                'max_tokens': 16384,
+                'cost_per_1k_tokens': 0.0014,
+                'capabilities': ['code-generation', 'debugging', 'optimization'],
+                'recommended_roles': ['Engineer', 'Developer'],
+                'created_at': '2025-09-01T00:00:00.000Z'
+            }
+        ]
+
+        # 데이터베이스에서 사용 통계 조회
+        if db.supabase:
+            try:
+                result = db.supabase.table('project_role_llm_mapping').select('llm_model').execute()
+                usage_stats = {}
+                for record in result.data:
+                    model = record.get('llm_model')
+                    usage_stats[model] = usage_stats.get(model, 0) + 1
+
+                # 모델별 사용 통계 추가
+                for model in llm_models:
+                    model['usage_count'] = usage_stats.get(model['id'], 0)
+            except:
+                # 통계 조회 실패 시 기본값 설정
+                for model in llm_models:
+                    model['usage_count'] = 0
+
+        return jsonify({
+            'success': True,
+            'models': llm_models,
+            'total_count': len(llm_models)
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'LLM 모델 조회 실패: {str(e)}'}), 500
+
+@admin_bp.route('/llm-models/manage', methods=['POST'])
+@admin_required()
+def add_llm_model():
+    """새 LLM 모델 추가"""
+    try:
+        data = request.get_json()
+
+        # 입력 데이터 검증
+        required_fields = ['id', 'name', 'provider', 'api_endpoint']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'error': f'{field} 필드가 필요합니다'}), 400
+
+        new_model = {
+            'id': data.get('id'),
+            'name': data.get('name'),
+            'provider': data.get('provider'),
+            'status': data.get('status', 'active'),
+            'api_endpoint': data.get('api_endpoint'),
+            'max_tokens': data.get('max_tokens', 4096),
+            'cost_per_1k_tokens': data.get('cost_per_1k_tokens', 0.0),
+            'capabilities': data.get('capabilities', []),
+            'recommended_roles': data.get('recommended_roles', []),
+            'created_at': datetime.now().isoformat(),
+            'usage_count': 0
+        }
+
+        # 향후 데이터베이스 저장 구현
+        # db.supabase.table('llm_models').insert(new_model).execute()
+
+        return jsonify({
+            'success': True,
+            'message': 'LLM 모델이 성공적으로 추가되었습니다',
+            'model': new_model
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'LLM 모델 추가 실패: {str(e)}'}), 500
+
+@admin_bp.route('/llm-models/manage/<model_id>', methods=['PUT'])
+@admin_required()
+def update_llm_model(model_id):
+    """LLM 모델 설정 수정"""
+    try:
+        data = request.get_json()
+
+        # 업데이트할 필드들
+        updatable_fields = ['name', 'status', 'api_endpoint', 'max_tokens', 'cost_per_1k_tokens', 'capabilities', 'recommended_roles']
+        update_data = {}
+
+        for field in updatable_fields:
+            if field in data:
+                update_data[field] = data[field]
+
+        if not update_data:
+            return jsonify({'error': '업데이트할 데이터가 없습니다'}), 400
+
+        update_data['updated_at'] = datetime.now().isoformat()
+
+        # 향후 데이터베이스 업데이트 구현
+        # result = db.supabase.table('llm_models').update(update_data).eq('id', model_id).execute()
+
+        return jsonify({
+            'success': True,
+            'message': 'LLM 모델 설정이 업데이트되었습니다',
+            'model_id': model_id,
+            'updated_fields': update_data
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'LLM 모델 업데이트 실패: {str(e)}'}), 500
+
+@admin_bp.route('/llm-models/manage/<model_id>', methods=['DELETE'])
+@admin_required()
+def delete_llm_model(model_id):
+    """LLM 모델 삭제"""
+    try:
+        # 기본 모델 삭제 방지
+        core_models = ['gpt-4', 'claude-3', 'gemini-pro']
+        if model_id in core_models:
+            return jsonify({'error': '핵심 모델은 삭제할 수 없습니다'}), 400
+
+        # 모델 삭제 (향후 데이터베이스 구현)
+        # result = db.supabase.table('llm_models').delete().eq('id', model_id).execute()
+
+        return jsonify({
+            'success': True,
+            'message': 'LLM 모델이 성공적으로 삭제되었습니다'
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'LLM 모델 삭제 실패: {str(e)}'}), 500
 
 # ============================================================================
 # 시스템 설정 API

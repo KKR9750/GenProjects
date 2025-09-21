@@ -5,457 +5,884 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Chat Interface - 관리자 대시보드</title>
     <link rel="stylesheet" href="admin.css">
-    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
-    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.24.0/axios.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* 사이드바 스타일 */
+        .sidebar {
+            width: 200px;
+            background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        }
+        .sidebar-header {
+            padding: 12px 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .sidebar-header h1 {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 3px;
+        }
+        .sidebar-header p {
+            font-size: 9px;
+            opacity: 0.8;
+        }
+        .sidebar-menu {
+            flex: 1;
+            padding: 12px 0;
+        }
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+            background: none;
+            color: white;
+            width: 100%;
+            text-align: left;
+            font-size: 11px;
+        }
+        .menu-item:hover {
+            background: rgba(255,255,255,0.1);
+            padding-left: 20px;
+        }
+        .menu-item.active {
+            background: rgba(52, 152, 219, 0.3);
+            border-right: 3px solid #3498db;
+        }
+        .menu-item i {
+            margin-right: 8px;
+            font-size: 12px;
+            width: 20px;
+            text-align: center;
+        }
+        .sidebar-footer {
+            padding: 20px 25px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .logout-btn {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            padding: 12px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        .logout-btn:hover {
+            background: #c0392b;
+        }
+        .logout-btn i {
+            margin-right: 8px;
+        }
+
+        /* 메인 콘텐츠 */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .main-header {
+            background: white;
+            padding: 10px 15px;
+            border-bottom: 1px solid #e9ecef;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .header-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        .header-subtitle {
+            font-size: 14px;
+            color: #6c757d;
+            margin-top: 4px;
+        }
+        .content-area {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        /* 로그인 화면 */
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .login-container {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 320px;
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .login-header h1 {
+            font-size: 20px;
+            color: #2c3e50;
+            margin-bottom: 6px;
+        }
+        .login-header p {
+            color: #6c757d;
+            font-size: 11px;
+        }
+        .form-group {
+            margin-bottom: 12px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #e1e5e9;
+            border-radius: 6px;
+            font-size: 12px;
+            transition: border-color 0.3s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        .btn {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s;
+            width: 100%;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+
+        /* 유틸리티 클래스 */
+        .hidden {
+            display: none !important;
+        }
+        .visible {
+            display: block !important;
+        }
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            font-size: 18px;
+            color: #666;
+        }
+        .error-message {
+            color: #e74c3c;
+            margin-top: 10px;
+            padding: 12px;
+            background: #fadbd8;
+            border: 1px solid #f1948a;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .success-message {
+            color: #27ae60;
+            margin-top: 10px;
+            padding: 12px;
+            background: #d5f4e6;
+            border: 1px solid #82e5aa;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        /* 로딩 화면 스타일 */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #f8f9fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .loading-container {
+            text-align: center;
+        }
+
+        .loading-spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid #e3e3e3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 12px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #666;
+            font-size: 16px;
+        }
+
+        /* 초기 상태에서 모든 컨텐츠 숨김 */
+        .login-overlay {
+            display: none;
+        }
+    </style>
 </head>
 <body>
-    <div id="admin-root"></div>
+    <!-- 로딩 화면 -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-container">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">관리자 권한 확인 중...</div>
+        </div>
+    </div>
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+    <!-- 접근 거부 오버레이 -->
+    <div id="loginOverlay" class="login-overlay">
+        <div class="login-container">
+            <div class="login-header">
+                <h1>🔒 관리자 로그인</h1>
+                <p>관리자 페이지 접근을 위해 로그인이 필요합니다</p>
+            </div>
 
-        // 토큰 관리
-        const getAuthToken = () => localStorage.getItem('admin_token');
-        const setAuthToken = (token) => localStorage.setItem('admin_token', token);
-        const removeAuthToken = () => localStorage.removeItem('admin_token');
+            <!-- 직접 관리자 로그인 폼 -->
+            <form id="adminLoginForm" style="margin: 20px 0;">
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">사용자 ID</label>
+                    <input type="text" id="adminUsername" placeholder="admin"
+                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">비밀번호</label>
+                    <input type="password" id="adminPassword" placeholder="비밀번호를 입력하세요"
+                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                </div>
+                <button type="submit"
+                        style="width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px;">
+                    로그인
+                </button>
+            </form>
 
-        // API 요청 헤더 설정
-        const getAuthHeaders = () => {
-            const token = getAuthToken();
-            return token ? { Authorization: `Bearer ${token}` } : {};
-        };
+            <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+                <p style="color: #6c757d; margin-bottom: 10px; font-size: 13px;">또는</p>
+                <a href="/" style="display: inline-block; padding: 8px 16px; background: #f8f9fa; color: #495057; text-decoration: none; border-radius: 6px; font-size: 13px; border: 1px solid #dee2e6;">메인 대시보드로 이동</a>
+            </div>
 
-        // 로그인 컴포넌트
-        function LoginForm({ onLogin }) {
-            const [credentials, setCredentials] = useState({ username: '', password: '' });
-            const [loading, setLoading] = useState(false);
-            const [error, setError] = useState('');
+            <!-- 기본 계정 안내 -->
+            <div style="margin-top: 20px; padding: 10px; background: #f8f9fa; border-radius: 6px; font-size: 12px; color: #6c757d;">
+                <strong>기본 관리자 계정:</strong><br>
+                ID: admin, PW: admin123
+            </div>
+        </div>
+    </div>
 
-            const handleSubmit = async (e) => {
-                e.preventDefault();
-                setLoading(true);
-                setError('');
+    <!-- 메인 애플리케이션 -->
+    <div id="app" class="app-container hidden">
+        <!-- 사이드바 -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>🛡️ Admin Panel</h1>
+                <p>AI Chat Interface</p>
+            </div>
+            <div class="sidebar-menu">
+                <button class="menu-item active" data-section="dashboard">
+                    <i>📊</i> 대시보드
+                </button>
+                <button class="menu-item" data-section="users">
+                    <i>👥</i> 사용자 관리
+                </button>
+                <button class="menu-item" data-section="llm">
+                    <i>🤖</i> LLM 관리
+                </button>
+                <button class="menu-item" data-section="system">
+                    <i>⚙️</i> 시스템 설정
+                </button>
+            </div>
+            <div class="sidebar-footer">
+                <button id="logoutBtn" class="logout-btn">
+                    <i>🚪</i> 로그아웃
+                </button>
+            </div>
+        </div>
 
+        <!-- 메인 콘텐츠 -->
+        <div class="main-content">
+            <div class="main-header">
+                <div class="header-title" id="headerTitle">대시보드</div>
+                <div class="header-subtitle" id="headerSubtitle">시스템 현황 및 주요 지표</div>
+            </div>
+            <div class="content-area" id="contentArea">
+                <!-- 콘텐츠가 여기에 동적으로 로드됩니다 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 전역 변수 - 메인 대시보드의 JWT 토큰 재사용
+        let authToken = localStorage.getItem('auth_token');
+        let currentSection = 'dashboard';
+
+        // DOM 요소
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loginOverlay = document.getElementById('loginOverlay');
+        const app = document.getElementById('app');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const menuItems = document.querySelectorAll('.menu-item');
+        const headerTitle = document.getElementById('headerTitle');
+        const headerSubtitle = document.getElementById('headerSubtitle');
+        const contentArea = document.getElementById('contentArea');
+
+        // 유틸리티 함수는 제거 (로그인 폼 없음)
+
+        // API 요청 함수
+        async function apiRequest(url, options = {}) {
+            const defaultOptions = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken && { 'Authorization': `Bearer ${authToken}` })
+                }
+            };
+
+            const response = await fetch(url, { ...defaultOptions, ...options });
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || `HTTP ${response.status}`);
+            }
+
+            return data;
+        }
+
+        // 토큰 검증 함수 - 관리자 API 사용
+        async function verifyToken() {
+            if (!authToken) {
+                return false;
+            }
+
+            try {
+                const data = await apiRequest('/api/admin/verify', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                return data.success;
+            } catch (error) {
+                console.error('토큰 검증 실패:', error);
+                return false;
+            }
+        }
+
+
+        // 로딩 화면 숨김 함수
+        function hideLoading() {
+            loadingOverlay.classList.add('hidden');
+        }
+
+        // 앱 표시 함수
+        function showApp() {
+            console.log('📱 showApp() 함수 호출됨');
+
+            hideLoading();
+            console.log('📱 hideLoading() 완료');
+
+            loginOverlay.classList.add('hidden');
+            console.log('📱 loginOverlay 숨김:', loginOverlay.classList);
+
+            app.classList.remove('hidden');
+            console.log('📱 app 표시:', app.classList);
+
+            // 강제로 display 스타일도 설정
+            app.style.display = 'flex';
+            console.log('📱 app display 스타일 설정 완료');
+        }
+
+        // 로그인 폼 표시 함수
+        function showLoginForm() {
+            hideLoading();
+            app.classList.add('hidden');
+            loginOverlay.classList.remove('hidden');
+        }
+
+        // 로그아웃 함수 - 메인 대시보드로 리다이렉트
+        function logout() {
+            localStorage.removeItem('auth_token');
+            authToken = null;
+            window.location.href = '/';
+        }
+
+        // 섹션 전환 함수
+        function switchSection(section) {
+            currentSection = section;
+
+            // 메뉴 활성화 상태 업데이트
+            menuItems.forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.section === section) {
+                    item.classList.add('active');
+                }
+            });
+
+            // 헤더 업데이트 및 콘텐츠 로드
+            switch (section) {
+                case 'dashboard':
+                    headerTitle.textContent = '대시보드';
+                    headerSubtitle.textContent = '시스템 현황 및 주요 지표';
+                    loadDashboardContent();
+                    break;
+                case 'users':
+                    headerTitle.textContent = '사용자 관리';
+                    headerSubtitle.textContent = '사용자 계정 관리 및 권한 설정';
+                    loadUsersContent();
+                    break;
+                case 'llm':
+                    headerTitle.textContent = 'LLM 관리';
+                    headerSubtitle.textContent = 'AI 모델 관리 및 설정';
+                    loadLLMContent();
+                    break;
+                case 'system':
+                    headerTitle.textContent = '시스템 설정';
+                    headerSubtitle.textContent = '서버 설정 및 환경 관리';
+                    loadSystemContent();
+                    break;
+            }
+        }
+
+        // 대시보드 콘텐츠 로드
+        async function loadDashboardContent() {
+            contentArea.innerHTML = `
+                <div class="stats-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;">
+                    <div class="stat-card" style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; border-left: 3px solid #3498db;">
+                        <div class="stat-number" id="systemStatus" style="font-size: 1.4em; font-weight: bold; color: #3498db; margin-bottom: 5px;">-</div>
+                        <div class="stat-label" style="color: #7f8c8d; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;">시스템 상태</div>
+                    </div>
+                    <div class="stat-card" style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; border-left: 3px solid #e74c3c;">
+                        <div class="stat-number" id="projectCount" style="font-size: 1.4em; font-weight: bold; color: #e74c3c; margin-bottom: 5px;">-</div>
+                        <div class="stat-label" style="color: #7f8c8d; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;">총 프로젝트</div>
+                    </div>
+                    <div class="stat-card" style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; border-left: 3px solid #27ae60;">
+                        <div class="stat-number" id="llmModels" style="font-size: 1.4em; font-weight: bold; color: #27ae60; margin-bottom: 5px;">12</div>
+                        <div class="stat-label" style="color: #7f8c8d; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;">LLM 모델</div>
+                    </div>
+                    <div class="stat-card" style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; border-left: 3px solid #f39c12;">
+                        <div class="stat-number" id="userCount" style="font-size: 1.4em; font-weight: bold; color: #f39c12; margin-bottom: 5px;">-</div>
+                        <div class="stat-label" style="color: #7f8c8d; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;">총 사용자</div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                    <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <h3 style="margin-bottom: 10px; color: #2c3e50; font-size: 14px;">📊 시스템 정보</h3>
+                        <div id="systemInfo" class="loading" style="font-size: 11px;">시스템 정보를 불러오는 중...</div>
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <h3 style="margin-bottom: 10px; color: #2c3e50; font-size: 14px;">🔗 빠른 액세스</h3>
+                        <div style="display: grid; gap: 8px;">
+                            <a href="http://localhost:3000/" target="_blank" style="display: flex; align-items: center; padding: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 6px; transition: transform 0.3s;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">
+                                <span style="font-size: 16px; margin-right: 8px;">🏠</span>
+                                <div>
+                                    <div style="font-weight: 600; font-size: 11px;">메인 대시보드</div>
+                                    <div style="font-size: 9px; opacity: 0.9;">통합 AI 시스템 접속</div>
+                                </div>
+                            </a>
+                            <a href="http://localhost:3000/crewai" target="_blank" style="display: flex; align-items: center; padding: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 6px; transition: transform 0.3s;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">
+                                <span style="font-size: 16px; margin-right: 8px;">👥</span>
+                                <div>
+                                    <div style="font-weight: 600; font-size: 11px;">CrewAI</div>
+                                    <div style="font-size: 9px; opacity: 0.9;">3역할 협업 AI 시스템</div>
+                                </div>
+                            </a>
+                            <a href="http://localhost:3000/metagpt" target="_blank" style="display: flex; align-items: center; padding: 8px; background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); color: white; text-decoration: none; border-radius: 6px; transition: transform 0.3s;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">
+                                <span style="font-size: 16px; margin-right: 8px;">🔧</span>
+                                <div>
+                                    <div style="font-weight: 600; font-size: 11px;">MetaGPT</div>
+                                    <div style="font-size: 9px; opacity: 0.9;">5단계 개발 프로세스</div>
+                                </div>
+                            </a>
+                            <a href="http://localhost:3000/templates" target="_blank" style="display: flex; align-items: center; padding: 8px; background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); color: white; text-decoration: none; border-radius: 6px; transition: transform 0.3s;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">
+                                <span style="font-size: 16px; margin-right: 8px;">📋</span>
+                                <div>
+                                    <div style="font-weight: 600; font-size: 11px;">프로젝트 템플릿</div>
+                                    <div style="font-size: 9px; opacity: 0.9;">사전 정의된 템플릿</div>
+                                </div>
+                            </a>
+                            <a href="http://localhost:3000/projects" target="_blank" style="display: flex; align-items: center; padding: 8px; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; text-decoration: none; border-radius: 6px; transition: transform 0.3s;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">
+                                <span style="font-size: 16px; margin-right: 8px;">📁</span>
+                                <div>
+                                    <div style="font-weight: 600; font-size: 11px;">프로젝트 관리</div>
+                                    <div style="font-size: 9px; opacity: 0.9;">생성된 프로젝트 관리</div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // DOM 업데이트가 완료된 후 데이터 로드
+            setTimeout(async () => {
+                await loadDashboardData();
+            }, 100);
+        }
+
+        // 대시보드 데이터 로드 함수
+        async function loadDashboardData() {
+            try {
+                // 시스템 헬스체크
+                const healthData = await apiRequest('/api/admin/system/health');
+
+                const systemStatusEl = document.getElementById('systemStatus');
+                if (systemStatusEl) {
+                    systemStatusEl.textContent = healthData.overall_health === 'healthy' ? '🟢 정상' : '🟡 주의';
+                }
+
+                // 프로젝트 수 조회 (DB 연결 필수)
                 try {
-                    const response = await axios.post('/api/admin/login', credentials);
-                    if (response.data.success) {
-                        setAuthToken(response.data.token);
-                        onLogin(response.data);
+                    const projectsData = await apiRequest('/api/admin/projects');
+                    const projectCountEl = document.getElementById('projectCount');
+                    if (projectCountEl) {
+                        if (projectsData.success) {
+                            projectCountEl.textContent = projectsData.total_count || 0;
+                        } else if (projectsData.system_status === 'CRITICAL_ERROR') {
+                            // 시스템 전체 중단 상태
+                            showSystemDownError(projectsData.message);
+                            return; // 더 이상 진행하지 않음
+                        } else {
+                            projectCountEl.textContent = 'DB 오류';
+                            projectCountEl.title = projectsData.message || '데이터베이스 연결 오류';
+                            projectCountEl.style.color = '#e74c3c';
+                        }
                     }
                 } catch (error) {
-                    setError(error.response?.data?.error || '로그인 실패');
-                } finally {
-                    setLoading(false);
+                    // API 요청 자체가 실패한 경우도 시스템 중단으로 처리
+                    showSystemDownError('🚨 시스템 중단: 데이터베이스 서비스에 접근할 수 없습니다.');
+                    return;
                 }
-            };
 
-            return (
-                <div className="login-container">
-                    <div className="login-form">
-                        <h1>🔐 관리자 로그인</h1>
-                        {error && <div className="error-message">{error}</div>}
-                        <form onSubmit={handleSubmit}>
-                            <div className="form-group">
-                                <label>사용자명</label>
-                                <input
-                                    type="text"
-                                    value={credentials.username}
-                                    onChange={(e) => setCredentials({...credentials, username: e.target.value})}
-                                    placeholder="관리자 사용자명"
-                                    required
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>패스워드</label>
-                                <input
-                                    type="password"
-                                    value={credentials.password}
-                                    onChange={(e) => setCredentials({...credentials, password: e.target.value})}
-                                    placeholder="패스워드"
-                                    required
-                                />
-                            </div>
-                            <button type="submit" disabled={loading} className="login-btn">
-                                {loading ? '로그인 중...' : '로그인'}
-                            </button>
-                        </form>
-                        <div className="login-info">
-                            <p>기본 계정: admin / admin123</p>
-                        </div>
-                    </div>
-                </div>
-            );
-        }
-
-        // 시스템 상태 컴포넌트
-        function SystemStatus() {
-            const [systemInfo, setSystemInfo] = useState(null);
-            const [healthInfo, setHealthInfo] = useState(null);
-            const [loading, setLoading] = useState(true);
-
-            useEffect(() => {
-                const fetchSystemInfo = async () => {
-                    try {
-                        const [statusResponse, healthResponse] = await Promise.all([
-                            axios.get('/api/admin/system/status', { headers: getAuthHeaders() }),
-                            axios.get('/api/admin/system/health', { headers: getAuthHeaders() })
-                        ]);
-
-                        setSystemInfo(statusResponse.data.system);
-                        setHealthInfo(healthResponse.data);
-                    } catch (error) {
-                        console.error('시스템 정보 조회 실패:', error);
-                    } finally {
-                        setLoading(false);
-                    }
-                };
-
-                fetchSystemInfo();
-                const interval = setInterval(fetchSystemInfo, 30000); // 30초마다 업데이트
-
-                return () => clearInterval(interval);
-            }, []);
-
-            if (loading) return <div className="loading">시스템 상태 조회 중...</div>;
-
-            return (
-                <div className="system-status">
-                    <h2>📊 시스템 상태</h2>
-
-                    {/* 헬스 체크 */}
-                    <div className="health-overview">
-                        <div className={`health-indicator ${healthInfo?.overall_health}`}>
-                            <span className="health-status">
-                                {healthInfo?.overall_health === 'healthy' ? '🟢 정상' : '🟡 주의'}
-                            </span>
-                            <span className="health-text">전체 시스템 상태</span>
-                        </div>
-                    </div>
-
-                    {/* 서비스 상태 */}
-                    <div className="services-grid">
-                        {healthInfo?.services && Object.entries(healthInfo.services).map(([service, status]) => (
-                            <div key={service} className={`service-card ${status}`}>
-                                <div className="service-name">{service}</div>
-                                <div className="service-status">
-                                    {status === 'healthy' ? '🟢' : status === 'error' ? '🔴' : '🟡'} {status}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* 시스템 리소스 */}
-                    {systemInfo && (
-                        <div className="resource-grid">
-                            <div className="resource-card">
-                                <h3>CPU 사용률</h3>
-                                <div className="metric-value">{systemInfo.cpu_usage.toFixed(1)}%</div>
-                                <div className="progress-bar">
-                                    <div className="progress-fill" style={{width: `${systemInfo.cpu_usage}%`}}></div>
-                                </div>
-                            </div>
-
-                            <div className="resource-card">
-                                <h3>메모리 사용률</h3>
-                                <div className="metric-value">{systemInfo.memory.percent.toFixed(1)}%</div>
-                                <div className="progress-bar">
-                                    <div className="progress-fill" style={{width: `${systemInfo.memory.percent}%`}}></div>
-                                </div>
-                                <div className="metric-details">
-                                    {(systemInfo.memory.used / 1024 / 1024 / 1024).toFixed(1)}GB /
-                                    {(systemInfo.memory.total / 1024 / 1024 / 1024).toFixed(1)}GB
-                                </div>
-                            </div>
-
-                            <div className="resource-card">
-                                <h3>디스크 사용률</h3>
-                                <div className="metric-value">{systemInfo.disk.percent.toFixed(1)}%</div>
-                                <div className="progress-bar">
-                                    <div className="progress-fill" style={{width: `${systemInfo.disk.percent}%`}}></div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        // 프로젝트 관리 컴포넌트
-        function ProjectManagement() {
-            const [projects, setProjects] = useState([]);
-            const [loading, setLoading] = useState(true);
-
-            useEffect(() => {
-                const fetchProjects = async () => {
-                    try {
-                        const response = await axios.get('/api/admin/projects', { headers: getAuthHeaders() });
-                        setProjects(response.data.projects || []);
-                    } catch (error) {
-                        console.error('프로젝트 조회 실패:', error);
-                    } finally {
-                        setLoading(false);
-                    }
-                };
-
-                fetchProjects();
-            }, []);
-
-            const handleForceComplete = async (projectId) => {
-                if (!confirm('이 프로젝트를 강제로 완료 처리하시겠습니까?')) return;
-
+                // 사용자 수 조회 (더미데이터 사용 금지)
                 try {
-                    await axios.put(`/api/admin/projects/${projectId}/force-complete`, {}, { headers: getAuthHeaders() });
-                    alert('프로젝트가 완료 처리되었습니다');
-                    // 프로젝트 목록 새로고침
-                    window.location.reload();
-                } catch (error) {
-                    alert('프로젝트 완료 처리 실패: ' + (error.response?.data?.error || '알 수 없는 오류'));
-                }
-            };
-
-            if (loading) return <div className="loading">프로젝트 정보 조회 중...</div>;
-
-            return (
-                <div className="project-management">
-                    <h2>📁 프로젝트 관리</h2>
-
-                    <div className="projects-overview">
-                        <div className="stat-card">
-                            <div className="stat-number">{projects.length}</div>
-                            <div className="stat-label">전체 프로젝트</div>
-                        </div>
-                        <div className="stat-card">
-                            <div className="stat-number">
-                                {projects.filter(p => p.status === 'completed').length}
-                            </div>
-                            <div className="stat-label">완료 프로젝트</div>
-                        </div>
-                        <div className="stat-card">
-                            <div className="stat-number">
-                                {projects.filter(p => p.status === 'in_progress').length}
-                            </div>
-                            <div className="stat-label">진행 중</div>
-                        </div>
-                    </div>
-
-                    <div className="projects-table">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>프로젝트명</th>
-                                    <th>AI 프레임워크</th>
-                                    <th>상태</th>
-                                    <th>진행률</th>
-                                    <th>생성일</th>
-                                    <th>관리</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {projects.map(project => (
-                                    <tr key={project.id}>
-                                        <td>{project.name}</td>
-                                        <td>
-                                            <span className={`framework-badge ${project.selected_ai}`}>
-                                                {project.selected_ai === 'crew-ai' ? 'CrewAI' : 'MetaGPT'}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span className={`status-badge ${project.status}`}>
-                                                {project.status}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div className="progress-bar">
-                                                <div className="progress-fill"
-                                                     style={{width: `${project.progress_percentage || 0}%`}}>
-                                                </div>
-                                            </div>
-                                            {project.progress_percentage || 0}%
-                                        </td>
-                                        <td>{new Date(project.created_at).toLocaleDateString()}</td>
-                                        <td>
-                                            {project.status !== 'completed' && (
-                                                <button
-                                                    className="action-btn complete"
-                                                    onClick={() => handleForceComplete(project.id)}
-                                                >
-                                                    완료 처리
-                                                </button>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            );
-        }
-
-        // LLM 모델 관리 컴포넌트
-        function LLMManagement() {
-            const [models, setModels] = useState([]);
-            const [loading, setLoading] = useState(true);
-
-            useEffect(() => {
-                const fetchModels = async () => {
-                    try {
-                        const response = await axios.get('/api/admin/llm-models', { headers: getAuthHeaders() });
-                        setModels(response.data.models || []);
-                    } catch (error) {
-                        console.error('LLM 모델 조회 실패:', error);
-                    } finally {
-                        setLoading(false);
+                    const usersData = await apiRequest('/api/admin/users');
+                    const userCountEl = document.getElementById('userCount');
+                    if (userCountEl) {
+                        if (usersData.success) {
+                            userCountEl.textContent = usersData.total_count || 0;
+                        } else {
+                            userCountEl.textContent = '미구현';
+                            userCountEl.title = usersData.message || '사용자 관리 시스템 미구현';
+                            userCountEl.style.color = '#f39c12';
+                        }
                     }
-                };
-
-                fetchModels();
-            }, []);
-
-            if (loading) return <div className="loading">LLM 모델 정보 조회 중...</div>;
-
-            return (
-                <div className="llm-management">
-                    <h2>🤖 LLM 모델 관리</h2>
-
-                    <div className="models-grid">
-                        {models.map(model => (
-                            <div key={model.id} className={`model-card ${model.status}`}>
-                                <div className="model-header">
-                                    <h3>{model.name}</h3>
-                                    <span className={`status-indicator ${model.status}`}>
-                                        {model.status === 'active' ? '🟢' : '🔴'}
-                                    </span>
-                                </div>
-                                <div className="model-info">
-                                    <div className="model-provider">제공: {model.provider}</div>
-                                    <div className="model-usage">사용 횟수: {model.usage_count}</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            );
-        }
-
-        // 메인 관리자 대시보드 컴포넌트
-        function AdminDashboard({ user, onLogout }) {
-            const [activeTab, setActiveTab] = useState('system');
-
-            const tabs = [
-                { id: 'system', name: '시스템 상태', icon: '📊' },
-                { id: 'projects', name: '프로젝트 관리', icon: '📁' },
-                { id: 'llm', name: 'LLM 관리', icon: '🤖' },
-                { id: 'settings', name: '설정', icon: '⚙️' }
-            ];
-
-            const renderTabContent = () => {
-                switch (activeTab) {
-                    case 'system':
-                        return <SystemStatus />;
-                    case 'projects':
-                        return <ProjectManagement />;
-                    case 'llm':
-                        return <LLMManagement />;
-                    case 'settings':
-                        return <div className="settings">⚙️ 설정 기능 개발 중...</div>;
-                    default:
-                        return <SystemStatus />;
+                } catch (error) {
+                    const userCountEl = document.getElementById('userCount');
+                    if (userCountEl) {
+                        userCountEl.textContent = '미구현';
+                        userCountEl.title = '사용자 관리 시스템이 아직 구현되지 않았습니다';
+                        userCountEl.style.color = '#f39c12';
+                    }
                 }
-            };
 
-            return (
-                <div className="admin-dashboard">
-                    <header className="admin-header">
-                        <div className="header-left">
-                            <h1>🛡️ AI Chat Interface 관리자</h1>
-                            <span className="user-info">관리자: {user.username}</span>
-                        </div>
-                        <div className="header-right">
-                            <button className="logout-btn" onClick={onLogout}>
-                                로그아웃
-                            </button>
-                        </div>
-                    </header>
-
-                    <div className="admin-layout">
-                        <nav className="admin-sidebar">
-                            {tabs.map(tab => (
-                                <button
-                                    key={tab.id}
-                                    className={`nav-tab ${activeTab === tab.id ? 'active' : ''}`}
-                                    onClick={() => setActiveTab(tab.id)}
-                                >
-                                    <span className="tab-icon">{tab.icon}</span>
-                                    <span className="tab-name">{tab.name}</span>
-                                </button>
-                            ))}
-                        </nav>
-
-                        <main className="admin-content">
-                            {renderTabContent()}
-                        </main>
+                // 시스템 정보 표시
+                const systemInfoDiv = document.getElementById('systemInfo');
+                systemInfoDiv.innerHTML = `
+                    <div style="font-size: 14px; line-height: 1.6;">
+                        <p style="margin-bottom: 8px;"><strong>전체 시스템 상태:</strong> <span style="color: ${healthData.overall_health === 'healthy' ? '#27ae60' : '#f39c12'};">${healthData.overall_health}</span></p>
+                        <p style="margin-bottom: 8px;"><strong>데이터베이스:</strong> <span style="color: ${healthData.services?.database === 'healthy' ? '#27ae60' : '#e74c3c'};">${healthData.services?.database || 'Unknown'}</span></p>
+                        <p style="margin-bottom: 8px;"><strong>Flask 서버:</strong> <span style="color: #27ae60;">${healthData.services?.flask_server || 'Running'}</span></p>
+                        <p style="margin-bottom: 8px;"><strong>CrewAI 서비스:</strong> <span style="color: ${healthData.services?.crewai_service === 'healthy' ? '#27ae60' : '#e74c3c'};">${healthData.services?.crewai_service || 'Unknown'}</span></p>
+                        <p style="margin-bottom: 8px;"><strong>MetaGPT 서비스:</strong> <span style="color: ${healthData.services?.metagpt_service === 'healthy' ? '#27ae60' : '#e74c3c'};">${healthData.services?.metagpt_service || 'Unknown'}</span></p>
+                        <p style="margin-bottom: 0; color: #7f8c8d; font-size: 12px;"><strong>마지막 업데이트:</strong> ${new Date(healthData.timestamp || Date.now()).toLocaleString()}</p>
                     </div>
-                </div>
-            );
+                `;
+
+            } catch (error) {
+                console.error('대시보드 데이터 로드 실패:', error);
+                document.getElementById('systemInfo').innerHTML =
+                    '<div style="color: #e74c3c; padding: 20px; text-align: center;">데이터 로드 실패: ' + error.message + '</div>';
+            }
         }
 
-        // 메인 앱 컴포넌트
-        function AdminApp() {
-            const [user, setUser] = useState(null);
-            const [loading, setLoading] = useState(true);
+        // 사용자 관리 콘텐츠 로드
+        function loadUsersContent() {
+            contentArea.innerHTML = `
+                <div style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                    <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 30px;">
+                        <h3 style="color: #2c3e50; margin: 0;">👥 사용자 목록</h3>
+                        <button onclick="showAddUserModal()" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">+ 사용자 추가</button>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 40px; text-align: center; border-radius: 8px;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">👥</div>
+                        <h4 style="color: #2c3e50; margin-bottom: 10px;">사용자 관리 기능</h4>
+                        <p style="color: #7f8c8d; margin-bottom: 20px;">사용자 등록, 수정, 삭제 기능이 곧 구현될 예정입니다.</p>
+                        <div style="background: #e3f2fd; padding: 15px; border-radius: 6px; margin-top: 20px;">
+                            <strong>구현 예정 기능:</strong><br>
+                            • 사용자 계정 생성 및 관리<br>
+                            • 권한 설정 (관리자, 일반 사용자)<br>
+                            • 사용자 활동 로그 조회<br>
+                            • 비밀번호 재설정
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
 
-            useEffect(() => {
-                // 토큰 검증
-                const verifyToken = async () => {
-                    const token = getAuthToken();
-                    if (!token) {
-                        setLoading(false);
+        // LLM 관리 콘텐츠 로드
+        function loadLLMContent() {
+            contentArea.innerHTML = `
+                <div style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                    <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 30px;">
+                        <h3 style="color: #2c3e50; margin: 0;">🤖 LLM 모델 관리</h3>
+                        <button onclick="showAddLLMModal()" style="background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%); color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">+ 모델 추가</button>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 40px; text-align: center; border-radius: 8px;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">🤖</div>
+                        <h4 style="color: #2c3e50; margin-bottom: 10px;">LLM 모델 관리</h4>
+                        <p style="color: #7f8c8d; margin-bottom: 20px;">AI 모델 등록, 설정, 역할 매핑 기능이 곧 구현될 예정입니다.</p>
+                        <div style="background: #e8f5e8; padding: 15px; border-radius: 6px; margin-top: 20px;">
+                            <strong>현재 지원 모델 (12개):</strong><br>
+                            • GPT-4, GPT-4o (OpenAI)<br>
+                            • Claude-3 Sonnet, Claude-3 Haiku (Anthropic)<br>
+                            • Gemini Pro, Gemini Ultra (Google)<br>
+                            • Llama-3 70B, Llama-3 8B (Meta)<br>
+                            • Mistral Large, Mistral 7B (Mistral AI)<br>
+                            • DeepSeek Coder, Code Llama
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 시스템 설정 콘텐츠 로드
+        function loadSystemContent() {
+            contentArea.innerHTML = `
+                <div style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                    <h3 style="color: #2c3e50; margin-bottom: 30px;">⚙️ 시스템 설정</h3>
+                    <div style="background: #f8f9fa; padding: 40px; text-align: center; border-radius: 8px;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">⚙️</div>
+                        <h4 style="color: #2c3e50; margin-bottom: 10px;">시스템 설정 관리</h4>
+                        <p style="color: #7f8c8d; margin-bottom: 20px;">서버 설정 및 환경 관리 기능이 곧 구현될 예정입니다.</p>
+                        <div style="background: #fff3cd; padding: 15px; border-radius: 6px; margin-top: 20px;">
+                            <strong>구현 예정 기능:</strong><br>
+                            • 서버 포트 및 환경 설정<br>
+                            • 데이터베이스 연결 관리<br>
+                            • API 키 관리<br>
+                            • 로그 수준 및 보안 설정
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 이벤트 리스너
+        logoutBtn.addEventListener('click', logout);
+
+        // 메뉴 클릭 이벤트
+        menuItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                const section = e.currentTarget.dataset.section;
+                switchSection(section);
+            });
+        });
+
+        // 페이지 로드 시 초기화 - 토큰 통합 처리
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🚀 관리자 페이지 로드 시작');
+
+            // 강제로 로딩 오버레이 숨김 (디버깅용)
+            console.log('🔧 강제로 로딩 오버레이 숨김');
+            hideLoading();
+
+            try {
+                // 1단계: 여러 소스에서 토큰 확인
+                let tokenFound = false;
+                let tokenSource = '';
+
+                // 기존 admin 토큰 확인
+                if (authToken) {
+                    console.log('✅ 기존 관리자 토큰 발견:', authToken.substring(0, 20) + '...');
+                    tokenFound = true;
+                    tokenSource = 'admin_token';
+                } else {
+                    // 메인 대시보드 토큰 확인
+                    const mainToken = localStorage.getItem('auth_token');
+                    if (mainToken) {
+                        console.log('✅ 메인 대시보드 토큰 발견:', mainToken.substring(0, 20) + '...');
+                        authToken = mainToken; // 메인 토큰을 관리자 토큰으로 사용
+                        tokenFound = true;
+                        tokenSource = 'main_dashboard_token';
+                    }
+                }
+
+                console.log('🔍 토큰 상태:', { tokenFound, tokenSource, hasToken: !!authToken });
+
+                // 2단계: 토큰 검증
+                if (tokenFound && authToken) {
+                    console.log('🔐 토큰 검증 시작...');
+                    const isValid = await verifyToken();
+                    console.log('🔐 토큰 검증 결과:', isValid);
+
+                    if (isValid) {
+                        console.log('✅ 토큰 검증 성공 - 관리자 화면 표시');
+                        showApp();
+                        switchSection('dashboard');
+                        return; // 성공적으로 로그인됨
+                    } else {
+                        console.log('❌ 토큰 검증 실패');
+                    }
+                } else {
+                    console.log('❌ 사용 가능한 토큰 없음');
+                }
+
+                // 3단계: 토큰이 없거나 검증 실패 시 로그인 화면 표시
+                console.log('🔑 로그인 화면 표시');
+                showLoginForm();
+
+            } catch (error) {
+                console.error('❌ 페이지 초기화 오류:', error);
+                showLoginForm();
+            }
+        });
+
+        // 관리자 로그인 처리
+        async function handleAdminLogin(username, password) {
+            console.log('🔐 관리자 로그인 시도:', username);
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_id: username,
+                        password: password,
+                        email: `${username}@admin.local`,
+                        role: 'admin'
+                    })
+                });
+
+                const data = await response.json();
+                console.log('🔐 로그인 API 응답:', data);
+
+                if (data.success && data.token) {
+                    console.log('✅ 관리자 로그인 성공');
+
+                    // 토큰 저장
+                    authToken = data.token;
+                    localStorage.setItem('admin_token', data.token);
+                    localStorage.setItem('auth_token', data.token); // 메인 대시보드와 호환성
+
+                    // 관리자 앱 표시
+                    showApp();
+                    switchSection('dashboard');
+
+                    return true;
+                } else {
+                    console.error('❌ 로그인 실패:', data.error);
+                    alert('로그인 실패: ' + (data.error || '알 수 없는 오류'));
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ 로그인 요청 오류:', error);
+                alert('로그인 중 오류가 발생했습니다: ' + error.message);
+                return false;
+            }
+        }
+
+        // 관리자 로그인 폼 이벤트 리스너 등록
+        document.addEventListener('DOMContentLoaded', () => {
+            const adminLoginForm = document.getElementById('adminLoginForm');
+            if (adminLoginForm) {
+                adminLoginForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+
+                    const username = document.getElementById('adminUsername').value;
+                    const password = document.getElementById('adminPassword').value;
+
+                    console.log('📝 로그인 폼 제출:', { username, password: password ? '***' : 'empty' });
+
+                    if (!username || !password) {
+                        alert('사용자 ID와 비밀번호를 모두 입력해주세요.');
                         return;
                     }
 
+                    // 로그인 버튼 비활성화
+                    const submitButton = e.target.querySelector('button[type="submit"]');
+                    const originalText = submitButton.textContent;
+                    submitButton.textContent = '로그인 중...';
+                    submitButton.disabled = true;
+
                     try {
-                        const response = await axios.get('/api/admin/verify', { headers: getAuthHeaders() });
-                        if (response.data.success) {
-                            setUser(response.data.admin);
+                        const success = await handleAdminLogin(username, password);
+                        if (!success) {
+                            // 실패 시 버튼 복구
+                            submitButton.textContent = originalText;
+                            submitButton.disabled = false;
                         }
                     } catch (error) {
-                        removeAuthToken();
-                    } finally {
-                        setLoading(false);
+                        console.error('로그인 처리 오류:', error);
+                        submitButton.textContent = originalText;
+                        submitButton.disabled = false;
                     }
-                };
-
-                verifyToken();
-            }, []);
-
-            const handleLogin = (userData) => {
-                setUser(userData);
-            };
-
-            const handleLogout = () => {
-                removeAuthToken();
-                setUser(null);
-            };
-
-            if (loading) {
-                return (
-                    <div className="loading-container">
-                        <div className="loading">관리자 시스템 로드 중...</div>
-                    </div>
-                );
+                });
             }
+        });
 
-            return user ?
-                <AdminDashboard user={user} onLogout={handleLogout} /> :
-                <LoginForm onLogin={handleLogin} />;
+        // 모달 함수들 (향후 구현)
+        function showAddUserModal() {
+            alert('사용자 추가 기능이 곧 구현될 예정입니다.');
         }
 
-        // 렌더링
-        ReactDOM.render(<AdminApp />, document.getElementById('admin-root'));
+        function showAddLLMModal() {
+            alert('LLM 모델 추가 기능이 곧 구현될 예정입니다.');
+        }
     </script>
 </body>
 </html>

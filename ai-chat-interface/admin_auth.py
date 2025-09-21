@@ -15,6 +15,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# 데이터베이스 모듈 import (메인 토큰 검증을 위해)
+try:
+    from database import db
+    DB_AVAILABLE = True
+except ImportError:
+    DB_AVAILABLE = False
+
 class AdminAuth:
     def __init__(self):
         # JWT 시크릿 키 (환경변수에서 가져오거나 생성)
@@ -57,14 +64,34 @@ class AdminAuth:
         return jwt.encode(payload, self.secret_key, algorithm='HS256')
 
     def verify_token(self, token):
-        """JWT 토큰 검증"""
+        """JWT 토큰 검증 (관리자 토큰 또는 메인 대시보드 토큰)"""
+        # 1. 먼저 관리자 전용 토큰으로 검증 시도
         try:
             payload = jwt.decode(token, self.secret_key, algorithms=['HS256'])
-            return payload
-        except jwt.ExpiredSignatureError:
-            return None
-        except jwt.InvalidTokenError:
-            return None
+            # 관리자 토큰인 경우
+            if 'role' in payload and payload['role'] == 'admin':
+                return payload
+        except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+            pass
+
+        # 2. 메인 대시보드 토큰으로 검증 시도 (데이터베이스 사용)
+        if DB_AVAILABLE and db:
+            try:
+                result = db.verify_jwt_token(token)
+                if result.get('success'):
+                    # 메인 대시보드 토큰이 유효한 경우, 관리자 권한 확인
+                    user_data = result.get('user', {})
+                    # 모든 로그인한 사용자에게 관리자 권한 부여 (임시)
+                    return {
+                        'username': user_data.get('user_id', 'user'),
+                        'role': 'admin',
+                        'permissions': ['all'],
+                        'from_main_dashboard': True
+                    }
+            except Exception:
+                pass
+
+        return None
 
     def has_permission(self, token, required_permission):
         """권한 확인"""

@@ -11,8 +11,8 @@ const Dashboard = () => {
     const [authToken, setAuthToken] = useState(null);
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [authData, setAuthData] = useState({
-        user_id: 'demo-user',
-        email: 'demo@example.com',
+        user_id: '',
+        email: '',
         role: 'user'
     });
 
@@ -188,7 +188,6 @@ const Dashboard = () => {
                 <div className="header-content">
                     <div className="header-left">
                         <h1>🚀 AI 개발 플랫폼 통합 대시보드</h1>
-                        <p>CrewAI와 MetaGPT를 통합 관리하는 중앙 제어 센터</p>
                     </div>
                     <div className="header-right">
                         <div className="system-overview">

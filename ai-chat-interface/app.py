@@ -31,6 +31,7 @@ from template_api import template_bp
 from ollama_client import ollama_client
 from websocket_manager import init_websocket_manager, get_websocket_manager
 from realtime_progress_tracker import global_progress_tracker
+from admin_auth import admin_auth
 
 # Add current directory to Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -109,7 +110,7 @@ def set_security_headers(response):
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
 
     # CSP (Content Security Policy)
-    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://localhost:*"
+    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://localhost:* https://unpkg.com https://cdnjs.cloudflare.com"
 
     return response
 
@@ -1006,6 +1007,60 @@ def get_role_llm_mapping(project_id):
 
     return jsonify(result), status_code
 
+# ==================== AUTHENTICATION ENDPOINTS ====================
+
+@app.route('/api/auth/login', methods=['POST'])
+def login():
+    """User login endpoint"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': '데이터가 필요합니다'}), 400
+
+        user_id = data.get('user_id')
+        password = data.get('password')
+
+        if not user_id or not password:
+            return jsonify({'success': False, 'error': '사용자 ID와 비밀번호가 필요합니다'}), 400
+
+        # Check if it's admin login
+        if admin_auth.verify_password(user_id, password):
+            token = admin_auth.generate_token(user_id)
+            return jsonify({
+                'success': True,
+                'token': token,
+                'user': {
+                    'user_id': user_id,
+                    'role': 'admin',
+                    'display_name': '시스템 관리자'
+                },
+                'message': '로그인 성공'
+            })
+
+        # Check database users
+        result = db.verify_user(user_id, password)
+        if result['success']:
+            # Generate JWT token for database user
+            user_data = {
+                'id': user_id,
+                'email': result['user'].get('email', f"{user_id}@example.com"),
+                'role': result['user'].get('role', 'user'),
+                'display_name': result['user'].get('display_name', user_id)
+            }
+            token = db.generate_jwt_token(user_data)
+
+            return jsonify({
+                'success': True,
+                'token': token,
+                'user': user_data,
+                'message': '로그인 성공'
+            })
+        else:
+            return jsonify({'success': False, 'error': '잘못된 사용자 ID 또는 비밀번호입니다'}), 401
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'로그인 처리 중 오류: {str(e)}'}), 500
+
 @app.route('/api/v2/auth/token', methods=['POST'])
 @rate_limit(max_requests=5, window_seconds=60)
 @validate_json_input()
@@ -1013,10 +1068,10 @@ def generate_auth_token():
     """Generate authentication token"""
     data = request.get_json()
 
-    # For demo purposes, generate token with provided user data
+    # Generate token with provided user data
     user_data = {
-        'id': data.get('user_id', 'demo-user'),
-        'email': data.get('email', 'demo@example.com'),
+        'id': data.get('user_id'),
+        'email': data.get('email', f"{data.get('user_id')}@example.com"),
         'role': data.get('role', 'user')
     }
 

@@ -1,0 +1,26 @@
+  DB 연결 실패 이유: [Errno 11001] getaddrinfo failed - 이는 DNS 조회 실패를
+  의미합니다. Supabase 서버의 도메인 이름을 IP 주소로 변환할 수 없어서 발생하는
+  네트워크 연결 문제입니다.
+
+● 이제 DNS/네트워크 연결 실패에 대한 상세한 진단 정보를 추가하겠습니다. 먼저 현재
+   Supabase 설정을 확인해보겠습니다.
+
+● Bash(cd ai-chat-interface && python -c "import os; print('SUPABASE_URL:',
+      os.environ.get('SUPABASE_URL', '설정되지 않음')); print('SUPABASE_ANON_KEY:',
+      'None' if not os.en…)
+  ⎿  SUPABASE_URL: https://ihnfqjkmrrmgjkacccaz.supabase.co
+     SUPABASE_ANON_KEY: ������
+
+● Supabase URL이 설정되어 있네요. DNS 조회 테스트를 해보겠습니다.
+
+● Bash(nslookup ihnfqjkmrrmgjkacccaz.supabase.co)
+  ⎿  DNS request timed out.       
+         timeout was 2 seconds.
+     ����:    UnKnown
+     … +3 lines (ctrl+o to expand)
+  ⎿  5-hour limit reached ∙ resets 2am
+     /upgrade to increase your usage limit.
+
+  Todos
+  ☒ admin_api.py 구문 오류 수정
+  ☐ DNS/네트워크 연결 실패 상세 로깅 및 진단 추가

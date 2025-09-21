@@ -80,8 +80,8 @@ class APIClient {
 
     async generateAuthToken(userData = {}) {
         const data = {
-            user_id: userData.user_id || 'demo-user',
-            email: userData.email || 'demo@example.com',
+            user_id: userData.user_id,
+            email: userData.email || `${userData.user_id}@example.com`,
             role: userData.role || 'user'
         };
 

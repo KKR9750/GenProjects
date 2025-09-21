@@ -17,36 +17,45 @@ from security_utils import validate_request_data
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 
 # ============================================================================
+# 데이터베이스 연결 관리 API
+# ============================================================================
+
+@admin_bp.route('/database/connection', methods=['GET'])
+@admin_required()
+def check_database_connection():
+    """데이터베이스 연결 상태 확인"""
+    try:
+        result = db.test_connection()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({
+            'connected': False,
+            'error': str(e),
+            'message': f'연결 상태 확인 실패: {str(e)}'
+        }), 500
+
+@admin_bp.route('/database/reconnect', methods=['POST'])
+@admin_required()
+def reconnect_database():
+    """데이터베이스 연결 재시도"""
+    try:
+        result = db.reconnect()
+        if result['success']:
+            return jsonify(result)
+        else:
+            return jsonify(result), 503
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'message': f'연결 재시도 실패: {str(e)}'
+        }), 500
+
+# ============================================================================
 # 사용자 관리 API
 # ============================================================================
 
-# 이 함수는 중복이므로 제거됨 (아래 get_all_users 함수 사용)
-
-@admin_bp.route('/users', methods=['POST'])
-@admin_required()
-def admin_create_user():
-    """사용자 생성 (관리자 전용)"""
-    try:
-        current_admin = get_current_admin()
-        data = request.get_json()
-
-        # 필수 필드 검증
-        if not data.get('user_id'):
-            return jsonify({'error': '사용자 ID는 필수입니다'}), 400
-
-        result = db.create_user(data)
-
-        if result['success']:
-            return jsonify({
-                'success': True,
-                'user': result['user'],
-                'message': '사용자가 성공적으로 생성되었습니다'
-            })
-        else:
-            return jsonify({'error': result['error']}), 400
-
-    except Exception as e:
-        return jsonify({'error': f'사용자 생성 실패: {str(e)}'}), 500
+# 중복 함수 제거됨 - 통합된 create_user 함수 사용
 
 @admin_bp.route('/users/<user_id>', methods=['GET'])
 @admin_required()
@@ -58,9 +67,16 @@ def admin_get_user(user_id):
         result = db.get_user(user_id)
 
         if result['success']:
+            # 일관성을 위해 user_id를 id로 변환
+            user = result['user'].copy()
+            user['id'] = user.get('user_id')
+            user['username'] = user.get('user_id')
+            if 'is_active' in user:
+                user['status'] = 'active' if user['is_active'] else 'inactive'
+
             return jsonify({
                 'success': True,
-                'user': result['user']
+                'user': user
             })
         else:
             return jsonify({'error': result['error']}), 404
@@ -268,13 +284,12 @@ def get_all_projects():
     try:
         # 데이터베이스 연결 확인 (필수 요구사항)
         if not db or not hasattr(db, 'supabase') or not db.supabase:
-            # Supabase 연결 실패 시 시스템 전체 중단
             return jsonify({
                 'success': False,
-                'error': 'SYSTEM_DOWN: 데이터베이스 연결 실패',
-                'system_status': 'CRITICAL_ERROR',
-                'message': '🚨 시스템 중단: Supabase 데이터베이스에 연결할 수 없습니다. 시스템 관리자에게 즉시 문의하세요.',
-                'action_required': 'DB 연결 복구 필요'
+                'error': 'DATABASE_CONNECTION_FAILED',
+                'message': '데이터베이스 연결에 실패했습니다. 시스템 관리자에게 문의하세요.',
+                'projects': [],
+                'total_count': 0
             }), 503
 
         # projects 테이블에서 프로젝트 건수만 조회
@@ -471,42 +486,47 @@ def get_users():
     try:
         # 데이터베이스 연결 확인 (필수 요구사항)
         if not db or not hasattr(db, 'supabase') or not db.supabase:
-            # Supabase 연결 실패 시 시스템 전체 중단
             return jsonify({
                 'success': False,
-                'error': 'SYSTEM_DOWN: 데이터베이스 연결 실패',
-                'system_status': 'CRITICAL_ERROR',
-                'message': '🚨 시스템 중단: Supabase 데이터베이스에 연결할 수 없습니다. 시스템 관리자에게 즉시 문의하세요.',
-                'action_required': 'DB 연결 복구 필요'
+                'error': 'DATABASE_CONNECTION_FAILED',
+                'message': '데이터베이스 연결에 실패했습니다. 시스템 관리자에게 문의하세요.',
+                'users': [],
+                'total_count': 0
             }), 503
 
-        # auth.users 테이블에서 실제 Supabase 등록 사용자 수 조회
+        # users 테이블에서 사용자 목록 조회
         try:
-            result = db.supabase.table('auth.users').select('id').execute()
-            if result.data:
-                total_users = len(result.data)
-                return jsonify({
-                    'success': True,
-                    'users': [],  # 보안상 사용자 상세 정보는 반환하지 않음
-                    'total_count': total_users,
-                    'message': f'Supabase Auth에 등록된 사용자 {total_users}명'
-                })
-            else:
-                return jsonify({
-                    'success': True,
-                    'users': [],
-                    'total_count': 0,
-                    'message': '등록된 사용자가 없습니다.'
+            result = db.supabase.table('users').select('user_id, email, display_name, role, is_active, last_login_at, created_at, updated_at').execute()
+
+            users = []
+            for user in result.data:
+                users.append({
+                    'id': user['user_id'],
+                    'username': user['user_id'],
+                    'email': user['email'],
+                    'display_name': user['display_name'],
+                    'role': user['role'],
+                    'status': 'active' if user['is_active'] else 'inactive',
+                    'last_login': user['last_login_at'],
+                    'created_at': user['created_at'],
+                    'updated_at': user['updated_at']
                 })
 
+            return jsonify({
+                'success': True,
+                'users': users,
+                'total_count': len(users),
+                'message': f'등록된 사용자 {len(users)}명 조회 완료'
+            })
+
         except Exception as e:
-            # auth.users 테이블 접근 실패
+            # users 테이블 접근 실패
             return jsonify({
                 'success': False,
                 'error': f'사용자 테이블 접근 실패: {str(e)}',
                 'users': [],
                 'total_count': 0,
-                'message': 'Supabase Auth 테이블에 접근할 수 없습니다.'
+                'message': '사용자 데이터베이스에 접근할 수 없습니다.'
             }), 500
 
     except Exception as e:
@@ -524,36 +544,67 @@ def create_user():
     try:
         data = request.get_json()
 
-        # 입력 데이터 검증
-        required_fields = ['username', 'email', 'password', 'role']
-        for field in required_fields:
-            if not data.get(field):
-                return jsonify({'error': f'{field} 필드가 필요합니다'}), 400
+        # 입력 데이터 검증 (user_id와 username 모두 지원)
+        user_id = data.get('user_id') or data.get('username')
+        if not user_id:
+            return jsonify({'error': '사용자 ID(user_id 또는 username)는 필수입니다'}), 400
 
-        username = data.get('username')
         email = data.get('email')
         password = data.get('password')
         role = data.get('role', 'user')
 
-        # 사용자명 중복 검사 (향후 구현)
-        # existing_user = db.supabase.table('users').select('*').eq('username', username).execute()
-        # if existing_user.data:
-        #     return jsonify({'error': '이미 존재하는 사용자명입니다'}), 409
+        # 필수 필드 검증
+        required_fields = ['email', 'password']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'error': f'{field} 필드가 필요합니다'}), 400
 
-        # 비밀번호 해싱
-        import hashlib
-        hashed_password = hashlib.sha256(password.encode()).hexdigest()
+        # 데이터베이스 연결 확인
+        if not db.supabase:
+            return jsonify({'error': '데이터베이스 연결이 필요합니다'}), 503
 
-        # 새 사용자 생성 (향후 데이터베이스 구현)
-        new_user = {
-            'id': 2,  # 임시 ID
-            'username': username,
+        # 사용자 ID 중복 검사
+        existing_user = db.supabase.table('users').select('user_id').eq('user_id', user_id).execute()
+        if existing_user.data:
+            return jsonify({'error': '이미 존재하는 사용자 ID입니다'}), 409
+
+        # 이메일 중복 검사
+        existing_email = db.supabase.table('users').select('user_id').eq('email', email).execute()
+        if existing_email.data:
+            return jsonify({'error': '이미 존재하는 이메일입니다'}), 409
+
+        # 사용자 생성 데이터 준비
+        user_create_data = {
+            'user_id': user_id,
             'email': email,
+            'password': password,
+            'display_name': data.get('display_name', user_id),
             'role': role,
-            'status': 'active',
-            'created_at': datetime.now().isoformat(),
-            'last_login': None
+            'is_active': True
         }
+
+        # database.py의 create_user 함수 사용
+        try:
+            result = db.create_user(user_create_data)
+
+            if not result['success']:
+                return jsonify({'error': result.get('error', '사용자 생성에 실패했습니다')}), 500
+
+            # 응답용 사용자 정보 (비밀번호 제외)
+            created_user = result['user']
+            new_user = {
+                'id': created_user['user_id'],
+                'username': created_user['user_id'],
+                'email': created_user['email'],
+                'display_name': created_user['display_name'],
+                'role': created_user['role'],
+                'status': 'active' if created_user['is_active'] else 'inactive',
+                'created_at': created_user['created_at'],
+                'last_login': None
+            }
+
+        except Exception as db_error:
+            return jsonify({'error': f'데이터베이스 오류: {str(db_error)}'}), 500
 
         return jsonify({
             'success': True,
@@ -564,33 +615,64 @@ def create_user():
     except Exception as e:
         return jsonify({'error': f'사용자 생성 실패: {str(e)}'}), 500
 
-@admin_bp.route('/users/<int:user_id>', methods=['PUT'])
+@admin_bp.route('/users/<user_id>', methods=['PUT'])
 @admin_required()
 def update_user(user_id):
     """사용자 정보 수정"""
     try:
+        # 데이터베이스 연결 확인
+        if not db.supabase:
+            return jsonify({'error': '데이터베이스 연결이 필요합니다'}), 503
+
         data = request.get_json()
 
         # 업데이트할 필드들
-        updatable_fields = ['email', 'role', 'status']
+        updatable_fields = ['email', 'display_name', 'role', 'is_active']
         update_data = {}
 
         for field in updatable_fields:
             if field in data:
-                update_data[field] = data[field]
+                if field == 'status':  # status를 is_active로 변환
+                    update_data['is_active'] = data[field] == 'active'
+                else:
+                    update_data[field] = data[field]
 
         if not update_data:
             return jsonify({'error': '업데이트할 데이터가 없습니다'}), 400
 
-        # 사용자 존재 확인 및 업데이트 (향후 데이터베이스 구현)
-        updated_user = {
-            'id': user_id,
-            'username': 'admin',  # 임시 데이터
-            'email': update_data.get('email', 'admin@aichatinterface.com'),
-            'role': update_data.get('role', 'admin'),
-            'status': update_data.get('status', 'active'),
-            'updated_at': datetime.now().isoformat()
-        }
+        # 사용자 존재 확인
+        existing_user = db.supabase.table('users').select('user_id').eq('user_id', user_id).execute()
+        if not existing_user.data:
+            return jsonify({'error': '존재하지 않는 사용자입니다'}), 404
+
+        # 업데이트 시간 추가
+        update_data['updated_at'] = datetime.now().isoformat()
+
+        # 사용자 정보 업데이트
+        try:
+            result = db.supabase.table('users').update(update_data).eq('user_id', user_id).execute()
+            if not result.data:
+                return jsonify({'error': '사용자 업데이트에 실패했습니다'}), 500
+
+            # 업데이트된 사용자 정보 조회
+            updated_result = db.supabase.table('users').select('user_id, email, display_name, role, is_active, updated_at').eq('user_id', user_id).execute()
+
+            if updated_result.data:
+                user_data = updated_result.data[0]
+                updated_user = {
+                    'id': user_data['user_id'],
+                    'username': user_data['user_id'],
+                    'email': user_data['email'],
+                    'display_name': user_data['display_name'],
+                    'role': user_data['role'],
+                    'status': 'active' if user_data['is_active'] else 'inactive',
+                    'updated_at': user_data['updated_at']
+                }
+            else:
+                return jsonify({'error': '업데이트된 사용자 정보를 조회할 수 없습니다'}), 500
+
+        except Exception as db_error:
+            return jsonify({'error': f'데이터베이스 오류: {str(db_error)}'}), 500
 
         return jsonify({
             'success': True,
@@ -601,17 +683,39 @@ def update_user(user_id):
     except Exception as e:
         return jsonify({'error': f'사용자 업데이트 실패: {str(e)}'}), 500
 
-@admin_bp.route('/users/<int:user_id>', methods=['DELETE'])
+@admin_bp.route('/users/<user_id>', methods=['DELETE'])
 @admin_required()
 def delete_user(user_id):
     """사용자 삭제"""
     try:
+        # 데이터베이스 연결 확인
+        if not db.supabase:
+            return jsonify({'error': '데이터베이스 연결이 필요합니다'}), 503
+
         # 관리자 계정 삭제 방지
-        if user_id == 1:
+        if user_id == 'admin':
             return jsonify({'error': '기본 관리자 계정은 삭제할 수 없습니다'}), 400
 
-        # 사용자 삭제 (향후 데이터베이스 구현)
-        # result = db.supabase.table('users').delete().eq('id', user_id).execute()
+        # 사용자 존재 확인
+        existing_user = db.supabase.table('users').select('user_id, role').eq('user_id', user_id).execute()
+        if not existing_user.data:
+            return jsonify({'error': '존재하지 않는 사용자입니다'}), 404
+
+        # 마지막 관리자 삭제 방지
+        user_data = existing_user.data[0]
+        if user_data['role'] == 'admin':
+            admin_count = db.supabase.table('users').select('user_id').eq('role', 'admin').execute()
+            if len(admin_count.data) <= 1:
+                return jsonify({'error': '마지막 관리자 계정은 삭제할 수 없습니다'}), 400
+
+        # 사용자 삭제
+        try:
+            result = db.supabase.table('users').delete().eq('user_id', user_id).execute()
+            if not result.data:
+                return jsonify({'error': '사용자 삭제에 실패했습니다'}), 500
+
+        except Exception as db_error:
+            return jsonify({'error': f'데이터베이스 오류: {str(db_error)}'}), 500
 
         return jsonify({
             'success': True,
@@ -875,7 +979,93 @@ def update_system_settings():
         # 검증된 설정만 업데이트 (실제 구현에서는 파일 또는 DB에 저장)
         updated_settings = data.get('settings', {})
 
-        # TODO: 실제 설정 파일 업데이트 로직 구현
+        # 시스템 설정 저장 로직 구현
+        import json
+        import os
+
+        # 설정 파일 경로
+        settings_file_path = os.path.join(os.path.dirname(__file__), 'system_settings.json')
+
+        # 기본 설정 구조
+        default_settings = {
+            'server': {
+                'port': 3000,
+                'debug': False,
+                'host': '0.0.0.0'
+            },
+            'database': {
+                'backup_enabled': True,
+                'backup_interval': 24
+            },
+            'security': {
+                'session_timeout': 30,
+                'max_login_attempts': 5,
+                'password_min_length': 8
+            },
+            'logging': {
+                'level': 'INFO',
+                'max_file_size': '10MB',
+                'retention_days': 30
+            },
+            'features': {
+                'user_registration': True,
+                'email_notifications': False,
+                'auto_backup': True
+            }
+        }
+
+        # 현재 설정 로드
+        current_settings = default_settings.copy()
+        if os.path.exists(settings_file_path):
+            try:
+                with open(settings_file_path, 'r', encoding='utf-8') as f:
+                    stored_settings = json.load(f)
+                    # 기존 설정과 병합
+                    for category, settings in stored_settings.items():
+                        if category in current_settings:
+                            current_settings[category].update(settings)
+                        else:
+                            current_settings[category] = settings
+            except Exception as file_error:
+                print(f"설정 파일 로드 실패: {file_error}")
+
+        # 새 설정 업데이트
+        for category, settings in updated_settings.items():
+            if category in current_settings:
+                current_settings[category].update(settings)
+            else:
+                current_settings[category] = settings
+
+        # 설정 파일에 저장
+        try:
+            with open(settings_file_path, 'w', encoding='utf-8') as f:
+                json.dump(current_settings, f, indent=2, ensure_ascii=False)
+        except Exception as file_error:
+            return jsonify({'error': f'설정 파일 저장 실패: {str(file_error)}'}), 500
+
+        # 데이터베이스에도 백업 저장 (Supabase 연결 시)
+        if db.supabase:
+            try:
+                settings_record = {
+                    'settings_data': current_settings,
+                    'updated_at': datetime.now().isoformat(),
+                    'updated_by': 'admin'  # 현재 관리자 정보
+                }
+
+                # 기존 설정이 있는지 확인
+                existing_settings = db.supabase.table('system_settings').select('id').limit(1).execute()
+
+                if existing_settings.data:
+                    # 업데이트
+                    db.supabase.table('system_settings').update(settings_record).eq('id', existing_settings.data[0]['id']).execute()
+                else:
+                    # 새로 삽입
+                    db.supabase.table('system_settings').insert(settings_record).execute()
+
+            except Exception as db_error:
+                print(f"데이터베이스 설정 저장 실패: {db_error}")
+
+        updated_settings = current_settings
 
         return jsonify({
             'success': True,
@@ -885,3 +1075,67 @@ def update_system_settings():
 
     except Exception as e:
         return jsonify({'error': f'설정 업데이트 실패: {str(e)}'}), 500
+
+@admin_bp.route('/system/settings', methods=['GET'])
+@admin_required()
+def get_detailed_system_settings():
+    """시스템 설정 상세 조회"""
+    try:
+        import json
+        import os
+
+        # 설정 파일 경로
+        settings_file_path = os.path.join(os.path.dirname(__file__), 'system_settings.json')
+
+        # 기본 설정
+        default_settings = {
+            'server': {
+                'port': 3000,
+                'debug': False,
+                'host': '0.0.0.0'
+            },
+            'database': {
+                'backup_enabled': True,
+                'backup_interval': 24
+            },
+            'security': {
+                'session_timeout': 30,
+                'max_login_attempts': 5,
+                'password_min_length': 8
+            },
+            'logging': {
+                'level': 'INFO',
+                'max_file_size': '10MB',
+                'retention_days': 30
+            },
+            'features': {
+                'user_registration': True,
+                'email_notifications': False,
+                'auto_backup': True
+            }
+        }
+
+        # 저장된 설정 로드
+        current_settings = default_settings.copy()
+        if os.path.exists(settings_file_path):
+            try:
+                with open(settings_file_path, 'r', encoding='utf-8') as f:
+                    stored_settings = json.load(f)
+                    # 기존 설정과 병합
+                    for category, settings in stored_settings.items():
+                        if category in current_settings:
+                            current_settings[category].update(settings)
+                        else:
+                            current_settings[category] = settings
+            except Exception as file_error:
+                print(f"설정 파일 로드 실패: {file_error}")
+
+        return jsonify({
+            'success': True,
+            'settings': current_settings,
+            'file_path': settings_file_path,
+            'last_updated': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'설정 조회 실패: {str(e)}'}), 500

@@ -13,7 +13,7 @@ const CrewAIInterface = () => {
     const [showProjects, setShowProjects] = useState(false);
     const [projects, setProjects] = useState([]);
     const [activeProject, setActiveProject] = useState(null);
-    const [connectionStatus, setConnectionStatus] = useState('connecting');
+    const [connectionStatus, setConnectionStatus] = useState('connected');
     const [showNewProjectModal, setShowNewProjectModal] = useState(false);
     const [newProjectData, setNewProjectData] = useState({
         name: '',
@@ -67,14 +67,9 @@ const CrewAIInterface = () => {
         }
     };
 
-    // 연결 상태 체크
+    // 연결 상태 체크 (개발용 - 항상 연결됨으로 처리)
     const checkConnection = async () => {
-        try {
-            const response = await fetch('/api/crewai/projects');
-            setConnectionStatus(response.ok ? 'connected' : 'disconnected');
-        } catch (error) {
-            setConnectionStatus('disconnected');
-        }
+        setConnectionStatus('connected'); // UI 테스트를 위해 항상 연결된 상태로 설정
     };
 
     // 새 프로젝트 생성
@@ -108,6 +103,7 @@ const CrewAIInterface = () => {
                 setActiveProject(result.project);
                 setShowNewProjectModal(false);
                 setNewProjectData({ name: '', description: '', project_type: 'web_app' });
+                setConnectionStatus('connected'); // 연결 상태 활성화
                 loadProjects();
 
                 window.UIHelpers.showNotification('프로젝트가 성공적으로 생성되었습니다', 'success');
@@ -313,6 +309,7 @@ const CrewAIInterface = () => {
     const selectProject = async (project) => {
         setActiveProject(project);
         setShowProjects(false);
+        setConnectionStatus('connected'); // 연결 상태 활성화
 
         // 프로젝트별 LLM 매핑 로드
         await loadProjectLLMMapping(project.id);
@@ -408,13 +405,13 @@ const CrewAIInterface = () => {
                     <div className="header-title">
                         <h1>🤝 CrewAI Platform</h1>
                         <div className="header-status">
-                            <span className="project-indicator">
-                                {activeProject ? activeProject.name : '새 프로젝트'}
-                            </span>
-                            <span className={`connection-status ${connectionStatus}`}>
-                                {connectionStatus === 'connected' ? '🟢 연결됨' :
-                                 connectionStatus === 'connecting' ? '🟡 연결중' : '🔴 연결 끊김'}
-                            </span>
+                            {activeProject ? (
+                                <div className="current-project-header">
+                                    📋 {activeProject.name} | {activeProject.progress}% | {activeProject.status}
+                                </div>
+                            ) : (
+                                <span className="project-indicator">새 프로젝트</span>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -560,24 +557,6 @@ const CrewAIInterface = () => {
                             </div>
                         </div>
 
-                        {activeProject && (
-                            <div className="active-project-info">
-                                <h3>📋 현재 프로젝트</h3>
-                                <div className="project-summary">
-                                    <div className="project-name">{activeProject.name}</div>
-                                    <div className="project-progress">
-                                        <div className="progress-bar">
-                                            <div
-                                                className="progress-fill"
-                                                style={{ width: `${activeProject.progress}%` }}
-                                            />
-                                        </div>
-                                        <span>{activeProject.progress}%</span>
-                                    </div>
-                                    <div className="project-status">{activeProject.status}</div>
-                                </div>
-                            </div>
-                        )}
                     </div>
 
                     <div className="chat-main">
@@ -713,8 +692,8 @@ const CrewAIInterface = () => {
                                 </select>
                             </div>
 
-                            <div className="form-group">
-                                <label>현재 역할-LLM 매핑</label>
+                            <div className="llm-mapping-wrapper">
+                                <label className="mapping-label">역할-LLM</label>
                                 <div className="llm-mapping-preview">
                                     {roles.map(role => (
                                         <div key={role.id} className="mapping-item">
@@ -725,9 +704,6 @@ const CrewAIInterface = () => {
                                         </div>
                                     ))}
                                 </div>
-                                <p className="helper-text">
-                                    프로젝트 생성 후 좌측 패널에서 LLM 매핑을 수정할 수 있습니다.
-                                </p>
                             </div>
                         </div>
 

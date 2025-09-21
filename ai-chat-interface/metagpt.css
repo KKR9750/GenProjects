@@ -1080,3 +1080,264 @@ body {
         padding: 12px 16px;
     }
 }
+
+/* Modal Styles for MetaGPT - Green Theme */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+    animation: modalFadeIn 0.3s ease-out;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    max-width: 500px;
+    width: 90%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+.modal-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #059669, #10B981);
+    color: white;
+    border-radius: 8px 8px 0 0;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+}
+
+.modal-body {
+    padding: 12px 16px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.form-group {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 8px;
+    gap: 10px;
+}
+
+.form-group label {
+    width: 70px;
+    min-width: 70px;
+    margin-bottom: 0;
+    font-weight: 500;
+    color: #333;
+    font-size: 0.7rem;
+    line-height: 1.3;
+    padding-top: 2px;
+}
+
+.form-input,
+.form-textarea,
+.form-select {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    font-size: 10px;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus {
+    outline: none;
+    border-color: #059669;
+    box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.2);
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 40px;
+}
+
+.llm-mapping-wrapper {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 8px;
+    gap: 10px;
+}
+
+.llm-mapping-wrapper .mapping-label {
+    width: 70px;
+    min-width: 70px;
+    margin-bottom: 0;
+    font-weight: 500;
+    color: #333;
+    font-size: 0.7rem;
+    line-height: 1.3;
+    padding-top: 2px;
+}
+
+.llm-mapping-preview {
+    flex: 1;
+    background: #f8f9fa;
+    border-radius: 4px;
+    padding: 8px;
+    margin-bottom: 0;
+}
+
+.llm-mapping-preview .mapping-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.llm-mapping-preview .mapping-item:last-child {
+    border-bottom: none;
+}
+
+.llm-mapping-preview .role-name {
+    font-weight: 500;
+    color: #059669;
+    font-size: 11px;
+}
+
+.llm-mapping-preview .llm-name {
+    font-size: 10px;
+    color: #666;
+    background: white;
+    padding: 3px 6px;
+    border-radius: 3px;
+    line-height: 1.2;
+}
+
+.modal-footer {
+    padding: 12px 16px;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.modal-button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.modal-button.secondary {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.modal-button.secondary:hover {
+    background: #e5e7eb;
+}
+
+.modal-button.primary {
+    background: #059669;
+    color: white;
+}
+
+.modal-button.primary:hover {
+    background: #047857;
+}
+
+.modal-button.primary:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+    .modal-content {
+        width: 95%;
+        max-height: 90vh;
+    }
+
+    .modal-header {
+        padding: 10px 12px;
+    }
+
+    .modal-body {
+        padding: 10px 12px;
+    }
+
+    .modal-footer {
+        padding: 10px 12px;
+    }
+
+    .modal-button {
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+}
+
+@keyframes modalFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* Current Project Header Styles - Green Theme */
+.current-project-header {
+    background: rgba(5, 150, 105, 0.1);
+    border: 1px solid rgba(5, 150, 105, 0.2);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #059669;
+    white-space: nowrap;
+    display: inline-block;
+}

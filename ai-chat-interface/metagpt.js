@@ -19,6 +19,14 @@ const MetaGPTInterface = () => {
     const [pendingApproval, setPendingApproval] = useState(null);
     const [stepResults, setStepResults] = useState({});
 
+    // Modal states
+    const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+    const [newProjectData, setNewProjectData] = useState({
+        name: '',
+        description: '',
+        type: 'web_app'
+    });
+
     const steps = [
         {
             id: 1,
@@ -299,8 +307,24 @@ const MetaGPTInterface = () => {
         setMessages([projectMessage]);
     };
 
-    // 새 프로젝트 시작
-    const startNewProject = () => {
+    // 새 프로젝트 모달 열기
+    const openNewProjectModal = () => {
+        setNewProjectData({
+            name: '',
+            description: '',
+            type: 'web_app'
+        });
+        setShowNewProjectModal(true);
+    };
+
+    // 새 프로젝트 생성
+    const createNewProject = () => {
+        if (!newProjectData.name.trim()) {
+            alert('프로젝트 이름을 입력해주세요.');
+            return;
+        }
+
+        // 프로젝트 상태 초기화
         setActiveProject(null);
         setCurrentStep(1);
         setSelectedRole('product-manager');
@@ -308,6 +332,18 @@ const MetaGPTInterface = () => {
         setShowProjects(false);
         setPendingApproval(null);
         setStepResults({});
+        setShowNewProjectModal(false);
+
+        // 초기 메시지 설정
+        const initialMessage = {
+            role: 'system',
+            content: `새 ${newProjectData.type === 'web_app' ? '웹 애플리케이션' :
+                     newProjectData.type === 'mobile_app' ? '모바일 앱' :
+                     newProjectData.type === 'api' ? 'API 서버' :
+                     newProjectData.type === 'desktop' ? '데스크톱 앱' : '데이터 분석'} 프로젝트 "${newProjectData.name}"이 시작되었습니다.\n\n${newProjectData.description}`,
+            timestamp: new Date().toISOString()
+        };
+        setMessages([initialMessage]);
     };
 
     // 대시보드로 돌아가기
@@ -378,9 +414,15 @@ const MetaGPTInterface = () => {
                     </button>
                     <div className="header-title">
                         <h1>🏗️ MetaGPT Platform</h1>
-                        <span className="step-indicator">
-                            {activeProject ? `${currentStep}/5 단계` : '새 프로젝트'}
-                        </span>
+                        <div className="header-status">
+                            {activeProject ? (
+                                <div className="current-project-header">
+                                    🏗️ {activeProject.name} | {currentStep}/5 단계 | {activeProject.status}
+                                </div>
+                            ) : (
+                                <span className="step-indicator">새 프로젝트</span>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -396,7 +438,7 @@ const MetaGPTInterface = () => {
                     </button>
                     <button
                         className="new-project-btn"
-                        onClick={startNewProject}
+                        onClick={openNewProjectModal}
                     >
                         ➕ 새 프로젝트
                     </button>
@@ -675,6 +717,99 @@ const MetaGPTInterface = () => {
                     </div>
                 </div>
             </div>
+
+            {/* New Project Modal */}
+            {showNewProjectModal && (
+                <div className="modal-overlay" onClick={() => setShowNewProjectModal(false)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>🏗️ 새 MetaGPT 프로젝트 생성</h2>
+                            <button
+                                className="modal-close"
+                                onClick={() => setShowNewProjectModal(false)}
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="modal-body">
+                            <div className="form-group">
+                                <label>프로젝트 이름</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    value={newProjectData.name}
+                                    onChange={(e) => setNewProjectData({
+                                        ...newProjectData,
+                                        name: e.target.value
+                                    })}
+                                    placeholder="프로젝트 이름을 입력하세요"
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>프로젝트 설명</label>
+                                <textarea
+                                    className="form-textarea"
+                                    value={newProjectData.description}
+                                    onChange={(e) => setNewProjectData({
+                                        ...newProjectData,
+                                        description: e.target.value
+                                    })}
+                                    placeholder="프로젝트 설명을 입력하세요"
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>프로젝트 타입</label>
+                                <select
+                                    className="form-select"
+                                    value={newProjectData.type}
+                                    onChange={(e) => setNewProjectData({
+                                        ...newProjectData,
+                                        type: e.target.value
+                                    })}
+                                >
+                                    <option value="web_app">웹 애플리케이션</option>
+                                    <option value="mobile_app">모바일 앱</option>
+                                    <option value="api">API 서버</option>
+                                    <option value="desktop">데스크톱 앱</option>
+                                    <option value="data_analysis">데이터 분석</option>
+                                </select>
+                            </div>
+
+                            <div className="llm-mapping-wrapper">
+                                <label className="mapping-label">역할-LLM</label>
+                                <div className="llm-mapping-preview">
+                                    {roles.map(role => (
+                                        <div key={role.id} className="mapping-item">
+                                            <span className="role-name">{role.name}</span>
+                                            <span className="llm-name">
+                                                {llmOptions.find(llm => llm.id === roleLLMMapping[role.id])?.name || 'Unknown'}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="modal-footer">
+                            <button
+                                className="modal-button secondary"
+                                onClick={() => setShowNewProjectModal(false)}
+                            >
+                                취소
+                            </button>
+                            <button
+                                className="modal-button primary"
+                                onClick={createNewProject}
+                            >
+                                프로젝트 생성
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

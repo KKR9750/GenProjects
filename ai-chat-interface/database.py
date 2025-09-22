@@ -18,6 +18,10 @@ import bcrypt
 # Load environment variables
 load_dotenv()
 
+# Force update environment variables to new Supabase settings
+os.environ['SUPABASE_URL'] = 'https://vpbkitxgisxbqtxrwjvo.supabase.co'
+os.environ['SUPABASE_ANON_KEY'] = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwYmtpdHhnaXN4YnF0eHJ3anZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgxNzM5NzUsImV4cCI6MjA3Mzc0OTk3NX0._db0ajX3GQVBUdxl7OJ0ykt14Jb7FSRbUNsEnnqDtp8'
+
 class Database:
     """Database connection and operations handler"""
 
@@ -30,7 +34,7 @@ class Database:
         self.jwt_expire_hours = int(os.getenv("JWT_EXPIRE_HOURS", 24))
 
         if not self.supabase_url or not self.supabase_key:
-            print("WARNING: Supabase 환경 변수가 설정되지 않았습니다. 시뮬레이션 모드로 실행합니다.")
+            print("ERROR: Supabase 환경 변수가 설정되지 않았습니다. 데이터베이스 연결이 불가능합니다.")
             self.supabase = None
             self.service_client = None
         else:
@@ -38,8 +42,8 @@ class Database:
                 # 네트워크 연결 진단 실행
                 network_diagnosis = self._diagnose_network_connection()
                 if not network_diagnosis["can_connect"]:
-                    print(f"WARNING: 네트워크 연결 문제 감지: {network_diagnosis['details']}")
-                    print("시뮬레이션 모드로 실행합니다.")
+                    print(f"ERROR: 네트워크 연결 문제 감지: {network_diagnosis['details']}")
+                    print("데이터베이스 연결이 불가능합니다.")
                     self.supabase = None
                     self.service_client = None
                     return
@@ -60,6 +64,51 @@ class Database:
     def is_connected(self) -> bool:
         """Check if database is connected"""
         return self.supabase is not None
+
+    def reconnect(self) -> Dict[str, Any]:
+        """Attempt to reconnect to the database"""
+        try:
+            if not self.supabase_url or not self.supabase_key:
+                return {
+                    "success": False,
+                    "error": "MISSING_CREDENTIALS",
+                    "message": "Supabase 환경 변수가 설정되지 않았습니다."
+                }
+
+            # 네트워크 연결 다시 테스트
+            network_diagnosis = self._diagnose_network_connection()
+            if not network_diagnosis["can_connect"]:
+                return {
+                    "success": False,
+                    "error": "NETWORK_UNREACHABLE",
+                    "message": f"네트워크 연결 실패: {network_diagnosis['details'].get('diagnosis', '알 수 없는 오류')}",
+                    "recommendations": self._get_connection_recommendations(network_diagnosis)
+                }
+
+            # Supabase 연결 재시도
+            self.supabase = create_client(self.supabase_url, self.supabase_key)
+            self.service_client = create_client(
+                self.supabase_url,
+                self.service_role_key or self.supabase_key
+            )
+
+            # 연결 테스트
+            test_result = self.supabase.table('projects').select('count').execute()
+
+            return {
+                "success": True,
+                "message": "데이터베이스 연결이 성공적으로 복구되었습니다.",
+                "timestamp": datetime.now().isoformat()
+            }
+
+        except Exception as e:
+            self.supabase = None
+            self.service_client = None
+            return {
+                "success": False,
+                "error": "CONNECTION_FAILED",
+                "message": f"데이터베이스 연결 재시도 실패: {str(e)}"
+            }
 
     def _diagnose_network_connection(self) -> Dict[str, Any]:
         """네트워크 연결 상태를 진단합니다"""
@@ -145,8 +194,8 @@ class Database:
             network_diagnosis = self._diagnose_network_connection()
             return {
                 "connected": False,
-                "message": "Supabase 연결이 설정되지 않았습니다",
-                "simulation_mode": True,
+                "message": "데이터베이스 연결에 실패했습니다",
+                "error": "DATABASE_CONNECTION_FAILED",
                 "network_diagnosis": network_diagnosis["details"],
                 "recommendations": self._get_connection_recommendations(network_diagnosis)
             }
@@ -215,7 +264,7 @@ class Database:
     def create_user(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
         """Create a new user"""
         if not self.is_connected():
-            return {"success": False, "error": "Database not connected"}
+            return {"success": False, "error": "DATABASE_CONNECTION_FAILED", "message": "데이터베이스 연결에 실패했습니다."}
 
         try:
             # Hash password if provided
@@ -250,7 +299,7 @@ class Database:
     def get_users(self, role_filter: str = None) -> Dict[str, Any]:
         """Get all users with optional role filter"""
         if not self.is_connected():
-            return {"success": False, "error": "Database not connected"}
+            return {"success": False, "error": "DATABASE_CONNECTION_FAILED", "message": "데이터베이스 연결에 실패했습니다."}
 
         try:
             query = self.supabase.table('users').select('*')
@@ -275,7 +324,7 @@ class Database:
     def get_user(self, user_id: str) -> Dict[str, Any]:
         """Get user by user_id"""
         if not self.is_connected():
-            return {"success": False, "error": "Database not connected"}
+            return {"success": False, "error": "DATABASE_CONNECTION_FAILED", "message": "데이터베이스 연결에 실패했습니다."}
 
         try:
             result = self.supabase.table('users').select('*').eq('user_id', user_id).execute()
@@ -293,7 +342,7 @@ class Database:
     def update_user(self, user_id: str, user_data: Dict[str, Any], admin_user_id: str = None) -> Dict[str, Any]:
         """Update user (admin can update any user, users can update themselves)"""
         if not self.is_connected():
-            return {"success": False, "error": "Database not connected"}
+            return {"success": False, "error": "DATABASE_CONNECTION_FAILED", "message": "데이터베이스 연결에 실패했습니다."}
 
         try:
             # Check if admin or self-update
@@ -341,7 +390,7 @@ class Database:
     def delete_user(self, user_id: str, admin_user_id: str) -> Dict[str, Any]:
         """Delete user (admin only)"""
         if not self.is_connected():
-            return {"success": False, "error": "Database not connected"}
+            return {"success": False, "error": "DATABASE_CONNECTION_FAILED", "message": "데이터베이스 연결에 실패했습니다."}
 
         try:
             # Check if admin
@@ -363,7 +412,7 @@ class Database:
     def verify_user(self, user_id: str, password: str) -> Dict[str, Any]:
         """Verify user credentials"""
         if not self.is_connected():
-            return {"success": False, "error": "Database not connected"}
+            return {"success": False, "error": "DATABASE_CONNECTION_FAILED", "message": "데이터베이스 연결에 실패했습니다."}
 
         try:
             result = self.supabase.table('users').select('*').eq('user_id', user_id).eq('is_active', True).execute()
@@ -395,7 +444,7 @@ class Database:
     def create_project(self, project_data: Dict[str, Any]) -> Dict[str, Any]:
         """Create a new project"""
         if not self.is_connected():
-            return self._simulate_create_project(project_data)
+            return {"success": False, "error": "DATABASE_CONNECTION_FAILED", "message": "데이터베이스 연결에 실패했습니다."}
 
         try:
             # Prepare project data
@@ -419,7 +468,7 @@ class Database:
             if result.data:
                 project = result.data[0]
                 # Create default project stages
-                self._create_project_stages(project['id'])
+                self._create_project_stages(project['project_id'])
                 return {
                     "success": True,
                     "project": project,
@@ -440,11 +489,11 @@ class Database:
     def get_projects(self, user_id: str = None, limit: int = 20) -> Dict[str, Any]:
         """Get list of projects (admin sees all, users see only their own)"""
         if not self.is_connected():
-            return self._simulate_get_projects()
+            return {"success": False, "error": "DATABASE_CONNECTION_FAILED", "message": "데이터베이스 연결에 실패했습니다."}
 
         try:
             query = self.supabase.table('projects').select(
-                'id, name, description, created_by_user_id, selected_ai, project_type, status, '
+                'project_id, name, description, created_by_user_id, selected_ai, project_type, status, '
                 'current_stage, progress_percentage, created_at, updated_at'
             )
 
@@ -474,10 +523,10 @@ class Database:
     def get_project_by_id(self, project_id: str) -> Dict[str, Any]:
         """Get project by ID"""
         if not self.is_connected():
-            return self._simulate_get_project(project_id)
+            return {"success": False, "error": "DATABASE_CONNECTION_FAILED", "message": "데이터베이스 연결에 실패했습니다."}
 
         try:
-            result = self.supabase.table('projects').select('*').eq('id', project_id).execute()
+            result = self.supabase.table('projects').select('*').eq('project_id', project_id).execute()
 
             if result.data:
                 project = result.data[0]
@@ -509,12 +558,12 @@ class Database:
     def update_project(self, project_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
         """Update project"""
         if not self.is_connected():
-            return self._simulate_update_project(project_id, update_data)
+            return {"success": False, "error": "DATABASE_CONNECTION_FAILED", "message": "데이터베이스 연결에 실패했습니다."}
 
         try:
             update_data['updated_at'] = datetime.now().isoformat()
 
-            result = self.supabase.table('projects').update(update_data).eq('id', project_id).execute()
+            result = self.supabase.table('projects').update(update_data).eq('project_id', project_id).execute()
 
             if result.data:
                 return {
@@ -534,22 +583,48 @@ class Database:
                 "error": f"프로젝트 업데이트 중 오류 발생: {str(e)}"
             }
 
+    def delete_project(self, project_id: str) -> Dict[str, Any]:
+        """Delete project and all related data"""
+        if not self.is_connected():
+            return {"success": False, "error": "DATABASE_CONNECTION_FAILED", "message": "데이터베이스 연결에 실패했습니다."}
+
+        try:
+            # Delete from projects table (CASCADE will handle related tables)
+            result = self.supabase.table('projects').delete().eq('project_id', project_id).execute()
+
+            if result.data:
+                return {
+                    "success": True,
+                    "message": f"프로젝트 {project_id}가 성공적으로 삭제되었습니다"
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": "프로젝트를 찾을 수 없습니다"
+                }
+
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"프로젝트 삭제 중 오류 발생: {str(e)}"
+            }
+
     # ==================== ROLE-LLM MAPPING ====================
 
     def set_project_role_llm_mapping(self, project_id: str, mappings: List[Dict[str, str]]) -> Dict[str, Any]:
         """Set role-LLM mappings for a project"""
         if not self.is_connected():
-            return self._simulate_set_role_mappings(project_id, mappings)
+            return {"success": False, "error": "DATABASE_CONNECTION_FAILED", "message": "데이터베이스 연결에 실패했습니다."}
 
         try:
             # Delete existing mappings
-            self.supabase.table('project_role_llm_mapping').delete().eq('project_id', project_id).execute()
+            self.supabase.table('project_role_llm_mapping').delete().eq('projects_project_id', project_id).execute()
 
             # Insert new mappings
             insert_data = []
             for mapping in mappings:
                 insert_data.append({
-                    "project_id": project_id,
+                    "projects_project_id": project_id,
                     "role_name": mapping["role_name"],
                     "llm_model": mapping["llm_model"],
                     "llm_config": mapping.get("llm_config", {}),
@@ -582,10 +657,10 @@ class Database:
     def get_project_role_llm_mapping(self, project_id: str) -> Dict[str, Any]:
         """Get role-LLM mappings for a project"""
         if not self.is_connected():
-            return self._simulate_get_role_mappings(project_id)
+            return {"success": False, "error": "DATABASE_CONNECTION_FAILED", "message": "데이터베이스 연결에 실패했습니다."}
 
         try:
-            result = self.supabase.table('project_role_llm_mapping').select('*').eq('project_id', project_id).eq('is_active', True).execute()
+            result = self.supabase.table('project_role_llm_mapping').select('*').eq('projects_project_id', project_id).eq('is_active', True).execute()
 
             return {
                 "success": True,
@@ -613,7 +688,7 @@ class Database:
         insert_data = []
         for stage in stages:
             insert_data.append({
-                "project_id": project_id,
+                "projects_project_id": project_id,
                 "stage_name": stage["stage_name"],
                 "stage_order": stage["stage_order"],
                 "responsible_role": stage["responsible_role"],
@@ -627,7 +702,7 @@ class Database:
     def _get_project_stages(self, project_id: str) -> List[Dict[str, Any]]:
         """Get project stages"""
         try:
-            result = self.supabase.table('project_stages').select('*').eq('project_id', project_id).order('stage_order').execute()
+            result = self.supabase.table('project_stages').select('*').eq('projects_project_id', project_id).order('stage_order').execute()
             return result.data
         except:
             return []
@@ -635,7 +710,7 @@ class Database:
     def _get_project_role_mappings(self, project_id: str) -> List[Dict[str, Any]]:
         """Get project role mappings"""
         try:
-            result = self.supabase.table('project_role_llm_mapping').select('*').eq('project_id', project_id).eq('is_active', True).execute()
+            result = self.supabase.table('project_role_llm_mapping').select('*').eq('projects_project_id', project_id).eq('is_active', True).execute()
             return result.data
         except:
             return []
@@ -673,129 +748,13 @@ class Database:
                 "error": "유효하지 않은 토큰입니다"
             }
 
-    # ==================== SIMULATION METHODS ====================
-
-    def _simulate_create_project(self, project_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Simulate project creation"""
-        import uuid
-
-        project = {
-            "id": str(uuid.uuid4()),
-            "name": project_data.get("name"),
-            "description": project_data.get("description", ""),
-            "selected_ai": project_data.get("selected_ai", "crew-ai"),
-            "project_type": project_data.get("project_type", "web_app"),
-            "status": "planning",
-            "current_stage": "requirement",
-            "progress_percentage": 0,
-            "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat()
-        }
-
-        return {
-            "success": True,
-            "project": project,
-            "message": "프로젝트가 시뮬레이션 모드에서 생성되었습니다",
-            "simulation": True
-        }
-
-    def _simulate_get_projects(self) -> Dict[str, Any]:
-        """Simulate getting projects"""
-        projects = [
-            {
-                "id": "sim-project-1",
-                "name": "E-commerce 웹사이트",
-                "description": "온라인 쇼핑몰 개발",
-                "selected_ai": "meta-gpt",
-                "project_type": "web_app",
-                "status": "in_progress",
-                "current_stage": "development",
-                "progress_percentage": 60,
-                "created_at": datetime.now().isoformat(),
-                "updated_at": datetime.now().isoformat()
-            },
-            {
-                "id": "sim-project-2",
-                "name": "AI 챗봇 시스템",
-                "description": "고객 서비스용 AI 챗봇",
-                "selected_ai": "crew-ai",
-                "project_type": "api",
-                "status": "planning",
-                "current_stage": "requirement",
-                "progress_percentage": 20,
-                "created_at": datetime.now().isoformat(),
-                "updated_at": datetime.now().isoformat()
-            }
-        ]
-
-        return {
-            "success": True,
-            "projects": projects,
-            "count": len(projects),
-            "simulation": True
-        }
-
-    def _simulate_get_project(self, project_id: str) -> Dict[str, Any]:
-        """Simulate getting single project"""
-        project = {
-            "id": project_id,
-            "name": "시뮬레이션 프로젝트",
-            "description": "테스트용 시뮬레이션 프로젝트",
-            "selected_ai": "crew-ai",
-            "project_type": "web_app",
-            "status": "planning",
-            "current_stage": "requirement",
-            "progress_percentage": 25,
-            "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat(),
-            "stages": [],
-            "role_mappings": []
-        }
-
-        return {
-            "success": True,
-            "project": project,
-            "simulation": True
-        }
-
-    def _simulate_update_project(self, project_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Simulate project update"""
-        return {
-            "success": True,
-            "project": {"id": project_id, **update_data},
-            "message": "프로젝트가 시뮬레이션 모드에서 업데이트되었습니다",
-            "simulation": True
-        }
-
-    def _simulate_set_role_mappings(self, project_id: str, mappings: List[Dict[str, str]]) -> Dict[str, Any]:
-        """Simulate role-LLM mapping"""
-        return {
-            "success": True,
-            "mappings": mappings,
-            "message": "역할-LLM 매핑이 시뮬레이션 모드에서 설정되었습니다",
-            "simulation": True
-        }
-
-    def _simulate_get_role_mappings(self, project_id: str) -> Dict[str, Any]:
-        """Simulate getting role mappings"""
-        mappings = [
-            {"role_name": "Researcher", "llm_model": "gpt-4"},
-            {"role_name": "Writer", "llm_model": "claude-3"},
-            {"role_name": "Planner", "llm_model": "gemini-pro"}
-        ]
-
-        return {
-            "success": True,
-            "mappings": mappings,
-            "simulation": True
-        }
 
     # ==================== METAGPT SPECIFIC FUNCTIONS ====================
 
     def create_metagpt_project(self, project_data: Dict[str, Any]) -> Dict[str, Any]:
         """Create a new MetaGPT project with workflow stages"""
         if not self.is_connected():
-            return self._simulate_create_metagpt_project(project_data)
+            return {"success": False, "error": "DATABASE_CONNECTION_FAILED", "message": "데이터베이스 연결에 실패했습니다."}
 
         try:
             # 1. Create base project
@@ -803,7 +762,7 @@ class Database:
             if not project_result.get("success"):
                 return project_result
 
-            project_id = project_result["project"]["id"]
+            project_id = project_result["project"]["project_id"]
 
             # 2. Create workflow stages
             stages_data = [
@@ -815,7 +774,7 @@ class Database:
             ]
 
             for stage_data in stages_data:
-                stage_data["project_id"] = project_id
+                stage_data["projects_project_id"] = project_id
                 stage_data["created_at"] = datetime.now().isoformat()
                 stage_data["updated_at"] = datetime.now().isoformat()
 
@@ -823,7 +782,7 @@ class Database:
 
             # 3. Create default LLM mapping
             llm_mapping = {
-                "project_id": project_id,
+                "projects_project_id": project_id,
                 "product_manager_llm": "gpt-4",
                 "architect_llm": "claude-3-sonnet",
                 "project_manager_llm": "gpt-4o",
@@ -853,10 +812,10 @@ class Database:
     def get_metagpt_workflow_stages(self, project_id: str) -> Dict[str, Any]:
         """Get MetaGPT workflow stages for a project"""
         if not self.is_connected():
-            return self._simulate_get_metagpt_stages(project_id)
+            return {"success": False, "error": "DATABASE_CONNECTION_FAILED", "message": "데이터베이스 연결에 실패했습니다."}
 
         try:
-            result = self.supabase.table('metagpt_workflow_stages').select('*').eq('project_id', project_id).order('stage_number').execute()
+            result = self.supabase.table('metagpt_workflow_stages').select('*').eq('projects_project_id', project_id).order('stage_number').execute()
 
             return {
                 "success": True,
@@ -874,7 +833,7 @@ class Database:
     def update_metagpt_stage_status(self, stage_id: str, status: str, output_content: str = None) -> Dict[str, Any]:
         """Update MetaGPT stage status and output"""
         if not self.is_connected():
-            return self._simulate_update_metagpt_stage(stage_id, status, output_content)
+            return {"success": False, "error": "DATABASE_CONNECTION_FAILED", "message": "데이터베이스 연결에 실패했습니다."}
 
         try:
             update_data = {
@@ -909,13 +868,13 @@ class Database:
     def set_metagpt_role_llm_mapping(self, project_id: str, mapping_data: Dict[str, str]) -> Dict[str, Any]:
         """Set MetaGPT role-LLM mapping"""
         if not self.is_connected():
-            return self._simulate_set_metagpt_mapping(project_id, mapping_data)
+            return {"success": False, "error": "DATABASE_CONNECTION_FAILED", "message": "데이터베이스 연결에 실패했습니다."}
 
         try:
             update_data = mapping_data.copy()
             update_data["updated_at"] = datetime.now().isoformat()
 
-            result = self.supabase.table('metagpt_role_llm_mapping').update(update_data).eq('project_id', project_id).execute()
+            result = self.supabase.table('metagpt_role_llm_mapping').update(update_data).eq('projects_project_id', project_id).execute()
 
             return {
                 "success": True,
@@ -933,10 +892,10 @@ class Database:
     def get_metagpt_role_llm_mapping(self, project_id: str) -> Dict[str, Any]:
         """Get MetaGPT role-LLM mapping"""
         if not self.is_connected():
-            return self._simulate_get_metagpt_mapping(project_id)
+            return {"success": False, "error": "DATABASE_CONNECTION_FAILED", "message": "데이터베이스 연결에 실패했습니다."}
 
         try:
-            result = self.supabase.table('metagpt_role_llm_mapping').select('*').eq('project_id', project_id).execute()
+            result = self.supabase.table('metagpt_role_llm_mapping').select('*').eq('projects_project_id', project_id).execute()
 
             return {
                 "success": True,
@@ -951,103 +910,11 @@ class Database:
                 "message": f"LLM 매핑 조회 실패: {str(e)}"
             }
 
-    # ==================== METAGPT SIMULATION FUNCTIONS ====================
-
-    def _simulate_create_metagpt_project(self, project_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Simulate MetaGPT project creation"""
-        project_id = f"metagpt-project-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-
-        stages = [
-            {"id": f"stage-{i}", "stage_number": i, "stage_name": name, "status": "pending" if i == 1 else "blocked", "responsible_role": role}
-            for i, (name, role) in enumerate([
-                ("요구사항 분석", "Product Manager"),
-                ("시스템 설계", "Architect"),
-                ("프로젝트 계획", "Project Manager"),
-                ("코드 개발", "Engineer"),
-                ("품질 보증", "QA Engineer")
-            ], 1)
-        ]
-
-        return {
-            "success": True,
-            "project": {
-                "id": project_id,
-                "name": project_data.get("name"),
-                "description": project_data.get("description"),
-                "selected_ai": "meta-gpt",
-                "status": "planning",
-                "created_at": datetime.now().isoformat()
-            },
-            "stages": stages,
-            "llm_mapping": {
-                "product_manager_llm": "gpt-4",
-                "architect_llm": "claude-3-sonnet",
-                "project_manager_llm": "gpt-4o",
-                "engineer_llm": "deepseek-coder",
-                "qa_engineer_llm": "claude-3-haiku"
-            },
-            "message": "MetaGPT 프로젝트가 시뮬레이션 모드에서 생성되었습니다",
-            "simulation": True
-        }
-
-    def _simulate_get_metagpt_stages(self, project_id: str) -> Dict[str, Any]:
-        """Simulate getting MetaGPT stages"""
-        stages = [
-            {"id": f"stage-{i}", "stage_number": i, "stage_name": name, "status": "in_progress" if i == 1 else "pending", "responsible_role": role, "progress_percentage": 30 if i == 1 else 0}
-            for i, (name, role) in enumerate([
-                ("요구사항 분석", "Product Manager"),
-                ("시스템 설계", "Architect"),
-                ("프로젝트 계획", "Project Manager"),
-                ("코드 개발", "Engineer"),
-                ("품질 보증", "QA Engineer")
-            ], 1)
-        ]
-
-        return {
-            "success": True,
-            "stages": stages,
-            "count": len(stages),
-            "simulation": True
-        }
-
-    def _simulate_update_metagpt_stage(self, stage_id: str, status: str, output_content: str = None) -> Dict[str, Any]:
-        """Simulate updating MetaGPT stage"""
-        return {
-            "success": True,
-            "stage": {
-                "id": stage_id,
-                "status": status,
-                "output_content": output_content,
-                "updated_at": datetime.now().isoformat()
-            },
-            "message": "워크플로우 단계가 시뮬레이션 모드에서 업데이트되었습니다",
-            "simulation": True
-        }
-
-    def _simulate_set_metagpt_mapping(self, project_id: str, mapping_data: Dict[str, str]) -> Dict[str, Any]:
-        """Simulate setting MetaGPT LLM mapping"""
-        return {
-            "success": True,
-            "mapping": mapping_data,
-            "message": "MetaGPT LLM 매핑이 시뮬레이션 모드에서 저장되었습니다",
-            "simulation": True
-        }
-
-    def _simulate_get_metagpt_mapping(self, project_id: str) -> Dict[str, Any]:
-        """Simulate getting MetaGPT LLM mapping"""
-        return {
-            "success": True,
-            "mapping": {
-                "product_manager_llm": "gpt-4",
-                "architect_llm": "claude-3-sonnet",
-                "project_manager_llm": "gpt-4o",
-                "engineer_llm": "deepseek-coder",
-                "qa_engineer_llm": "claude-3-haiku"
-            },
-            "found": True,
-            "simulation": True
-        }
 
 
 # Global database instance
-db = Database()
+def get_database():
+    """Get database instance with current environment variables"""
+    return Database()
+
+db = get_database()

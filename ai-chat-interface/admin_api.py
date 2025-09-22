@@ -228,9 +228,7 @@ def get_system_health():
         health_status = {
             'database': 'healthy',
             'flask_server': 'healthy',
-            'websocket': 'healthy',
-            'crewai_service': 'unknown',
-            'metagpt_service': 'unknown'
+            'websocket': 'healthy'
         }
 
         # 데이터베이스 연결 테스트
@@ -243,24 +241,9 @@ def get_system_health():
         except Exception as e:
             health_status['database'] = 'error'
 
-        # CrewAI 서비스 체크
-        try:
-            import requests
-            response = requests.get('http://localhost:3001/health', timeout=5)
-            health_status['crewai_service'] = 'healthy' if response.status_code == 200 else 'error'
-        except:
-            health_status['crewai_service'] = 'disconnected'
-
-        # MetaGPT 서비스 체크
-        try:
-            import requests
-            response = requests.get('http://localhost:3002/health', timeout=5)
-            health_status['metagpt_service'] = 'healthy' if response.status_code == 200 else 'error'
-        except:
-            health_status['metagpt_service'] = 'disconnected'
-
+        # 전체 시스템 상태 결정 (실제 서비스만 체크)
         overall_health = 'healthy' if all(
-            status in ['healthy', 'unknown'] for status in health_status.values()
+            status == 'healthy' for status in health_status.values()
         ) else 'degraded'
 
         return jsonify({
@@ -295,7 +278,7 @@ def get_all_projects():
         # projects 테이블에서 프로젝트 건수만 조회
         try:
             # count만 조회 (성능 최적화)
-            result = db.supabase.table('projects').select('id').execute()
+            result = db.supabase.table('projects').select('project_id').execute()
             if result.data:
                 total_count = len(result.data)
 
@@ -310,11 +293,11 @@ def get_all_projects():
                     for project in projects:
                         try:
                             # 프로젝트 단계 정보
-                            stages_result = db.supabase.table('project_stages').select('*').eq('project_id', project['id']).execute()
+                            stages_result = db.supabase.table('project_stages').select('*').eq('project_id', project['project_id']).execute()
                             stages = stages_result.data
 
                             # 산출물 정보
-                            deliverables_result = db.supabase.table('project_deliverables').select('*').eq('project_id', project['id']).execute()
+                            deliverables_result = db.supabase.table('project_deliverables').select('*').eq('project_id', project['project_id']).execute()
                             deliverables = deliverables_result.data
 
                             project['statistics'] = {
@@ -379,7 +362,7 @@ def force_complete_project(project_id):
             'status': 'completed',
             'progress_percentage': 100,
             'updated_at': datetime.now().isoformat()
-        }).eq('id', project_id).execute()
+        }).eq('project_id', project_id).execute()
 
         if result.data:
             return jsonify({

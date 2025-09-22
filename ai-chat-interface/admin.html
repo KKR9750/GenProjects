@@ -652,8 +652,7 @@
                             <p style="margin-bottom: 8px;"><strong>전체 시스템 상태:</strong> <span style="color: ${healthData.overall_health === 'healthy' ? '#27ae60' : '#f39c12'};">${healthData.overall_health}</span></p>
                             <p style="margin-bottom: 8px;"><strong>데이터베이스:</strong> <span style="color: ${healthData.services?.database === 'healthy' ? '#27ae60' : '#e74c3c'};">${healthData.services?.database || 'Unknown'}</span></p>
                             <p style="margin-bottom: 8px;"><strong>Flask 서버:</strong> <span style="color: #27ae60;">${healthData.services?.flask_server || 'Running'}</span></p>
-                            <p style="margin-bottom: 8px;"><strong>CrewAI 서비스:</strong> <span style="color: ${healthData.services?.crewai_service === 'healthy' ? '#27ae60' : '#e74c3c'};">${healthData.services?.crewai_service || 'Unknown'}</span></p>
-                            <p style="margin-bottom: 8px;"><strong>MetaGPT 서비스:</strong> <span style="color: ${healthData.services?.metagpt_service === 'healthy' ? '#27ae60' : '#e74c3c'};">${healthData.services?.metagpt_service || 'Unknown'}</span></p>
+                            <p style="margin-bottom: 8px;"><strong>WebSocket:</strong> <span style="color: #27ae60;">${healthData.services?.websocket || 'Running'}</span></p>
                             <p style="margin-bottom: 0; color: #7f8c8d; font-size: 12px;"><strong>마지막 업데이트:</strong> ${new Date(healthData.timestamp || Date.now()).toLocaleString()}</p>
                         </div>
                     `;

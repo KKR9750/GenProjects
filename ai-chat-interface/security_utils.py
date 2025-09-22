@@ -28,7 +28,7 @@ class InputValidator:
         'user_roles': ['user', 'admin', 'developer'],
         'llm_models': [
             'gpt-4', 'gpt-4o', 'claude-3', 'claude-3-haiku',
-            'gemini-pro', 'gemini-ultra', 'llama-3', 'llama-3-8b',
+            'gemini-pro', 'gemini-ultra', 'gemini-flash', 'llama-3', 'llama-3-8b',
             'mistral-large', 'mistral-7b', 'deepseek-coder', 'codellama'
         ],
         'role_names': [

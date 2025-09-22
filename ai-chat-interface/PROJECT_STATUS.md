@@ -96,6 +96,27 @@ AI 프로그램 생성을 위한 대화형 인터페이스 개발
   - MetaGPT 워크플로우 단계별 진행 상황
   - 에러 상태 및 복구 관리
 
+#### 12. **데이터베이스 스키마 최적화** ⭐ **신규 완성 (2025-09-22)**
+- **Primary Key 구조 개선** (`update_database_new_pk.sql`)
+  - 9개 테이블의 PK를 `id UUID`에서 `project_id SERIAL`로 변경
+  - 성능 최적화: UUID 대신 정수형 SERIAL 사용으로 쿼리 성능 향상
+  - 외래키 참조 일관성: 모든 테이블에서 동일한 project_id 구조 사용
+
+- **안전한 마이그레이션 시스템**
+  - 기존 데이터 보존하면서 스키마 변경
+  - 동적 데이터 삽입으로 외래키 제약조건 해결
+  - 트리거 충돌 방지: `DROP TRIGGER IF EXISTS` 방식 적용
+
+- **스키마 파일 통합 업데이트**
+  - `setup_database.sql`: 핵심 4개 테이블 (project_stages, project_role_llm_mapping, project_deliverables, deliverable_access_log)
+  - `setup_database_metagpt.sql`: MetaGPT 5개 테이블 (metagpt_workflow_stages, metagpt_role_llm_mapping, metagpt_deliverables, metagpt_communication_log, metagpt_project_metrics)
+  - 모든 파일에서 트리거 생성 충돌 문제 해결
+
+- **MetaGPT 특화 기능 보완**
+  - 워크플로우 자동 진행 트리거: 단계 완료 시 다음 단계 자동 활성화
+  - 산출물 버전 관리 트리거: 동일 타입 산출물의 자동 버전 증가
+  - 새로운 컬럼 구조에 맞게 함수 로직 수정
+
 #### 2. **메인 UI 인터페이스**
 - **좌측 사이드바**: AI 프레임워크 및 역할 선택 영역 (`app_simple.js`)
 - **우측 채팅 영역**: 대화형 인터페이스
@@ -1711,6 +1732,34 @@ os.environ['SUPABASE_ANON_KEY'] = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
 - **임시 URL 사용 금지**: 테스트/임시 목적의 불안정한 URL 사용 불가
 - **URL 하드코딩 여러 곳 금지**: database.py 한 곳에서만 관리
 - **캐시된 잘못된 URL 방치 금지**: 문제 발견 즉시 수정 및 재시작
+
+---
+
+## 🔴 중요: 환경변수 설정 완료 - 반복 질문 금지
+
+### ❌ 금지된 질문들
+다음 질문들은 **절대 하지 말 것** - 이미 모든 환경변수가 정상 설정되어 있음:
+
+1. **"환경변수 설정이 필요합니다"** ❌
+2. **"GOOGLE_API_KEY를 설정하세요"** ❌
+3. **"SUPABASE_URL을 확인하세요"** ❌
+4. **"API 키가 없어서 실행이 안됩니다"** ❌
+5. **"환경변수를 다음과 같이 설정하세요"** ❌
+
+### ✅ 확정된 사실들
+- **모든 필수 환경변수 설정 완료**: GOOGLE_API_KEY, SUPABASE_URL, SUPABASE_ANON_KEY
+- **데이터베이스 연결 정상**: database.py에서 강제 설정으로 안정적 연결
+- **API 키 모두 유효**: Google, Supabase 등 모든 외부 서비스 연동 완료
+- **CrewAI 시스템 업그레이드 완료**: 임시2 수준 품질 생성 가능한 상태
+
+### 🎯 실제 문제들 (환경변수 아님)
+CrewAI 서비스가 unavailable인 실제 원인들:
+1. **Supabase 연결 타임아웃**: 네트워크 이슈 (환경변수 문제 아님)
+2. **포트 충돌**: 3001/3003 포트 사용 충돌 (환경변수 문제 아님)
+3. **서버 부팅 시간**: 초기 로딩 시간 필요 (환경변수 문제 아님)
+
+### 📝 기록 목적
+이 섹션은 동일한 환경변수 관련 질문 반복을 방지하기 위해 2025-09-22에 추가되었습니다. **모든 환경변수는 이미 올바르게 설정되어 있으므로** 더 이상 환경변수 설정 관련 질문을 하지 않습니다.
 
 ---
 

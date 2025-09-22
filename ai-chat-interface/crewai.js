@@ -1,11 +1,11 @@
 const { useState, useEffect, useRef } = React;
 
 const CrewAIInterface = () => {
-    const [selectedRole, setSelectedRole] = useState('researcher');
+    const [selectedRole, setSelectedRole] = useState('planner');
     const [roleLLMMapping, setRoleLLMMapping] = useState({
+        planner: 'gpt-4o',
         researcher: 'gpt-4',
-        writer: 'claude-3',
-        planner: 'gpt-4o'
+        writer: 'claude-3'
     });
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState('');
@@ -22,9 +22,9 @@ const CrewAIInterface = () => {
     });
 
     const roles = [
+        { id: 'planner', name: 'Planner', description: '전략 수립 및 계획 전문가', icon: '📋' },
         { id: 'researcher', name: 'Researcher', description: '정보 수집 및 분석 전문가', icon: '🔍' },
-        { id: 'writer', name: 'Writer', description: '콘텐츠 생성 및 문서화 전문가', icon: '✍️' },
-        { id: 'planner', name: 'Planner', description: '전략 수립 및 계획 전문가', icon: '📋' }
+        { id: 'writer', name: 'Writer', description: '콘텐츠 생성 및 문서화 전문가', icon: '✍️' }
     ];
 
     // LLM 모델 목록 (React 상태로 관리)
@@ -93,12 +93,12 @@ const CrewAIInterface = () => {
             if (result.success) {
                 // 역할-LLM 매핑 저장
                 const mappings = [
+                    { role_name: 'Planner', llm_model: roleLLMMapping.planner },
                     { role_name: 'Researcher', llm_model: roleLLMMapping.researcher },
-                    { role_name: 'Writer', llm_model: roleLLMMapping.writer },
-                    { role_name: 'Planner', llm_model: roleLLMMapping.planner }
+                    { role_name: 'Writer', llm_model: roleLLMMapping.writer }
                 ];
 
-                await window.apiClient.setRoleLLMMapping(result.project.id, mappings);
+                await window.apiClient.setRoleLLMMapping(result.project.project_id, mappings);
 
                 setActiveProject(result.project);
                 setShowNewProjectModal(false);
@@ -127,17 +127,17 @@ const CrewAIInterface = () => {
 
         try {
             const mappings = [
+                { role_name: 'Planner', llm_model: roleLLMMapping.planner },
                 { role_name: 'Researcher', llm_model: roleLLMMapping.researcher },
-                { role_name: 'Writer', llm_model: roleLLMMapping.writer },
-                { role_name: 'Planner', llm_model: roleLLMMapping.planner }
+                { role_name: 'Writer', llm_model: roleLLMMapping.writer }
             ];
 
-            const result = await window.apiClient.setRoleLLMMapping(activeProject.id, mappings);
+            const result = await window.apiClient.setRoleLLMMapping(activeProject.project_id, mappings);
 
             if (result.success) {
                 window.UIHelpers.showNotification('LLM 매핑이 저장되었습니다', 'success');
                 // 로컬 스토리지에도 저장
-                window.StorageHelpers.setItem(`crewai_llm_mapping_${activeProject.id}`, roleLLMMapping);
+                window.StorageHelpers.setItem(`crewai_llm_mapping_${activeProject.project_id}`, roleLLMMapping);
             } else {
                 window.UIHelpers.showNotification(result.error || 'LLM 매핑 저장에 실패했습니다', 'error');
             }
@@ -188,7 +188,7 @@ const CrewAIInterface = () => {
 
             if (data.success) {
                 const formattedProjects = (data.data || []).map(project => ({
-                    id: project.id,
+                    project_id: project.project_id || project.id,
                     name: project.name,
                     description: project.description,
                     created_at: project.created_at,
@@ -216,7 +216,7 @@ const CrewAIInterface = () => {
 
         // 활성 프로젝트가 있다면 데이터베이스에 즉시 저장
         if (activeProject) {
-            updateProjectLLMMapping(activeProject.id, newMapping);
+            updateProjectLLMMapping(activeProject.project_id, newMapping);
         }
     };
 
@@ -224,9 +224,9 @@ const CrewAIInterface = () => {
     const updateProjectLLMMapping = async (projectId, mapping) => {
         try {
             const mappings = [
+                { role_name: 'Planner', llm_model: mapping.planner },
                 { role_name: 'Researcher', llm_model: mapping.researcher },
-                { role_name: 'Writer', llm_model: mapping.writer },
-                { role_name: 'Planner', llm_model: mapping.planner }
+                { role_name: 'Writer', llm_model: mapping.writer }
             ];
 
             const result = await window.apiClient.saveRoleLLMMapping(projectId, mappings);
@@ -263,7 +263,7 @@ const CrewAIInterface = () => {
                     requirement: inputText,
                     selectedModels: roleLLMMapping,
                     selectedRole: selectedRole,
-                    projectId: activeProject?.id
+                    projectId: activeProject?.project_id
                 })
             });
 
@@ -312,7 +312,7 @@ const CrewAIInterface = () => {
         setConnectionStatus('connected'); // 연결 상태 활성화
 
         // 프로젝트별 LLM 매핑 로드
-        await loadProjectLLMMapping(project.id);
+        await loadProjectLLMMapping(project.project_id);
 
         // 프로젝트 정보를 채팅에 추가
         const projectMessage = {
@@ -324,6 +324,44 @@ const CrewAIInterface = () => {
         };
 
         setMessages([projectMessage]);
+    };
+
+    // 프로젝트 삭제
+    const deleteProject = async (projectId, projectName) => {
+        if (!confirm(`정말로 프로젝트 "${projectName}" (${projectId})를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`)) {
+            return;
+        }
+
+        try {
+            const result = await window.apiClient.deleteProject(projectId);
+            if (result.success) {
+                // 삭제 성공 시 프로젝트 목록에서 제거
+                setProjects(projects.filter(p => p.project_id !== projectId));
+
+                // 삭제한 프로젝트가 현재 활성 프로젝트였다면 초기화
+                if (activeProject?.project_id === projectId) {
+                    setActiveProject(null);
+                    setMessages([]);
+                }
+
+                // 성공 메시지
+                const successMessage = {
+                    id: Date.now(),
+                    text: `프로젝트 "${projectName}" (${projectId})가 성공적으로 삭제되었습니다.`,
+                    sender: 'system',
+                    timestamp: new Date()
+                };
+                setMessages(prev => [...prev, successMessage]);
+
+                console.log('프로젝트 삭제 완료:', result.message);
+            } else {
+                alert(`프로젝트 삭제 실패: ${result.error}`);
+                console.error('프로젝트 삭제 실패:', result.error);
+            }
+        } catch (error) {
+            alert(`프로젝트 삭제 중 오류가 발생했습니다: ${error.message}`);
+            console.error('프로젝트 삭제 오류:', error);
+        }
     };
 
     // 새 프로젝트 시작
@@ -465,15 +503,18 @@ const CrewAIInterface = () => {
                             ) : (
                                 projects.map(project => (
                                     <div
-                                        key={project.id}
-                                        className={`project-item ${activeProject?.id === project.id ? 'active' : ''}`}
-                                        onClick={() => selectProject(project)}
+                                        key={project.project_id}
+                                        className={`project-item ${activeProject?.project_id === project.project_id ? 'active' : ''}`}
                                     >
-                                        <div className="project-info">
+                                        <div className="project-info" onClick={() => selectProject(project)}>
                                             <h4>{project.name}</h4>
                                             <p>{project.description}</p>
+                                            <div className="project-id">
+                                                <span className="project-id-label">ID:</span>
+                                                <span className="project-id-value">{project.project_id}</span>
+                                            </div>
                                         </div>
-                                        <div className="project-meta">
+                                        <div className="project-meta" onClick={() => selectProject(project)}>
                                             <div className="project-progress">
                                                 <div className="progress-bar">
                                                     <div
@@ -487,6 +528,18 @@ const CrewAIInterface = () => {
                                             <span className="project-date">
                                                 {new Date(project.created_at).toLocaleDateString()}
                                             </span>
+                                        </div>
+                                        <div className="project-actions">
+                                            <button
+                                                className="delete-project-btn"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    deleteProject(project.project_id, project.name);
+                                                }}
+                                                title={`프로젝트 ${project.name} 삭제`}
+                                            >
+                                                🗑️
+                                            </button>
                                         </div>
                                     </div>
                                 ))
@@ -546,7 +599,7 @@ const CrewAIInterface = () => {
                                             ) : (
                                                 llmOptions.map(llm => (
                                                     <option key={llm.id} value={llm.id}>
-                                                        {llm.type === 'local' ? '🏠' : '☁️'} {llm.name} ({llm.provider})
+                                                        {llm.name} ({llm.provider})
                                                         {llm.parameter_size ? ` [${llm.parameter_size}]` : ''}
                                                     </option>
                                                 ))

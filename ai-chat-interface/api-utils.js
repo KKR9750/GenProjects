@@ -125,6 +125,10 @@ class APIClient {
         return this.put(`/api/v2/projects/${projectId}`, updateData);
     }
 
+    async deleteProject(projectId) {
+        return this.delete(`/api/v2/projects/${projectId}`);
+    }
+
     // ==================== ROLE-LLM MAPPING API ====================
 
     async setRoleLLMMapping(projectId, mappings) {

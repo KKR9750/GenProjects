@@ -133,7 +133,7 @@ def create_project_from_template(template_id):
         execution_result = None
 
         if auto_execute:
-            execution_result = project_executor.execute_project(project_data['id'])
+            execution_result = project_executor.execute_project(project_data['project_id'])
 
         return jsonify({
             'success': True,

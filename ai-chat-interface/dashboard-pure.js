@@ -246,35 +246,15 @@ const Dashboard = () => {
             e('div', { className: 'header-content' },
                 e('div', { className: 'header-left' },
                     e('h1', null, '🚀 AI 개발 플랫폼 통합 대시보드'),
-                    e('p', null, 'CrewAI와 MetaGPT를 통합 관리하는 중앙 제어 센터')
                 ),
                 e('div', { className: 'header-right' },
-                    e('div', { className: 'system-overview' },
-                        e('div', { className: 'status-item' },
-                            e('span', { className: 'status-icon' }, getStatusIcon(systemStatus.dashboard)),
-                            e('span', { className: 'status-text' }, '대시보드')
-                        ),
-                        e('div', { className: 'status-item' },
-                            e('span', { className: 'status-icon' }, getStatusIcon(systemStatus.database)),
-                            e('span', { className: 'status-text' }, '데이터베이스')
-                        ),
-                        e('div', { className: 'status-item' },
-                            e('span', { className: 'status-icon' }, getStatusIcon(systemStatus.crewai)),
-                            e('span', { className: 'status-text' }, 'CrewAI')
-                        ),
-                        e('div', { className: 'status-item' },
-                            e('span', { className: 'status-icon' }, getStatusIcon(systemStatus.metagpt)),
-                            e('span', { className: 'status-text' }, 'MetaGPT')
-                        ),
-                        e('div', { className: 'auth-section' },
+                    e('div', { className: 'auth-section' },
                             authToken ?
                                 e('div', { className: 'auth-info' },
                                     e('div', { className: 'user-info' },
                                         e('span', { className: 'user-greeting' },
                                             `👋 ${currentUser?.display_name || currentUser?.user_id || '사용자'}님`
-                                        ),
-                                        currentUser?.role === 'admin' &&
-                                            e('span', { className: 'admin-badge' }, '🛡️ 관리자')
+                                        )
                                     ),
                                     e('button', {
                                         className: 'auth-button logout',
@@ -285,20 +265,19 @@ const Dashboard = () => {
                                     className: 'auth-button login',
                                     onClick: () => setShowAuthModal(true)
                                 }, '🔑 로그인')
-                        ),
-                        e('div', { className: 'admin-section' },
-                            e('button', {
-                                className: 'admin-button',
-                                onClick: () => window.location.href = '/admin',
-                                title: '관리자 대시보드로 이동'
-                            }, '🛡️ 관리자')
-                        ),
+                    ),
+                    e('div', { className: 'admin-section' },
                         e('button', {
-                            className: 'refresh-button',
-                            onClick: () => checkSystemStatus(),
-                            disabled: isLoading
-                        }, `${isLoading ? '🔄' : '🔄'} 새로고침`)
-                    )
+                            className: 'admin-button',
+                            onClick: () => window.location.href = '/admin',
+                            title: '관리자 대시보드로 이동'
+                        }, '🛡️ 관리자')
+                    ),
+                    e('button', {
+                        className: 'refresh-button',
+                        onClick: () => checkSystemStatus(),
+                        disabled: isLoading
+                    }, `${isLoading ? '🔄' : '🔄'} 새로고침`)
                 )
             )
         ),

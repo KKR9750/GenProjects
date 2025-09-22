@@ -190,6 +190,9 @@ body {
     margin-bottom: 6px;
     cursor: pointer;
     transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
 .project-item:hover {
@@ -218,10 +221,66 @@ body {
     margin-bottom: 15px;
 }
 
+.project-id {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+    font-size: 0.65rem;
+}
+
+.project-id-label {
+    color: #888;
+    font-weight: 500;
+}
+
+.project-id-value {
+    color: #4F46E5;
+    font-family: monospace;
+    font-weight: 600;
+    background: rgba(79, 70, 229, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+
+.project-info {
+    flex: 1;
+    cursor: pointer;
+}
+
 .project-meta {
+    cursor: pointer;
     display: flex;
     flex-direction: column;
     gap: 8px;
+}
+
+.project-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.delete-project-btn {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: #EF4444;
+    min-width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.delete-project-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: #EF4444;
+    transform: scale(1.1);
 }
 
 .project-progress {
@@ -349,17 +408,20 @@ body {
 .mapping-list {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
 }
 
 .mapping-item {
     display: flex;
     align-items: center;
-    gap: 2px;
-    background: rgba(255, 255, 255, 0.8);
-    padding: 2px 4px;
-    border-radius: 8px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
 }
 
 .mapping-role {
@@ -377,9 +439,10 @@ body {
 }
 
 .mapping-role .role-name {
-    font-size: 0.7rem;
-    font-weight: 500;
-    color: #555;
+    font-size: 12px;
+    font-weight: 600;
+    color: #4F46E5;
+    min-width: 60px;
 }
 
 .mapping-role .role-name.current {
@@ -390,17 +453,27 @@ body {
 .llm-select {
     flex: 1;
     background: white;
-    border: 2px solid rgba(0, 0, 0, 0.1);
+    border: 2px solid rgba(79, 70, 229, 0.2);
     border-radius: 8px;
-    padding: 8px 12px;
-    font-size: 0.9rem;
+    padding: 6px 12px;
+    font-size: 11px !important;
     cursor: pointer;
     transition: all 0.3s ease;
+    min-width: 140px;
+    max-width: 200px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .llm-select:focus {
     outline: none;
     border-color: #4F46E5;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+    transform: translateY(-1px);
+}
+
+.mapping-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
 }
 
 .active-project-info {

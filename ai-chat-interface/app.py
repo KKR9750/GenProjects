@@ -6,13 +6,14 @@ Single Python server integrating CrewAI and MetaGPT
 
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_cors import CORS
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO, emit, join_room, leave_room
 import os
 import sys
 import json
 import subprocess
 import threading
 import time
+import psutil
 from datetime import datetime
 import requests
 from functools import wraps
@@ -32,6 +33,7 @@ from ollama_client import ollama_client
 from websocket_manager import init_websocket_manager, get_websocket_manager
 from realtime_progress_tracker import global_progress_tracker
 from admin_auth import admin_auth
+from crewai_logger import crewai_logger, ExecutionPhase
 
 # Add current directory to Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -63,6 +65,10 @@ CORS(app,
      allow_headers=['Content-Type', 'Authorization'],
      supports_credentials=True,
      max_age=3600)
+
+# Initialize WebSocket manager and CrewAI logger
+init_websocket_manager(socketio)
+crewai_logger.set_websocket_manager(get_websocket_manager())
 
 # Register blueprints
 app.register_blueprint(template_bp)
@@ -249,6 +255,11 @@ def crewai_interface():
     """CrewAI 인터페이스"""
     return send_from_directory('.', 'crewai.html')
 
+@app.route('/crewai/logs')
+def crewai_logs():
+    """CrewAI 로깅 대시보드"""
+    return send_from_directory('.', 'crewai_logs.html')
+
 @app.route('/metagpt')
 def metagpt_interface():
     """MetaGPT 인터페이스"""
@@ -288,10 +299,6 @@ def health_check():
         'message': 'AI Chat Interface Server is running',
         'server': 'Flask (Python)',
         'timestamp': datetime.now().isoformat(),
-        'services': {
-            'crewai': check_crewai_service(),
-            'metagpt': check_metagpt_service()
-        },
         'database': {
             'connected': database_status.get('connected', False),
             'message': database_status.get('message', ''),
@@ -303,8 +310,8 @@ def health_check():
 def check_crewai_service():
     """Check CrewAI service status"""
     try:
-        # Check if CrewAI server is running
-        response = requests.get(f'{CREWAI_URL}/api/projects', timeout=2)
+        # Check if CrewAI server is running using main page
+        response = requests.get(f'{CREWAI_URL}/', timeout=2)
         return 'available' if response.status_code == 200 else 'unavailable'
     except:
         return 'unavailable'
@@ -337,10 +344,13 @@ def handle_crewai_request():
         # Check if CrewAI server is running
         if check_crewai_service() == 'available':
             # Forward request to CrewAI server
-            crewai_response = requests.post(f'{CREWAI_URL}/api/crews', {
-                'requirement': requirement,
-                'models': selected_models
-            }, timeout=30)
+            crewai_response = requests.post(f'{CREWAI_URL}/api/crews',
+                json={
+                    'requirement': requirement,
+                    'models': selected_models
+                },
+                headers={'Content-Type': 'application/json'},
+                timeout=30)
 
             if crewai_response.status_code == 200:
                 return jsonify(crewai_response.json())
@@ -868,7 +878,7 @@ def start_crewai_service():
             return jsonify({
                 'success': True,
                 'message': 'CrewAI service started.',
-                'url': 'http://localhost:3001'
+                'url': 'http://localhost:3003'
             })
         else:
             return jsonify({
@@ -888,7 +898,7 @@ def get_services_status():
     return jsonify({
         'crewai': {
             'status': check_crewai_service(),
-            'url': 'http://localhost:3001'
+            'url': CREWAI_URL
         },
         'metagpt': {
             'status': check_metagpt_service(),
@@ -904,7 +914,8 @@ def get_services_status():
 def get_projects_v2():
     """Get projects list from database"""
     limit = request.args.get('limit', 20, type=int)
-    result = db.get_projects(limit)
+    # Pass user_id=None to show all projects (for now)
+    result = db.get_projects(user_id=None, limit=limit)
 
     return jsonify(result)
 
@@ -962,6 +973,15 @@ def update_project_v2(project_id):
         }), 400
 
     result = db.update_project(project_id, data)
+    status_code = 200 if result.get('success') else 400
+
+    return jsonify(result), status_code
+
+@app.route('/api/v2/projects/<project_id>', methods=['DELETE'])
+@optional_auth
+def delete_project_v2(project_id):
+    """Delete project from database"""
+    result = db.delete_project(project_id)
     status_code = 200 if result.get('success') else 400
 
     return jsonify(result), status_code
@@ -1865,6 +1885,11 @@ def start_background_execution(crew_id, inputs, script_path):
         "crew_id": crew_id
     }
 
+    # 강화된 로깅 시작
+    crewai_logger.start_execution_logging(execution_id, crew_id, inputs)
+    crewai_logger.log_validation(execution_id, crew_id, "script_path",
+                                os.path.exists(script_path), {"script_path": script_path})
+
     # 실행 이력 DB에 'running' 상태로 기록 시작
     try:
         if supabase:
@@ -1892,6 +1917,7 @@ def start_background_execution(crew_id, inputs, script_path):
 
 def run_program_background(crew_id, inputs, execution_id, script_path, supabase_client):
     """백그라운드에서 프로그램 실행 (공통 로직)"""
+    start_time = time.time()
     env = os.environ.copy()
     project_name = None
     output_path = None
@@ -1899,24 +1925,56 @@ def run_program_background(crew_id, inputs, execution_id, script_path, supabase_
     # 크루 생성기('creator')인 경우 특별 처리
     is_creating_crew = inputs.pop('is_crew_creator', None) == "true"
 
+    # 초기화 단계 시작
+    crewai_logger.start_phase(execution_id, crew_id, ExecutionPhase.INITIALIZATION)
+
     try:
         if is_creating_crew:
             project_name = inputs.get('project_name', 'new-crew-project')
+            crewai_logger.log(
+                execution_id, crew_id, ExecutionPhase.INITIALIZATION,
+                crewai_logger.LogLevel.INFO,
+                f"크루 생성 모드 - 프로젝트명: {project_name}",
+                {"project_name": project_name, "is_creator": True}
+            )
+
+        # 초기화 단계 완료
+        crewai_logger.end_phase(execution_id, crew_id, ExecutionPhase.INITIALIZATION, True)
+
+        # 준비 단계 시작
+        crewai_logger.start_phase(execution_id, crew_id, ExecutionPhase.PREPARATION)
 
         # 실행 상태 업데이트
         execution_status[execution_id].update({
             "progress": 25,
             "message": "프로그램을 실행 중입니다..."
         })
+        crewai_logger.log_progress_update(execution_id, crew_id, 25, "환경 변수 설정 중")
 
+        # 환경 변수 설정 로깅
+        env_vars = {}
         for key, value in inputs.items():
             env_key = f"CREWAI_{key.upper()}"
             env[env_key] = str(value)
+            env_vars[env_key] = str(value)
 
         # 크루 생성기일 경우, 출력 경로를 환경 변수에 추가
         if is_creating_crew:
             output_path = os.path.join(PROJECTS_BASE_DIR, project_name)
             env['CREWAI_OUTPUT_PATH'] = output_path
+            env_vars['CREWAI_OUTPUT_PATH'] = output_path
+            crewai_logger.log_file_operation(
+                execution_id, crew_id, "output_directory_set", output_path, True,
+                {"directory_exists": os.path.exists(os.path.dirname(output_path))}
+            )
+
+        # 준비 단계 완료
+        crewai_logger.end_phase(execution_id, crew_id, ExecutionPhase.PREPARATION, True,
+                               {"environment_variables": len(env_vars), "script_validated": True})
+
+        # 실행 단계 시작
+        crewai_logger.start_phase(execution_id, crew_id, ExecutionPhase.EXECUTION)
+        crewai_logger.log_subprocess_start(execution_id, crew_id, script_path, env)
 
         # 실시간 로그 스트리밍을 위한 subprocess.Popen 사용
         process = subprocess.Popen(
@@ -1931,24 +1989,66 @@ def run_program_background(crew_id, inputs, execution_id, script_path, supabase_
         full_output = []
         full_error = []
 
+        # 모니터링 단계 시작
+        crewai_logger.start_phase(execution_id, crew_id, ExecutionPhase.MONITORING)
+
         # stdout, stderr 스트림을 실시간으로 읽기
+        line_count = 0
         while True:
             output = process.stdout.readline()
             if output:
                 full_output.append(output)
+                line_count += 1
+
+                # 주요 출력 로깅 (너무 많은 로그 방지)
+                if line_count % 10 == 1 or "ERROR" in output.upper() or "SUCCESS" in output.upper():
+                    crewai_logger.log_subprocess_output(execution_id, crew_id, "stdout", output.strip())
+
+                # CrewAI 역할별 실행 감지 및 로깅 (Planner → Researcher → Writer 순서)
+                role_keywords = {
+                    "Planner": ["계획", "plan", "planning", "Planner", "전략"],
+                    "Researcher": ["연구", "research", "Researcher", "조사", "분석"],
+                    "Writer": ["작성", "write", "Writer", "글", "문서"]
+                }
+
+                for role, keywords in role_keywords.items():
+                    if any(keyword in output for keyword in keywords):
+                        if "시작" in output or "start" in output.lower():
+                            crewai_logger.log_crewai_role_execution(execution_id, crew_id, role, "실행중")
+                        elif "완료" in output or "complete" in output.lower() or "finish" in output.lower():
+                            crewai_logger.log_crewai_role_execution(execution_id, crew_id, role, "완료")
+                        break
+
+                # 진행률 업데이트 (대략적)
+                if line_count % 20 == 0:
+                    progress = min(50 + (line_count // 20) * 5, 90)
+                    execution_status[execution_id]["progress"] = progress
+                    crewai_logger.log_progress_update(execution_id, crew_id, progress,
+                                                    f"프로그램 실행 중 ({line_count}줄 처리)")
 
             if process.poll() is not None and not output:
                 break
 
+        # 모니터링 단계 완료
+        crewai_logger.end_phase(execution_id, crew_id, ExecutionPhase.MONITORING, True,
+                               {"total_output_lines": line_count})
+
         # 프로세스 종료 후 최종 결과 처리
         return_code = process.poll()
         stderr_output = process.stderr.read()
-        full_error.append(stderr_output)
+        if stderr_output:
+            full_error.append(stderr_output)
+            crewai_logger.log_subprocess_output(execution_id, crew_id, "stderr", stderr_output)
+
+        # 완료 단계 시작
+        crewai_logger.start_phase(execution_id, crew_id, ExecutionPhase.COMPLETION)
 
         # 실행 완료 처리
         if return_code == 0:
             end_time = datetime.now()
             final_output = "".join(full_output)
+            total_duration = int((time.time() - start_time) * 1000)
+
             execution_status[execution_id].update({
                 "status": "completed",
                 "progress": 100,
@@ -1956,6 +2056,17 @@ def run_program_background(crew_id, inputs, execution_id, script_path, supabase_
                 "output": final_output,
                 "end_time": end_time
             })
+
+            # 성공 완료 로깅
+            crewai_logger.log_completion(
+                execution_id, crew_id, True, total_duration,
+                {
+                    "return_code": return_code,
+                    "output_lines": len(full_output),
+                    "output_size_chars": len(final_output),
+                    "is_crew_creation": is_creating_crew
+                }
+            )
 
             # DB에 최종 결과 업데이트
             if supabase_client:
@@ -1996,6 +2107,8 @@ def run_program_background(crew_id, inputs, execution_id, script_path, supabase_
         else:
             end_time = datetime.now()
             error_message = "".join(full_error)
+            total_duration = int((time.time() - start_time) * 1000)
+
             execution_status[execution_id].update({
                 "status": "failed",
                 "progress": 0,
@@ -2004,8 +2117,29 @@ def run_program_background(crew_id, inputs, execution_id, script_path, supabase_
                 "end_time": end_time
             })
 
+            # 실패 완료 로깅
+            crewai_logger.log_completion(
+                execution_id, crew_id, False, total_duration,
+                {
+                    "return_code": return_code,
+                    "error_message": error_message,
+                    "stderr_lines": len(full_error)
+                }
+            )
+
     except Exception as e:
         end_time = datetime.now()
+        total_duration = int((time.time() - start_time) * 1000)
+
+        # 예외 로깅
+        crewai_logger.log_error(
+            execution_id, crew_id, e, "run_program_background",
+            {
+                "script_path": script_path,
+                "is_creating_crew": is_creating_crew,
+                "project_name": project_name
+            }
+        )
         error_message = str(e)
         execution_status[execution_id].update({
             "status": "failed",
@@ -2535,6 +2669,7 @@ def get_all_llm_models():
             { 'id': 'claude-3', 'name': 'Claude-3 Sonnet', 'description': '추론 특화 모델', 'provider': 'Anthropic', 'type': 'cloud' },
             { 'id': 'claude-3-haiku', 'name': 'Claude-3 Haiku', 'description': '빠른 응답 모델', 'provider': 'Anthropic', 'type': 'cloud' },
             { 'id': 'gemini-pro', 'name': 'Gemini Pro', 'description': '멀티모달 모델', 'provider': 'Google', 'type': 'cloud' },
+            { 'id': 'gemini-flash', 'name': 'Gemini Flash', 'description': '빠른 응답 멀티모달 모델', 'provider': 'Google', 'type': 'cloud' },
             { 'id': 'deepseek-coder', 'name': 'DeepSeek Coder', 'description': '코딩 전문 모델', 'provider': 'DeepSeek', 'type': 'cloud' },
             { 'id': 'codellama', 'name': 'Code Llama', 'description': '코드 생성 특화', 'provider': 'Meta', 'type': 'cloud' }
         ]
@@ -2596,5 +2731,113 @@ if __name__ == '__main__':
     print("  - POST /api/metagpt/projects/<id>/role-llm-mapping (Set MetaGPT LLM mappings)")
 # Deliverable endpoints commented out for now
     print("  - GET  /api/metagpt/dashboard (Get MetaGPT dashboard)")
+
+# ===================== CREWAI 로깅 API =====================
+
+@app.route('/api/crewai/logs/<execution_id>', methods=['GET'])
+def get_execution_logs(execution_id):
+    """실행 로그 조회"""
+    try:
+        logs = crewai_logger.get_execution_logs(execution_id)
+        summary = crewai_logger.get_execution_summary(execution_id)
+
+        return jsonify({
+            "success": True,
+            "execution_id": execution_id,
+            "logs": logs,
+            "summary": summary
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/crewai/logs/<execution_id>/summary', methods=['GET'])
+def get_execution_summary_api(execution_id):
+    """실행 요약 정보"""
+    try:
+        summary = crewai_logger.get_execution_summary(execution_id)
+
+        if not summary:
+            return jsonify({"success": False, "error": "Execution not found"}), 404
+
+        return jsonify({
+            "success": True,
+            "summary": summary
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/crewai/logs/<execution_id>/phases', methods=['GET'])
+def get_execution_phases(execution_id):
+    """실행 단계별 로그"""
+    try:
+        logs = crewai_logger.get_execution_logs(execution_id)
+
+        # 단계별 그룹화
+        phases = {}
+        for log in logs:
+            phase = log['phase']
+            if phase not in phases:
+                phases[phase] = []
+            phases[phase].append(log)
+
+        return jsonify({
+            "success": True,
+            "execution_id": execution_id,
+            "phases": phases
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/crewai/logs/<execution_id>/errors', methods=['GET'])
+def get_execution_errors(execution_id):
+    """실행 에러 로그만 조회"""
+    try:
+        logs = crewai_logger.get_execution_logs(execution_id)
+
+        # 에러 로그만 필터링
+        error_logs = [log for log in logs if log['level'] in ['ERROR', 'CRITICAL']]
+
+        return jsonify({
+            "success": True,
+            "execution_id": execution_id,
+            "error_count": len(error_logs),
+            "errors": error_logs
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# WebSocket 이벤트 핸들러
+@socketio.on('join_execution_room')
+def on_join_execution_room(data):
+    """실행 로그 룸 참여"""
+    try:
+        execution_id = data.get('execution_id')
+        if execution_id:
+            from flask_socketio import join_room
+            room = f"execution_{execution_id}"
+            join_room(room)
+            emit('joined_room', {'room': room, 'execution_id': execution_id})
+    except Exception as e:
+        emit('error', {'message': str(e)})
+
+@socketio.on('leave_execution_room')
+def on_leave_execution_room(data):
+    """실행 로그 룸 떠나기"""
+    try:
+        execution_id = data.get('execution_id')
+        if execution_id:
+            from flask_socketio import leave_room
+            room = f"execution_{execution_id}"
+            leave_room(room)
+            emit('left_room', {'room': room, 'execution_id': execution_id})
+    except Exception as e:
+        emit('error', {'message': str(e)})
+
+    print("\n🔍 CrewAI Enhanced Logging:")
+    print("  - GET  /api/crewai/logs/<execution_id> (Get execution logs)")
+    print("  - GET  /api/crewai/logs/<execution_id>/summary (Get execution summary)")
+    print("  - GET  /api/crewai/logs/<execution_id>/phases (Get phase logs)")
+    print("  - GET  /api/crewai/logs/<execution_id>/errors (Get error logs)")
+    print("  - WebSocket: join_execution_room, leave_execution_room")
 
     app.run(host='0.0.0.0', port=PORT, debug=True)

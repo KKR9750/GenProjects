@@ -3,9 +3,9 @@ const { useState, useEffect, useRef } = React;
 const CrewAIInterface = () => {
     const [selectedRole, setSelectedRole] = useState('planner');
     const [roleLLMMapping, setRoleLLMMapping] = useState({
-        planner: 'gpt-4o',
-        researcher: 'gpt-4',
-        writer: 'claude-3'
+        planner: 'gemini-flash',
+        researcher: 'gemini-flash',
+        writer: 'gemini-flash'
     });
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState('');
@@ -20,6 +20,7 @@ const CrewAIInterface = () => {
         description: '',
         project_type: 'web_app'
     });
+    // Real-time monitoring states removed
 
     const roles = [
         { id: 'planner', name: 'Planner', description: '전략 수립 및 계획 전문가', icon: '📋' },
@@ -51,6 +52,7 @@ const CrewAIInterface = () => {
                 console.error('LLM 모델 로드 실패:', data.error);
                 // 기본 모델 설정
                 const defaultModels = [
+                    { id: 'gemini-flash', name: 'Gemini Flash', description: '빠른 응답 특화 모델', provider: 'Google', type: 'cloud' },
                     { id: 'gpt-4', name: 'GPT-4', description: '범용 고성능 모델', provider: 'OpenAI', type: 'cloud' },
                     { id: 'claude-3', name: 'Claude-3 Sonnet', description: '추론 특화 모델', provider: 'Anthropic', type: 'cloud' }
                 ];
@@ -60,6 +62,7 @@ const CrewAIInterface = () => {
             console.error('LLM 모델 로드 오류:', error);
             // 기본 모델 설정
             const defaultModels = [
+                { id: 'gemini-flash', name: 'Gemini Flash', description: '빠른 응답 특화 모델', provider: 'Google', type: 'cloud' },
                 { id: 'gpt-4', name: 'GPT-4', description: '범용 고성능 모델', provider: 'OpenAI', type: 'cloud' },
                 { id: 'claude-3', name: 'Claude-3 Sonnet', description: '추론 특화 모델', provider: 'Anthropic', type: 'cloud' }
             ];
@@ -67,10 +70,7 @@ const CrewAIInterface = () => {
         }
     };
 
-    // 연결 상태 체크 (개발용 - 항상 연결됨으로 처리)
-    const checkConnection = async () => {
-        setConnectionStatus('connected'); // UI 테스트를 위해 항상 연결된 상태로 설정
-    };
+    // WebSocket functionality removed
 
     // 새 프로젝트 생성
     const createProject = async () => {
@@ -256,6 +256,8 @@ const CrewAIInterface = () => {
         setIsLoading(true);
 
         try {
+            // Simplified - no log panel
+
             const response = await fetch('/api/crewai', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -269,13 +271,15 @@ const CrewAIInterface = () => {
 
             const data = await response.json();
 
+            // Real-time monitoring removed
+
             const aiMessage = {
                 id: Date.now() + 1,
                 text: data.result || data.message || '처리가 완료되었습니다.',
                 sender: 'ai',
                 role: selectedRole,
                 timestamp: new Date(),
-                data: data
+                data: data,
             };
 
             setMessages(prev => [...prev, aiMessage]);
@@ -283,6 +287,8 @@ const CrewAIInterface = () => {
             // 프로젝트 목록 새로고침
             loadProjects();
         } catch (error) {
+            console.error('🚨 CrewAI 요청 실패:', error);
+
             const errorMessage = {
                 id: Date.now() + 1,
                 text: `오류가 발생했습니다: ${error.message}`,
@@ -291,7 +297,10 @@ const CrewAIInterface = () => {
                 timestamp: new Date(),
                 error: true
             };
+
             setMessages(prev => [...prev, errorMessage]);
+
+            // Error logging removed
         }
 
         setIsLoading(false);
@@ -379,7 +388,7 @@ const CrewAIInterface = () => {
     useEffect(() => {
         const initializeInterface = async () => {
             await loadLLMModels();
-            checkConnection();
+            // Connection check removed
             loadProjects();
 
             // 기본 LLM 매핑 로드 (프로젝트 선택 전)
@@ -391,11 +400,7 @@ const CrewAIInterface = () => {
 
         initializeInterface();
 
-        const interval = setInterval(() => {
-            checkConnection();
-        }, 30000);
-
-        return () => clearInterval(interval);
+        // Initialization simplified - no WebSocket
     }, []);
 
     const renderMessage = (message) => {
@@ -778,6 +783,8 @@ const CrewAIInterface = () => {
                     </div>
                 </div>
             )}
+
+            {/* Real-time log panel removed */}
         </div>
     );
 };

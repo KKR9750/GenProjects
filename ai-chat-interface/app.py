@@ -6,7 +6,7 @@ Single Python server integrating CrewAI and MetaGPT
 
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_cors import CORS
-from flask_socketio import SocketIO, emit, join_room, leave_room
+# Real-time monitoring removed
 import os
 import sys
 import json
@@ -25,15 +25,84 @@ from supabase import create_client, Client
 # Load environment variables
 load_dotenv()
 
+# UTF-8 인코딩 전역 설정 (가장 먼저 실행)
+def setup_global_utf8_environment():
+    """전역 UTF-8 인코딩 환경 설정 (강화버전)"""
+    import locale
+    import io
+    import unicodedata
+
+    # 1단계: 환경 변수 강제 설정
+    utf8_env_vars = {
+        'PYTHONIOENCODING': 'utf-8',
+        'PYTHONLEGACYWINDOWSSTDIO': '0',
+        'PYTHONUTF8': '1',
+        'LC_ALL': 'ko_KR.UTF-8',
+        'LANG': 'ko_KR.UTF-8'
+    }
+
+    for key, value in utf8_env_vars.items():
+        os.environ[key] = value
+
+    # 2단계: Windows 특별 처리 (강화)
+    if sys.platform.startswith('win'):
+        try:
+            # Windows 콘솔 UTF-8 모드 활성화
+            os.system('chcp 65001 > nul 2>&1')
+
+            # Windows 레지스트리 기반 UTF-8 설정 (가능한 경우)
+            try:
+                import winreg
+                key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Console")
+                winreg.SetValueEx(key, "CodePage", 0, winreg.REG_DWORD, 65001)
+                winreg.CloseKey(key)
+            except:
+                pass  # 권한 없는 경우 무시
+
+            # stdout/stderr UTF-8 재구성 (강화)
+            if hasattr(sys.stdout, 'reconfigure'):
+                try:
+                    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+                    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+                except Exception:
+                    # 폴백: TextIOWrapper 사용
+                    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+                    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+            else:
+                # 이전 Python 버전
+                sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+                sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+        except Exception as e:
+            print(f"Windows UTF-8 설정 경고: {e}")
+
+    # 로케일 설정 시도
+    try:
+        locale.setlocale(locale.LC_ALL, 'ko_KR.UTF-8')
+    except:
+        try:
+            locale.setlocale(locale.LC_ALL, 'Korean_Korea.65001')
+        except:
+            try:
+                locale.setlocale(locale.LC_ALL, 'C.UTF-8')
+            except:
+                pass  # 로케일 설정 실패해도 계속 진행
+
+    print("✅ UTF-8 인코딩 환경 설정 완료")
+
+# UTF-8 환경 즉시 설정
+setup_global_utf8_environment()
+
 # Import database module
 from database import db
 from security_utils import validate_request_data, check_request_security
 from template_api import template_bp
 from ollama_client import ollama_client
-from websocket_manager import init_websocket_manager, get_websocket_manager
-from realtime_progress_tracker import global_progress_tracker
+# WebSocket manager removed
+# Progress tracking simplified
 from admin_auth import admin_auth
 from crewai_logger import crewai_logger, ExecutionPhase
+from generate_crewai_script_new import generate_crewai_execution_script_with_approval
 
 # Add current directory to Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -51,12 +120,7 @@ sys.path.append(metagpt_path)
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 
-# Flask-SocketIO 설정
-socketio = SocketIO(app,
-                   cors_allowed_origins=['http://localhost:3000', 'http://127.0.0.1:3000'],
-                   async_mode='threading',
-                   logger=True,
-                   engineio_logger=True)
+# SocketIO removed for simplicity
 
 # CORS 설정 강화
 CORS(app,
@@ -66,9 +130,7 @@ CORS(app,
      supports_credentials=True,
      max_age=3600)
 
-# Initialize WebSocket manager and CrewAI logger
-init_websocket_manager(socketio)
-crewai_logger.set_websocket_manager(get_websocket_manager())
+# WebSocket functionality removed
 
 # Register blueprints
 app.register_blueprint(template_bp)
@@ -100,9 +162,10 @@ else:
     print("⚠️ Supabase 설정이 필요합니다. .env 파일에 SUPABASE_URL과 SUPABASE_ANON_KEY를 추가하세요.")
 
 # CrewAI 관련 설정
-PROJECTS_BASE_DIR = os.path.join(os.path.dirname(current_dir), 'CrewAi')
+CREWAI_BASE_DIR = os.path.join(os.path.dirname(current_dir), 'CrewAi')  # CrewAI 소스 코드 경로
+PROJECTS_BASE_DIR = os.path.join(os.path.dirname(current_dir), 'Projects')  # 생성된 프로젝트 저장 경로
 execution_status = {}  # 전역 변수로 실행 상태 관리
-clients = {}  # WebSocket 클라이언트 관리
+# Client management simplified
 
 # 보안 헤더 설정
 @app.after_request
@@ -329,57 +392,680 @@ def check_metagpt_service():
 
 @app.route('/api/crewai', methods=['POST'])
 def handle_crewai_request():
-    """Handle CrewAI requests"""
+    """Handle CrewAI requests with enhanced message classification and project management"""
     data = request.get_json()
     requirement = data.get('requirement')
     selected_models = data.get('selectedModels', {})
+    project_id = data.get('projectId')
 
     if not requirement:
         return jsonify({'error': 'Requirement is required'}), 400
 
+    # 강화된 메시지 처리 시스템 사용
     try:
-        print(f'CrewAI request: {requirement}')
-        print(f'Selected models: {selected_models}')
+        from enhanced_project_initializer import EnhancedProjectInitializer
+        from message_classifier import MessageClassifier, MessageType
 
-        # Check if CrewAI server is running
-        if check_crewai_service() == 'available':
-            # Forward request to CrewAI server
-            crewai_response = requests.post(f'{CREWAI_URL}/api/crews',
-                json={
-                    'requirement': requirement,
-                    'models': selected_models
-                },
-                headers={'Content-Type': 'application/json'},
-                timeout=30)
+        # 메시지 분류기 초기화
+        classifier = MessageClassifier()
+        initializer = EnhancedProjectInitializer(PROJECTS_BASE_DIR)
 
-            if crewai_response.status_code == 200:
-                return jsonify(crewai_response.json())
-            else:
-                return jsonify({
-                    'error': 'CrewAI server error',
-                    'details': crewai_response.text
-                }), 500
-        else:
-            # Simulation response if CrewAI server is not running
+        # 컨텍스트 수집 (기존 프로젝트 정보)
+        context = {}
+        if project_id:
+            context = initializer.get_project_context(project_id) or {}
+
+        # 메시지 처리
+        processing_result = initializer.process_user_message(requirement, context)
+
+        # 처리 결과에 따른 분기
+        if processing_result['action'] == 'project_created':
+            # 새 프로젝트 생성됨 - 기존 로직으로 실행
+            project_info = processing_result['project']
+            requirement = project_info.get('original_requirements', requirement)  # 정제된 요구사항 사용
+            project_path = project_info['project_path']
+            project_name = project_info['project_name']
+
+            # 강화된 실행기 사용 설정
+            use_enhanced_executor = True
+
+        elif processing_result['action'] == 'continue_project':
+            # 기존 프로젝트 계속 진행
+            project_id_only = processing_result['project_id']
+            project_path = os.path.join(PROJECTS_BASE_DIR, project_id_only)
+            project_name = project_id_only
+            use_enhanced_executor = True
+
+        elif processing_result['action'] == 'resume_specific_project':
+            # 특정 프로젝트 재개
+            project_id_only = processing_result['project_id']
+            project_path = os.path.join(PROJECTS_BASE_DIR, project_id_only)
+            project_name = project_id_only
+            resume_point = processing_result.get('resume_point')
+            use_enhanced_executor = True
+
+        elif processing_result['action'] == 'clarification_needed':
+            # 명확화 필요
             return jsonify({
-                'success': True,
-                'requirement': requirement,
-                'result': f'CrewAI team analyzed "{requirement}" project.\n\nProceeding with collaboration-based approach.',
-                'models_used': selected_models,
-                'agents_involved': ["Manager", "Researcher", "Designer", "Developer", "Tester"],
-                'note': 'CrewAI server is not running, responding in simulation mode. To start CrewAI server, please run it on port 3001.'
-            })
+                'success': False,
+                'error': 'Clarification needed',
+                'message': processing_result['message'],
+                'classification': processing_result.get('classification'),
+                'suggestion': '구체적인 프로젝트 요구사항을 입력해주세요.'
+            }), 400
 
-    except requests.RequestException as e:
-        return jsonify({
-            'error': 'CrewAI connection failed',
-            'details': str(e)
-        }), 500
+        else:
+            # 기본 처리 (기존 로직 사용)
+            use_enhanced_executor = False
+
+    except ImportError:
+        print("강화된 시스템을 로드할 수 없습니다. 기본 시스템을 사용합니다.")
+        use_enhanced_executor = False
     except Exception as e:
+        print(f"강화된 시스템 처리 중 오류: {e}")
+        use_enhanced_executor = False
+
+    # Enhanced executor를 사용할 수 없는 경우 기본 로직 사용
+    if not use_enhanced_executor or not 'project_path' in locals():
+        # 기본 프로젝트 생성 로직
+        if not project_id:
+            existing_projects = [d for d in os.listdir(PROJECTS_BASE_DIR) if d.startswith('project_') and os.path.isdir(os.path.join(PROJECTS_BASE_DIR, d))]
+            project_number = len(existing_projects) + 1
+            project_name = f"project_{project_number:05d}"
+            project_path = os.path.join(PROJECTS_BASE_DIR, project_name)
+        else:
+            # project_id가 이미 "project_" 접두사를 가지고 있는지 확인
+            if project_id.startswith('project_'):
+                project_name = project_id
+            else:
+                project_name = f"project_{project_id}"
+            project_path = os.path.join(PROJECTS_BASE_DIR, project_name)
+
+    # 실행 ID 생성
+    execution_id = str(uuid.uuid4())
+    crew_id = f"crew_{int(time.time())}"
+
+    try:
+        # 상세 로깅 시작
+        crewai_logger.start_execution_logging(execution_id, crew_id, {
+            'requirement': requirement,
+            'selected_models': selected_models,
+            'project_id': project_id
+        })
+
+        crewai_logger.start_step_tracking(execution_id, crew_id, total_steps=10)
+
+        # 단계 1: 시스템 검증
+        crewai_logger.advance_step(execution_id, crew_id, "시스템 검증", "시작", ExecutionPhase.VALIDATION)
+        crewai_logger.log_system_check(execution_id, crew_id, "UTF-8 인코딩 환경", True)
+        crewai_logger.log_system_check(execution_id, crew_id, "프로젝트 디렉토리 접근", os.path.exists(PROJECTS_BASE_DIR))
+
+        # 단계 2: 프로젝트 초기화
+        crewai_logger.advance_step(execution_id, crew_id, "프로젝트 초기화", "시작", ExecutionPhase.INITIALIZATION)
+
+        if not project_id:
+            # 새 프로젝트 생성
+            # 프로젝트 번호 생성 (기존 프로젝트 개수 + 1)
+            existing_projects = [d for d in os.listdir(PROJECTS_BASE_DIR) if d.startswith('project_') and os.path.isdir(os.path.join(PROJECTS_BASE_DIR, d))]
+            project_number = len(existing_projects) + 1
+            project_name = f"project_{project_number:05d}"
+            project_path = os.path.join(PROJECTS_BASE_DIR, project_name)
+        else:
+            # 기존 프로젝트 사용 - project_id가 이미 project_를 포함하는지 확인
+            if project_id.startswith('project_'):
+                project_name = project_id
+            else:
+                project_name = f"project_{project_id}"
+            project_path = os.path.join(PROJECTS_BASE_DIR, project_name)
+
+        # 단계 3: 프로젝트 디렉토리 생성
+        crewai_logger.advance_step(execution_id, crew_id, "디렉토리 생성", project_path, ExecutionPhase.DIRECTORY_CREATION)
+
+        try:
+            os.makedirs(project_path, exist_ok=True)
+            crewai_logger.log_directory_operation(execution_id, crew_id, "생성", project_path, True)
+        except Exception as dir_error:
+            crewai_logger.log_directory_operation(execution_id, crew_id, "생성", project_path, False, {"error": str(dir_error)})
+            raise dir_error
+
+        # 단계 4: 환경 설정
+        crewai_logger.advance_step(execution_id, crew_id, "환경 설정", "", ExecutionPhase.ENVIRONMENT_SETUP)
+
+        # UTF-8 환경 변수 설정
+        env_vars = {
+            'PYTHONIOENCODING': 'utf-8',
+            'PYTHONLEGACYWINDOWSSTDIO': '0',
+            'CREWAI_PROJECT_PATH': project_path,
+            'CREWAI_REQUIREMENT': requirement,
+            'CREWAI_EXECUTION_ID': execution_id
+        }
+
+        crewai_logger.log_environment_setup(execution_id, crew_id, env_vars, True)
+
+        # 단계 5: CrewAI 스크립트 생성
+        crewai_logger.advance_step(execution_id, crew_id, "스크립트 생성", "", ExecutionPhase.FILE_GENERATION)
+
+        script_content = generate_crewai_execution_script_with_approval(
+            requirement=requirement,
+            selected_models=selected_models,
+            project_path=project_path,
+            execution_id=execution_id
+        )
+
+        script_path = os.path.join(project_path, "execute_crewai.py")
+
+        try:
+            # UTF-8 서로게이트 문제 해결을 위한 안전한 문자열 정리
+            import unicodedata
+
+            # 1단계: 유니코드 정규화
+            normalized_content = unicodedata.normalize('NFKC', script_content)
+
+            # 2단계: 서로게이트 문자 제거
+            safe_content = ''.join(char for char in normalized_content
+                                 if not (0xD800 <= ord(char) <= 0xDFFF))
+
+            # 3단계: UTF-8 안전 인코딩/디코딩
+            safe_content = safe_content.encode('utf-8', errors='replace').decode('utf-8')
+
+            # 4단계: 파일 쓰기 (Windows 호환성 강화)
+            with open(script_path, 'w', encoding='utf-8', errors='replace', newline='\n') as f:
+                f.write(safe_content)
+
+            crewai_logger.log_file_generation(execution_id, crew_id, script_path, "Python Script", len(safe_content), True, {
+                "original_length": len(script_content),
+                "processed_length": len(safe_content),
+                "encoding": "utf-8",
+                "processing_steps": ["normalize", "surrogate_filter", "utf8_encode"]
+            })
+        except Exception as file_error:
+            crewai_logger.log_file_generation(execution_id, crew_id, script_path, "Python Script", 0, False, {"error": str(file_error)})
+            crewai_logger.log_error(execution_id, crew_id, file_error, "CrewAI 스크립트 파일 생성", {
+                "script_path": script_path,
+                "content_preview": script_content[:200] if script_content else "None"
+            })
+            raise file_error
+
+        # 단계 6: 요구사항 파일 생성
+        crewai_logger.advance_step(execution_id, crew_id, "요구사항 저장", "", ExecutionPhase.FILE_GENERATION)
+
+        requirements_path = os.path.join(project_path, "requirements.txt")
+        requirements_content = "\n".join([
+            "crewai>=0.28.8",
+            "langchain>=0.1.0",
+            "langchain-openai>=0.0.5",
+            "python-dotenv>=1.0.0"
+        ])
+
+        try:
+            # UTF-8 안전 서로게이트 처리
+            safe_requirements = requirements_content.encode('utf-8', errors='replace').decode('utf-8')
+            with open(requirements_path, 'w', encoding='utf-8', errors='replace') as f:
+                f.write(safe_requirements)
+            crewai_logger.log_file_generation(execution_id, crew_id, requirements_path, "Requirements", len(safe_requirements), True)
+        except Exception as req_error:
+            crewai_logger.log_file_generation(execution_id, crew_id, requirements_path, "Requirements", 0, False, {"error": str(req_error)})
+
+        # 단계 7: CrewAI 실행
+        crewai_logger.advance_step(execution_id, crew_id, "CrewAI 실행", "시작", ExecutionPhase.EXECUTION)
+
+        # 실제 CrewAI 실행 (백그라운드에서)
+        def execute_crewai_async():
+            try:
+                # 현재 환경 변수 설정 (한글 인코딩 강화)
+                current_env = os.environ.copy()
+                current_env.update(env_vars)
+
+                # Windows 특별 UTF-8 설정
+                if sys.platform.startswith('win'):
+                    current_env['PYTHONIOENCODING'] = 'utf-8'
+                    current_env['PYTHONLEGACYWINDOWSSTDIO'] = '0'
+                    current_env['PYTHONUTF8'] = '1'
+                    current_env['CHCP'] = '65001'
+
+                # CrewAI 실행 명령 (한글 지원 강화)
+                cmd = [sys.executable, '-u', '-X', 'utf8', script_path] if sys.platform.startswith('win') else [sys.executable, '-u', script_path]
+
+                crewai_logger.log_subprocess_start(execution_id, crew_id, script_path, current_env)
+
+                # UTF-8 인코딩 테스트
+                test_korean = "한글 테스트 문자열"
+                crewai_logger.log_korean_encoding_test(execution_id, crew_id, test_korean, "UTF-8", True)
+
+                # 프로세스 중복 실행 방지 로직
+                script_name = os.path.basename(script_path)
+                existing_processes = []
+
+                try:
+                    # 현재 실행 중인 Python 프로세스 중 같은 스크립트 실행 여부 확인
+                    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+                        try:
+                            if proc.info['name'] and 'python' in proc.info['name'].lower():
+                                cmdline = proc.info['cmdline'] or []
+                                # 같은 스크립트 파일을 실행 중인지 확인
+                                if any(script_name in arg for arg in cmdline):
+                                    existing_processes.append({
+                                        'pid': proc.info['pid'],
+                                        'cmdline': ' '.join(cmdline)
+                                    })
+                        except (psutil.NoSuchProcess, psutil.AccessDenied):
+                            continue
+
+                    if existing_processes:
+                        warning_msg = f"⚠️ 이미 실행 중인 {script_name} 프로세스 발견 ({len(existing_processes)}개)"
+                        crewai_logger.log_warning(execution_id, crew_id, warning_msg, {
+                            'existing_processes': existing_processes,
+                            'script_path': script_path
+                        })
+                        print(f"{warning_msg}")
+                        for proc in existing_processes:
+                            print(f"  - PID {proc['pid']}: {proc['cmdline'][:100]}...")
+
+                        # 기존 프로세스가 있어도 계속 진행 (사용자가 의도적으로 실행했을 수 있음)
+                        # 하지만 경고 로그는 남김
+
+                except Exception as check_error:
+                    crewai_logger.log_error(execution_id, crew_id, check_error, "프로세스 중복 확인")
+
+                # 서브프로세스 실행 (인코딩 안전성 강화)
+                try:
+                    process = subprocess.Popen(
+                        cmd,
+                        cwd=project_path,
+                        env=current_env,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                        encoding='utf-8',
+                        errors='replace',  # 인코딩 오류 시 대체 문자 사용
+                        universal_newlines=True
+                    )
+                except Exception as proc_error:
+                    crewai_logger.log_error(execution_id, crew_id, proc_error, "서브프로세스 생성")
+                    # 폴백 방식으로 재시도
+                    process = subprocess.Popen(
+                        cmd,
+                        cwd=project_path,
+                        env=current_env,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True
+                    )
+
+                crewai_logger.log_subprocess_execution(execution_id, crew_id, " ".join(cmd), project_path, True, process.pid)
+
+                # 실시간 출력 처리
+                stdout, stderr = process.communicate()
+
+                if stdout:
+                    crewai_logger.log_subprocess_output(execution_id, crew_id, "stdout", stdout)
+                    lines = stdout.split('\n')
+                    for i, line in enumerate(lines[:20]):  # 처음 20줄만 처리
+                        if line.strip():
+                            crewai_logger.log_output_processing(execution_id, crew_id, "stdout", line, i+1, True)
+
+                if stderr:
+                    crewai_logger.log_subprocess_output(execution_id, crew_id, "stderr", stderr)
+
+                exit_code = process.returncode
+                success = exit_code == 0
+
+                # 완료 로깅
+                total_duration = int(time.time() * 1000) - int(time.time() * 1000)  # 임시 계산
+                crewai_logger.log_completion(execution_id, crew_id, success, total_duration, {
+                    "exit_code": exit_code,
+                    "project_path": project_path,
+                    "files_created": len([f for f in os.listdir(project_path) if os.path.isfile(os.path.join(project_path, f))])
+                })
+
+            except Exception as exec_error:
+                crewai_logger.log_error(execution_id, crew_id, exec_error, "CrewAI 비동기 실행")
+
+        # 백그라운드 실행 시작
+        execution_thread = threading.Thread(target=execute_crewai_async)
+        execution_thread.daemon = True
+        execution_thread.start()
+
+        # 단계 8: 응답 반환
+        crewai_logger.advance_step(execution_id, crew_id, "응답 준비", "완료", ExecutionPhase.COMPLETION)
+
         return jsonify({
+            'success': True,
+            'execution_id': execution_id,
+            'crew_id': crew_id,
+            'requirement': requirement,
+            'project_path': project_path,
+            'project_name': project_name,
+            'result': f'CrewAI 실행이 시작되었습니다.\n\n프로젝트: {project_name}\n경로: {project_path}\n\n작업이 완료되면 결과를 확인하실 수 있습니다.',
+            'models_used': selected_models,
+            'agents_involved': ["Planner", "Researcher", "Writer"],
+            'status': 'executing',
+            'files_created': [
+                os.path.basename(script_path),
+                os.path.basename(requirements_path)
+            ]
+        })
+
+    except Exception as e:
+        crewai_logger.log_error(execution_id, crew_id, e, "CrewAI 요청 처리")
+        return jsonify({
+            'success': False,
+            'execution_id': execution_id,
             'error': 'Error processing CrewAI request',
             'details': str(e)
         }), 500
+
+
+def generate_crewai_execution_script(requirement: str, selected_models: dict, project_path: str, execution_id: str) -> str:
+    """
+    CrewAI 실행 스크립트 생성 - 통합되고 안전한 방식
+    이전의 모순된 이중 처리 구조를 단일화하여 일관성 확보
+    """
+    import json
+    from datetime import datetime
+
+    # 1. 단순화된 안전한 텍스트 처리 함수
+    def safe_text_escape(text: str, max_length: int = 400) -> str:
+        """단순화된 텍스트 처리 - 최소한의 이스케이핑만 수행"""
+        if len(text) > max_length:
+            text = text[:max_length] + '...'
+        # 필수 이스케이핑만 수행
+        text = text.replace('"', "'").replace('\n', '\\n').replace('\r', '')
+        return text
+
+    def safe_path_escape(path: str) -> str:
+        """경로 문자열 안전 처리 (Windows/Linux 호환)"""
+        return path.replace('\\', '\\\\')
+
+    # 2. 안전한 매개변수 준비
+    safe_requirement = safe_text_escape(requirement)
+    safe_project_path = safe_path_escape(project_path)
+
+    # 모델 정규화 - 모든 모델을 그대로 사용 (CrewAI에서 처리)
+    normalized_models = {}
+    for role, model in selected_models.items():
+        normalized_models[role] = model
+
+    # 기본값이 없는 경우 gemini-flash 설정
+    if not normalized_models:
+        normalized_models = {
+            "planner": "gemini-flash",
+            "researcher": "gemini-flash",
+            "writer": "gemini-flash"
+        }
+
+    # 3. 스크립트 템플릿 (변수명 일치성 확보)
+    script_template = '''#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+CrewAI 자동 생성 실행 스크립트
+실행 ID: {execution_id}
+생성 시간: {generation_time}
+"""
+
+import os
+import sys
+from datetime import datetime
+from crewai import Agent, Task, Crew, Process, LLM
+from langchain_openai import ChatOpenAI
+import json
+
+# UTF-8 인코딩 환경 설정 (간소화 버전)
+def setup_utf8_environment():
+    """UTF-8 인코딩 환경 설정"""
+    import io
+
+    # 환경 변수 설정
+    os.environ['PYTHONIOENCODING'] = 'utf-8'
+    os.environ['PYTHONUTF8'] = '1'
+
+    # Windows 콘솔 UTF-8 설정
+    if sys.platform.startswith('win'):
+        try:
+            os.system('chcp 65001 > nul 2>&1')
+        except:
+            pass
+
+    # stdout/stderr UTF-8 재구성
+    if hasattr(sys.stdout, 'reconfigure'):
+        try:
+            sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+            sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+        except:
+            pass
+
+    return True
+
+# 환경 설정 실행
+setup_utf8_environment()
+
+print("✅ UTF-8 인코딩 환경 설정 완료")
+print("🚀 CrewAI 실행 시작...")
+print("🎯 요구사항: {requirement_display}")
+print(f"📁 프로젝트 경로: {project_path}")
+print(f"🆔 실행 ID: {execution_id}")
+print("\\n" + "="*50 + "\\n")
+
+# LLM 모델 설정
+def get_llm_model(role_name: str):
+    """역할별 LLM 모델 반환"""
+    # 동적 모델 매핑 - 사용자 선택 모델 사용
+    models = {normalized_models_str}
+    model_id = models.get(role_name.lower(), 'gemini-flash')
+
+    print("🤖 " + role_name + " 역할 → " + model_id + " 모델")
+
+    # gemini 모델 사용시 CrewAI의 LLM 클래스 사용
+    if 'gemini' in model_id:
+        from crewai import LLM
+        return LLM(
+            model="gemini/" + model_id,
+            temperature=0.7
+        )
+    else:
+        # OpenAI 모델의 경우
+        from langchain_openai import ChatOpenAI
+        return ChatOpenAI(
+            model=model_id,
+            temperature=0.7,
+            max_tokens=2000
+        )
+
+# CrewAI 에이전트 정의
+print("👥 에이전트 팀 구성중...")
+
+planner = Agent(
+    role="Project Planner",
+    goal="프로젝트 요구사항을 분석하고 체계적인 개발 계획을 수립합니다.",
+    backstory="당신은 소프트웨어 프로젝트 관리 전문가입니다. 복잡한 요구사항을 구체적이고 실행 가능한 단계로 분해하는 능력이 뛰어납니다.",
+    verbose=True,
+    allow_delegation=False,
+    llm=get_llm_model("planner")
+)
+
+researcher = Agent(
+    role="Research Specialist",
+    goal="프로젝트에 필요한 최적의 기술 스택과 구현 방법을 조사합니다.",
+    backstory="당신은 기술 리서치 전문가입니다. 최신 기술 동향을 파악하고, 프로젝트 요구사항에 가장 적합한 도구와 방법론을 선별하는데 전문성을 가지고 있습니다.",
+    verbose=True,
+    allow_delegation=False,
+    llm=get_llm_model("researcher")
+)
+
+writer = Agent(
+    role="Technical Writer",
+    goal="조사 결과를 바탕으로 실제 동작하는 코드와 완전한 문서를 작성합니다.",
+    backstory="당신은 기술 문서 및 코드 작성 전문가입니다. 연구 결과를 실제 동작하는 고품질 코드로 변환하고, 이해하기 쉬운 문서를 작성하는 능력이 탁월합니다.",
+    verbose=True,
+    allow_delegation=False,
+    llm=get_llm_model("writer")
+)
+
+print("📋 작업 태스크 설정중...")
+
+# 원본 요구사항을 그대로 사용 (이스케이핑 제거된 버전)
+original_requirement = "{requirement_original}"
+
+# 태스크 체인 정의
+task1 = Task(
+    description=f"""
+다음 요구사항을 분석하여 체계적인 프로젝트 계획을 수립하세요:
+
+**요구사항:**
+{{original_requirement}}
+
+**계획에 포함할 내용:**
+1. 프로젝트 목표 및 범위 정의
+2. 핵심 기능 목록 및 우선순위
+3. 기술적 요구사항 분석
+4. 개발 단계 및 마일스톤
+5. 예상 개발 일정
+
+구체적이고 실행 가능한 계획을 한글로 작성해주세요.
+    """,
+    expected_output="상세한 프로젝트 계획서 (마크다운 형식, 한글)",
+    agent=planner
+)
+
+task2 = Task(
+    description="""
+Planner가 수립한 계획을 바탕으로 기술적 조사를 수행하세요:
+
+**조사 항목:**
+1. 권장 프로그래밍 언어 및 프레임워크
+2. 필수 라이브러리 및 패키지 목록
+3. 개발 환경 구성 가이드
+4. 아키텍처 패턴 및 디자인 권장사항
+5. 테스트 및 배포 전략
+6. 보안 고려사항
+
+실제 구현 가능한 구체적인 기술 솔루션을 제시해주세요.
+    """,
+    expected_output="기술 조사 보고서 및 구현 가이드 (마크다운 형식, 한글)",
+    agent=researcher
+)
+
+task3 = Task(
+    description="""
+계획과 조사 결과를 바탕으로 완성된 프로젝트를 구현하세요:
+
+**구현 내용:**
+1. 프로젝트 디렉토리 구조
+2. 핵심 기능별 소스 코드 (완전 동작)
+3. 설정 파일 (requirements.txt, package.json 등)
+4. README.md (설치, 설정, 실행 방법)
+5. 기본 테스트 코드
+6. 실행 예시 및 사용법
+
+모든 코드는 실제로 동작해야 하며, 충분한 주석을 포함해야 합니다.
+    """,
+    expected_output="완전히 구현된 프로젝트 (코드, 문서, 설정 파일 포함)",
+    agent=writer
+)
+
+# CrewAI 팀 구성 및 실행
+print("🚀 CrewAI 팀 실행 시작...")
+
+crew = Crew(
+    agents=[planner, researcher, writer],
+    tasks=[task1, task2, task3],
+    verbose=2,
+    process=Process.sequential
+)
+
+try:
+    # 실행 시작
+    start_time = datetime.now()
+    print("⏰ 실행 시작 시간: " + start_time.strftime('%Y-%m-%d %H:%M:%S'))
+
+    result = crew.kickoff()
+
+    end_time = datetime.now()
+    duration = end_time - start_time
+
+    print("\\n" + "="*50)
+    print("🎉 CrewAI 실행 완료!")
+    print("⏱️ 총 소요시간: " + str(duration))
+    print("="*50 + "\\n")
+
+    # 결과 저장
+    output_file = os.path.join("{project_path}", "crewai_result.md")
+
+    with open(output_file, 'w', encoding='utf-8') as f:
+        f.write("# CrewAI 프로젝트 생성 결과\\n\\n")
+        f.write(f"**실행 ID**: {execution_id}\\n")
+        f.write("**생성 시간**: " + start_time.strftime('%Y-%m-%d %H:%M:%S') + "\\n")
+        f.write("**완료 시간**: " + end_time.strftime('%Y-%m-%d %H:%M:%S') + "\\n")
+        f.write("**소요 시간**: " + str(duration) + "\\n\\n")
+        f.write("**원본 요구사항**:\\n" + original_requirement + "\\n\\n")
+        f.write("---\\n\\n")
+        f.write("## 생성 결과\\n\\n")
+        f.write(str(result))
+
+    print(f"📄 결과 저장 완료: {{os.path.abspath(output_file)}}")
+    print("✅ 모든 작업이 성공적으로 완료되었습니다!")
+
+except Exception as e:
+    import traceback
+    error_details = traceback.format_exc()
+
+    print(f"\\n❌ 실행 중 오류 발생:")
+    print(f"오류 내용: {{str(e)}}")
+    print(f"상세 정보:\\n{{error_details}}")
+
+    # 오류 로그 저장
+    error_file = os.path.join("{project_path}", "execution_error.log")
+    with open(error_file, 'w', encoding='utf-8') as f:
+        f.write(f"CrewAI 실행 오류 로그\\n")
+        f.write(f"실행 ID: {execution_id}\\n")
+        f.write("오류 발생 시간: " + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + "\\n\\n")
+        f.write("오류 메시지: " + str(e) + "\\n\\n")
+        f.write("상세 추적 정보:\\n" + error_details)
+
+    print("🗂️ 오류 로그 저장: " + os.path.abspath(error_file))
+
+    sys.exit(1)
+'''
+
+    # 4. 템플릿 변수 값 준비 (변수명 일치 확보)
+    normalized_models_str = json.dumps(normalized_models, ensure_ascii=False, indent=8).replace('\n', '\n    ')
+
+    template_vars = {
+        'execution_id': execution_id,
+        'generation_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'requirement_display': safe_requirement[:100] + ('...' if len(safe_requirement) > 100 else ''),
+        'requirement_original': requirement,  # 원본 요구사항 (이스케이핑 없음)
+        'project_path': safe_project_path,
+        'normalized_models_str': normalized_models_str
+    }
+
+    # 5. 안전한 스크립트 생성
+    try:
+        formatted_script = script_template.format(**template_vars)
+
+        # 최종 UTF-8 안전성 확보
+        return formatted_script.encode('utf-8', errors='replace').decode('utf-8')
+
+    except Exception as e:
+        # 폴백 스크립트 (최소한의 동작 보장)
+        fallback_script = f'''#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+CrewAI 스크립트 생성 오류 발생 - 폴백 모드
+실행 ID: {execution_id}
+오류: {str(e)}
+"""
+
+print("⚠️ CrewAI 스크립트 생성 중 오류 발생")
+print(f"실행 ID: {execution_id}")
+print(f"오류 내용: {str(e)}")
+print("\\n문제 해결 후 다시 시도해주세요.")
+
+import sys
+sys.exit(1)
+'''
+        return fallback_script
+
 
 
 @app.route('/api/metagpt', methods=['POST'])
@@ -1951,8 +2637,12 @@ def run_program_background(crew_id, inputs, execution_id, script_path, supabase_
         })
         crewai_logger.log_progress_update(execution_id, crew_id, 25, "환경 변수 설정 중")
 
+        # UTF-8 인코딩 환경변수 설정 (Windows CP949 문제 해결)
+        env['PYTHONIOENCODING'] = 'utf-8'
+        env['PYTHONLEGACYWINDOWSSTDIO'] = '0'
+
         # 환경 변수 설정 로깅
-        env_vars = {}
+        env_vars = {'PYTHONIOENCODING': 'utf-8', 'PYTHONLEGACYWINDOWSSTDIO': '0'}
         for key, value in inputs.items():
             env_key = f"CREWAI_{key.upper()}"
             env[env_key] = str(value)
@@ -1976,7 +2666,7 @@ def run_program_background(crew_id, inputs, execution_id, script_path, supabase_
         crewai_logger.start_phase(execution_id, crew_id, ExecutionPhase.EXECUTION)
         crewai_logger.log_subprocess_start(execution_id, crew_id, script_path, env)
 
-        # 실시간 로그 스트리밍을 위한 subprocess.Popen 사용
+        # Simplified execution without real-time streaming
         process = subprocess.Popen(
             ["python", "-u", script_path],
             stdout=subprocess.PIPE,
@@ -2243,9 +2933,9 @@ def crewai_execute():
 
         crew_info = crew_res.data
 
-        # 'creator' 타입의 크루(예: 크루 생성기)는 programs 폴더에서 찾음
+        # 'creator' 타입의 크루(예: 크루 생성기)는 CrewAI 소스의 programs 폴더에서 찾음
         if crew_info.get('crew_type') == 'creator':
-            script_path = os.path.join(PROJECTS_BASE_DIR, 'crewai_platform', 'programs', crew_info['file_path'])
+            script_path = os.path.join(CREWAI_BASE_DIR, 'crewai_platform', 'programs', crew_info['file_path'])
         else:
             # 'base', 'generated' 타입 크루는 모두 Projects 폴더 기반으로 경로를 찾음
             project_folder = crew_info.get('file_path')
@@ -2703,6 +3393,111 @@ def get_all_llm_models():
 # ==================== END OLLAMA INTEGRATION ====================
 
 
+# ===================== 승인 시스템 API =====================
+
+@app.route('/approval')
+def approval_page():
+    """승인 시스템 페이지"""
+    return render_template('approval.html')
+
+@app.route('/api/projects/pending-approval')
+def get_pending_approval_projects():
+    """승인 대기 중인 프로젝트 목록 조회"""
+    try:
+        from project_state_manager import ProjectStateManager, ProjectStatus
+
+        projects_dir = os.path.join(os.path.dirname(__file__), '../Projects')
+        pending_projects = []
+
+        # 모든 프로젝트 디렉토리 스캔
+        if os.path.exists(projects_dir):
+            for project_name in os.listdir(projects_dir):
+                project_path = os.path.join(projects_dir, project_name)
+                if os.path.isdir(project_path):
+                    try:
+                        manager = ProjectStateManager(project_path)
+                        status_data = manager.load_project_status()
+                        requirements_data = manager.load_original_requirements()
+
+                        if (status_data and
+                            status_data.get('status') == ProjectStatus.PLANNER_APPROVAL_PENDING.value):
+
+                            # Planner 결과 로드
+                            planner_result_file = os.path.join(project_path, "planner_result.md")
+                            plan_content = "계획 내용을 불러올 수 없습니다."
+
+                            if os.path.exists(planner_result_file):
+                                with open(planner_result_file, 'r', encoding='utf-8') as f:
+                                    plan_content = f.read()
+
+                            project_info = {
+                                'id': project_name,
+                                'name': status_data.get('project_name', project_name),
+                                'description': status_data.get('description', ''),
+                                'status': status_data.get('status'),
+                                'created_at': status_data.get('created_at'),
+                                'current_agent': 'Planner',
+                                'original_requirements': requirements_data.get('original_request', '') if requirements_data else '',
+                                'plan_content': plan_content
+                            }
+
+                            pending_projects.append(project_info)
+                    except Exception as e:
+                        print(f"프로젝트 {project_name} 상태 확인 오류: {e}")
+                        continue
+
+        return jsonify(pending_projects)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/projects/<project_id>/approval', methods=['POST'])
+def submit_project_approval(project_id):
+    """프로젝트 승인/거부 처리"""
+    try:
+        from project_state_manager import ProjectStateManager
+
+        data = request.get_json()
+        decision = data.get('decision')  # 'approved', 'rejected', 'modify_requested'
+        feedback = data.get('feedback', '')
+
+        projects_dir = os.path.join(os.path.dirname(__file__), '../Projects')
+        project_path = os.path.join(projects_dir, project_id)
+
+        if not os.path.exists(project_path):
+            return jsonify({'error': '프로젝트를 찾을 수 없습니다.'}), 404
+
+        # 승인 파일 생성
+        approval_file = os.path.join(project_path, "planner_approval.json")
+        approval_data = {
+            'decision': decision,
+            'feedback': feedback,
+            'timestamp': datetime.now().isoformat(),
+            'reviewer': 'user'
+        }
+
+        with open(approval_file, 'w', encoding='utf-8') as f:
+            json.dump(approval_data, f, ensure_ascii=False, indent=2)
+
+        # 상태 관리자를 통해 상태 업데이트
+        manager = ProjectStateManager(project_path)
+
+        if decision == 'approved':
+            manager.mark_approval_granted('planner')
+        elif decision in ['rejected', 'modify_requested']:
+            manager.mark_approval_rejected('planner', feedback)
+
+        return jsonify({
+            'success': True,
+            'message': f'프로젝트 {project_id}에 대한 결정이 전송되었습니다.',
+            'decision': decision
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ===================== 메인 실행 블록 =====================
+
 if __name__ == '__main__':
     print("AI Chat Interface Server (Flask) starting...")
     print(f"Server URL: http://localhost:{PORT}")
@@ -2806,38 +3601,18 @@ def get_execution_errors(execution_id):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-# WebSocket 이벤트 핸들러
-@socketio.on('join_execution_room')
-def on_join_execution_room(data):
-    """실행 로그 룸 참여"""
-    try:
-        execution_id = data.get('execution_id')
-        if execution_id:
-            from flask_socketio import join_room
-            room = f"execution_{execution_id}"
-            join_room(room)
-            emit('joined_room', {'room': room, 'execution_id': execution_id})
-    except Exception as e:
-        emit('error', {'message': str(e)})
-
-@socketio.on('leave_execution_room')
-def on_leave_execution_room(data):
-    """실행 로그 룸 떠나기"""
-    try:
-        execution_id = data.get('execution_id')
-        if execution_id:
-            from flask_socketio import leave_room
-            room = f"execution_{execution_id}"
-            leave_room(room)
-            emit('left_room', {'room': room, 'execution_id': execution_id})
-    except Exception as e:
-        emit('error', {'message': str(e)})
+# WebSocket event handlers removed
 
     print("\n🔍 CrewAI Enhanced Logging:")
     print("  - GET  /api/crewai/logs/<execution_id> (Get execution logs)")
     print("  - GET  /api/crewai/logs/<execution_id>/summary (Get execution summary)")
     print("  - GET  /api/crewai/logs/<execution_id>/phases (Get phase logs)")
     print("  - GET  /api/crewai/logs/<execution_id>/errors (Get error logs)")
-    print("  - WebSocket: join_execution_room, leave_execution_room")
+    print("  - WebSocket functionality removed")
+
+    print("\n🔔 Project Approval System:")
+    print("  - GET  /approval (Approval UI page)")
+    print("  - GET  /api/projects/pending-approval (Get pending projects)")
+    print("  - POST /api/projects/<project_id>/approval (Submit approval decision)")
 
     app.run(host='0.0.0.0', port=PORT, debug=True)

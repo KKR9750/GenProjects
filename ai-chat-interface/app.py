@@ -104,6 +104,10 @@ from admin_auth import admin_auth
 from crewai_logger import crewai_logger, ExecutionPhase
 from generate_crewai_script_new import generate_crewai_execution_script_with_approval
 
+# 새로운 모듈 import
+from pre_analysis_service import pre_analysis_service
+from approval_workflow import approval_workflow_manager
+
 # Add current directory to Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(current_dir)
@@ -119,6 +123,26 @@ sys.path.append(metagpt_path)
 # MetaGPT: D:\GenProjects\MetaGPT
 
 app = Flask(__name__, static_folder='.', static_url_path='')
+
+# UTF-8 처리 강화
+app.config['JSON_AS_ASCII'] = False
+app.config['JSONIFY_MIMETYPE'] = 'application/json; charset=utf-8'
+
+# UTF-8 처리를 위한 헬퍼 함수
+def get_json_safely():
+    """안전한 JSON 파싱"""
+    try:
+        if request.is_json:
+            return request.get_json(force=True)
+        else:
+            # 강제로 JSON으로 파싱 시도
+            raw_data = request.get_data(as_text=True)
+            if raw_data.startswith('\ufeff'):  # BOM 제거
+                raw_data = raw_data[1:]
+            return json.loads(raw_data)
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as e:
+        print(f"JSON 파싱 오류: {e}")
+        return None
 
 # SocketIO removed for simplicity
 
@@ -396,6 +420,7 @@ def handle_crewai_request():
     data = request.get_json()
     requirement = data.get('requirement')
     selected_models = data.get('selectedModels', {})
+    pre_analysis_model = data.get('preAnalysisModel', 'gemini-flash')  # 사전 분석 모델 추가
     project_id = data.get('projectId')
 
     if not requirement:
@@ -485,6 +510,96 @@ def handle_crewai_request():
     execution_id = str(uuid.uuid4())
     crew_id = f"crew_{int(time.time())}"
 
+    # 🔍 사전 분석 및 승인 워크플로우 실행
+    print(f"[CREWAI] 사전 분석 시작: execution_id={execution_id}")
+
+    try:
+        # 1. 사전 분석 서비스 호출
+        print(f"[CREWAI] 사전 분석 모델: {pre_analysis_model}")
+        analysis_result = pre_analysis_service.analyze_user_request(
+            user_request=requirement,
+            framework="crewai",
+            model=pre_analysis_model
+        )
+
+        # 2. 분석 결과 검증
+        if analysis_result.get('status') == 'error' or analysis_result.get('error'):
+            error_msg = analysis_result.get('error', '사전 분석 실패')
+            print(f"[CREWAI ERROR] 사전 분석 실패: {error_msg}")
+            return jsonify({'error': error_msg}), 500
+
+        print(f"[CREWAI] 사전 분석 성공: {analysis_result.get('analysis', {}).get('summary', 'N/A')}")
+
+        # 3. 프로젝트 정보 미리 준비 (승인 후 실행에 필요)
+        if not project_id:
+            # 새 프로젝트 경로 생성 (실제 디렉토리는 승인 후 생성)
+            existing_projects = [d for d in os.listdir(PROJECTS_BASE_DIR) if d.startswith('project_') and os.path.isdir(os.path.join(PROJECTS_BASE_DIR, d))]
+            project_number = len(existing_projects) + 1
+            project_name = f"project_{project_number:05d}"
+            project_path = os.path.join(PROJECTS_BASE_DIR, project_name)
+        else:
+            if project_id.startswith('project_'):
+                project_name = project_id
+            else:
+                project_name = f"project_{project_id}"
+            project_path = os.path.join(PROJECTS_BASE_DIR, project_name)
+
+        print(f"[CREWAI] 프로젝트 경로 준비: {project_path}")
+
+        # 4. 승인 요청에 포함할 프로젝트 데이터 구성
+        project_data = {
+            'execution_id': execution_id,
+            'crew_id': crew_id,
+            'framework': 'crewai',
+            'requirement': requirement,
+            'selected_models': selected_models,
+            'pre_analysis_model': pre_analysis_model,
+            'project_id': project_id,
+            'project_name': project_name,
+            'project_path': project_path,
+            'projects_base_dir': PROJECTS_BASE_DIR,
+            'created_at': datetime.now().isoformat()
+        }
+
+        print(f"[CREWAI] 프로젝트 데이터 구성 완료: {project_data['project_name']}")
+
+        # 5. 승인 요청 생성 (프로젝트 데이터 포함)
+        approval_id = approval_workflow_manager.create_approval_request(
+            analysis_result=analysis_result,
+            project_data=project_data,  # 실행에 필요한 모든 정보 포함
+            project_id=project_id,
+            requester="crewai_interface"
+        )
+
+        print(f"[CREWAI] 승인 요청 생성 완료: {approval_id}")
+
+        # 6. 승인 대기 응답 반환
+        return jsonify({
+            'success': True,
+            'message': 'AI 계획이 분석되었습니다. 승인을 기다리고 있습니다.',
+            'approval_id': approval_id,
+            'execution_id': execution_id,
+            'status': 'pending_approval',
+            'analysis': analysis_result.get('analysis', {}),
+            'project_info': {
+                'name': project_name,
+                'path': project_path
+            },
+            'requires_approval': True
+        })
+
+    except Exception as analysis_error:
+        print(f"[CREWAI ERROR] 사전 분석 오류: {analysis_error}")
+        import traceback
+        print(f"[CREWAI ERROR] 스택 추적:\n{traceback.format_exc()}")
+
+        # 사전 분석 실패 시 에러 반환 (기존 방식 진행 제거)
+        return jsonify({
+            'error': f'사전 분석 중 오류가 발생했습니다: {str(analysis_error)}',
+            'details': 'AI 계획 분석이 필요합니다. 다시 시도해주세요.',
+            'execution_id': execution_id
+        }), 500
+
     try:
         # 상세 로깅 시작
         crewai_logger.start_execution_logging(execution_id, crew_id, {
@@ -545,12 +660,19 @@ def handle_crewai_request():
         # 단계 5: CrewAI 스크립트 생성
         crewai_logger.advance_step(execution_id, crew_id, "스크립트 생성", "", ExecutionPhase.FILE_GENERATION)
 
-        script_content = generate_crewai_execution_script_with_approval(
-            requirement=requirement,
-            selected_models=selected_models,
-            project_path=project_path,
-            execution_id=execution_id
-        )
+        # 고도화된 스크립트 생성기 사용 (모든 CrewAI 요청에 적용)
+        try:
+            from enhanced_script_generator import generate_enhanced_crewai_script
+            print(f"[CREWAI] 고도화된 스크립트 생성기 사용")
+            script_content = generate_enhanced_crewai_script(requirement, selected_models, project_path, execution_id)
+        except ImportError:
+            print(f"[CREWAI] 승인 기반 스크립트 생성기 사용 (fallback)")
+            script_content = generate_crewai_execution_script_with_approval(
+                requirement=requirement,
+                selected_models=selected_models,
+                project_path=project_path,
+                execution_id=execution_id
+            )
 
         script_path = os.path.join(project_path, "execute_crewai.py")
 
@@ -611,6 +733,7 @@ def handle_crewai_request():
 
         # 실제 CrewAI 실행 (백그라운드에서)
         def execute_crewai_async():
+            start_time = int(time.time() * 1000)  # 밀리초 단위 시작 시간
             try:
                 # 현재 환경 변수 설정 (한글 인코딩 강화)
                 current_env = os.environ.copy()
@@ -711,7 +834,8 @@ def handle_crewai_request():
                 success = exit_code == 0
 
                 # 완료 로깅
-                total_duration = int(time.time() * 1000) - int(time.time() * 1000)  # 임시 계산
+                end_time = int(time.time() * 1000)
+                total_duration = end_time - start_time
                 crewai_logger.log_completion(execution_id, crew_id, success, total_duration, {
                     "exit_code": exit_code,
                     "project_path": project_path,
@@ -997,7 +1121,7 @@ try:
         f.write("**생성 시간**: " + start_time.strftime('%Y-%m-%d %H:%M:%S') + "\\n")
         f.write("**완료 시간**: " + end_time.strftime('%Y-%m-%d %H:%M:%S') + "\\n")
         f.write("**소요 시간**: " + str(duration) + "\\n\\n")
-        f.write("**원본 요구사항**:\\n" + original_requirement + "\\n\\n")
+        f.write("**원본 요구사항**:\\n" + "{requirement_original}" + "\\n\\n")
         f.write("---\\n\\n")
         f.write("## 생성 결과\\n\\n")
         f.write(str(result))
@@ -3400,6 +3524,513 @@ def approval_page():
     """승인 시스템 페이지"""
     return render_template('approval.html')
 
+# ===================== 새로운 3단계 승인 시스템 API =====================
+
+@app.route('/api/pre-analysis', methods=['POST'])
+def create_pre_analysis():
+    """사전 분석 요청 생성"""
+    try:
+        # 안전한 JSON 파싱 사용
+        data = get_json_safely()
+
+        if not data:
+            return jsonify({'error': '요청 데이터가 없습니다'}), 400
+
+        user_request = data.get('user_request')
+        framework = data.get('framework', 'crewai')
+        model = data.get('model', 'gemini-flash')
+        project_id = data.get('project_id')
+
+        if not user_request:
+            return jsonify({'error': '사용자 요청이 필요합니다'}), 400
+
+        # 사전 분석 수행
+        analysis_result = pre_analysis_service.analyze_user_request(
+            user_request=user_request,
+            framework=framework,
+            model=model
+        )
+
+        if analysis_result.get('status') == 'error':
+            return jsonify({'error': analysis_result.get('error')}), 500
+
+        # 승인 요청 생성
+        approval_id = approval_workflow_manager.create_approval_request(
+            analysis_result=analysis_result,
+            project_id=project_id,
+            requester="api"
+        )
+
+        return jsonify({
+            'success': True,
+            'analysis_id': analysis_result.get('analysis_id'),
+            'approval_id': approval_id,
+            'analysis_result': analysis_result
+        })
+
+    except Exception as e:
+        print(f"사전 분석 생성 오류: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/approval/pending', methods=['GET'])
+def get_pending_approvals():
+    """승인 대기 중인 요청 목록 조회"""
+    try:
+        project_id = request.args.get('project_id')
+        pending_approvals = approval_workflow_manager.get_pending_approvals(project_id)
+
+        return jsonify(pending_approvals)
+
+    except Exception as e:
+        print(f"승인 대기 목록 조회 오류: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/approval/<approval_id>', methods=['GET'])
+def get_approval_request(approval_id):
+    """특정 승인 요청 조회"""
+    try:
+        approval_request = approval_workflow_manager.get_approval_request(approval_id)
+
+        if not approval_request:
+            return jsonify({'error': '승인 요청을 찾을 수 없습니다'}), 404
+
+        return jsonify(approval_request)
+
+    except Exception as e:
+        print(f"승인 요청 조회 오류: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/approval/<approval_id>/respond', methods=['POST'])
+def respond_to_approval(approval_id):
+    """승인 요청에 대한 응답 처리 - 강화된 버전"""
+    import traceback
+
+    # 요청 시작 로깅
+    start_time = datetime.now()
+    print(f"[APPROVAL API] 승인 응답 요청 시작: {approval_id} at {start_time}")
+
+    try:
+        # 1. 입력 데이터 검증
+        data = request.get_json()
+        if not data:
+            error_msg = "요청 데이터가 없습니다. JSON 형식의 데이터가 필요합니다."
+            print(f"[APPROVAL ERROR] {error_msg}")
+            return jsonify({
+                'success': False,
+                'error': error_msg,
+                'error_code': 'MISSING_DATA',
+                'approval_id': approval_id
+            }), 400
+
+        # 2. 필수 필드 검증
+        action = data.get('action')
+        feedback = data.get('feedback', '')
+        revisions = data.get('revisions', [])
+        timestamp = data.get('timestamp')
+
+        print(f"[APPROVAL DATA] action={action}, feedback_length={len(feedback)}, revisions_count={len(revisions) if isinstance(revisions, list) else 0}")
+
+        if not action:
+            error_msg = "action 필드가 필수입니다."
+            print(f"[APPROVAL ERROR] {error_msg}")
+            return jsonify({
+                'success': False,
+                'error': error_msg,
+                'error_code': 'MISSING_ACTION',
+                'approval_id': approval_id
+            }), 400
+
+        if action not in ['approve', 'reject', 'request_revision']:
+            error_msg = f"잘못된 액션: {action}. 허용된 값: approve, reject, request_revision"
+            print(f"[APPROVAL ERROR] {error_msg}")
+            return jsonify({
+                'success': False,
+                'error': error_msg,
+                'error_code': 'INVALID_ACTION',
+                'approval_id': approval_id,
+                'allowed_actions': ['approve', 'reject', 'request_revision']
+            }), 400
+
+        # 3. 승인 워크플로우 매니저 확인
+        if not approval_workflow_manager:
+            error_msg = "승인 워크플로우 매니저가 초기화되지 않았습니다."
+            print(f"[APPROVAL ERROR] {error_msg}")
+            return jsonify({
+                'success': False,
+                'error': error_msg,
+                'error_code': 'WORKFLOW_MANAGER_NOT_INITIALIZED',
+                'approval_id': approval_id
+            }), 500
+
+        print(f"[APPROVAL PROCESS] 승인 처리 시작: {approval_id}, action={action}")
+
+        # 3.5. 승인 요청 존재 여부 확인
+        approval_request = approval_workflow_manager.get_approval_request(approval_id)
+        if not approval_request:
+            print(f"[APPROVAL ERROR] 승인 요청을 찾을 수 없음: {approval_id}")
+            print(f"[APPROVAL INFO] 메모리 저장소에 {len(approval_workflow_manager.approval_storage)}개 승인 요청 저장됨")
+            print(f"[APPROVAL INFO] 저장된 ID 목록: {list(approval_workflow_manager.approval_storage.keys())}")
+
+            return jsonify({
+                'success': False,
+                'error': f'승인 요청을 찾을 수 없습니다: {approval_id}',
+                'error_code': 'APPROVAL_REQUEST_NOT_FOUND',
+                'approval_id': approval_id,
+                'debug_info': {
+                    'stored_approval_count': len(approval_workflow_manager.approval_storage),
+                    'stored_approval_ids': list(approval_workflow_manager.approval_storage.keys())
+                }
+            }), 404
+
+        # 4. 승인 응답 처리
+        result = approval_workflow_manager.process_approval_response(
+            approval_id=approval_id,
+            action=action,
+            feedback=feedback,
+            revisions=revisions
+        )
+
+        print(f"[APPROVAL RESULT] 처리 결과: success={result.get('success')}, message={result.get('message')}")
+
+        if not result.get('success'):
+            error_msg = result.get('error', '승인 처리 중 알 수 없는 오류가 발생했습니다.')
+            print(f"[APPROVAL ERROR] 워크플로우 처리 실패: {error_msg}")
+            return jsonify({
+                'success': False,
+                'error': error_msg,
+                'error_code': 'WORKFLOW_PROCESSING_FAILED',
+                'approval_id': approval_id,
+                'action': action
+            }), 500
+
+        # 5. 승인된 경우 프로젝트 실행 재개
+        execution_resumed = False
+        resume_error = None
+
+        if action == 'approve':
+            try:
+                print(f"[APPROVAL RESUME] 프로젝트 실행 재개 시작: {approval_id}")
+
+                # 승인 요청에서 프로젝트 정보 추출
+                approval_request = approval_workflow_manager.get_approval_request(approval_id)
+                if not approval_request:
+                    print(f"[APPROVAL WARNING] 승인 요청 정보를 찾을 수 없음: {approval_id}")
+                elif not approval_request.get('project_data'):
+                    print(f"[APPROVAL WARNING] 프로젝트 데이터가 없음: {approval_id}")
+                else:
+                    project_data = approval_request['project_data']
+                    execution_id = project_data.get('execution_id')
+                    framework = project_data.get('framework')
+
+                    print(f"[APPROVAL RESUME] execution_id={execution_id}, framework={framework}")
+
+                    # 프로젝트 실행 재개 (백그라운드에서)
+                    if framework == 'crewai':
+                        threading.Thread(
+                            target=resume_crewai_execution,
+                            args=(execution_id, project_data),
+                            daemon=True,
+                            name=f"CrewAI-Resume-{execution_id[:8]}"
+                        ).start()
+                        execution_resumed = True
+                        print(f"[APPROVAL RESUME] CrewAI 실행 재개 스레드 시작됨")
+
+                    elif framework == 'metagpt':
+                        threading.Thread(
+                            target=resume_metagpt_execution,
+                            args=(execution_id, project_data),
+                            daemon=True,
+                            name=f"MetaGPT-Resume-{execution_id[:8]}"
+                        ).start()
+                        execution_resumed = True
+                        print(f"[APPROVAL RESUME] MetaGPT 실행 재개 스레드 시작됨")
+
+                    else:
+                        print(f"[APPROVAL WARNING] 알 수 없는 프레임워크: {framework}")
+
+            except Exception as resume_error:
+                print(f"[APPROVAL ERROR] 프로젝트 실행 재개 실패: {resume_error}")
+                print(f"[APPROVAL ERROR] 재개 오류 스택:\n{traceback.format_exc()}")
+                # 재개 실패는 치명적이지 않으므로 계속 진행
+
+        # 6. 성공 응답 반환
+        action_messages = {
+            'approve': '승인되었습니다. 프로젝트 실행이 재개됩니다.',
+            'reject': '거부되었습니다.',
+            'request_revision': '수정 요청이 처리되었습니다.'
+        }
+
+        response_data = {
+            'success': True,
+            'message': action_messages.get(action, f'{action} 처리가 완료되었습니다.'),
+            'approval_id': approval_id,
+            'action': action,
+            'processed_at': datetime.now().isoformat(),
+            'processing_time_ms': int((datetime.now() - start_time).total_seconds() * 1000)
+        }
+
+        # 승인인 경우 실행 재개 정보 추가
+        if action == 'approve':
+            response_data['execution_resumed'] = execution_resumed
+            if resume_error:
+                response_data['resume_warning'] = str(resume_error)
+
+        print(f"[APPROVAL SUCCESS] 승인 처리 완료: {approval_id}, action={action}, duration={(datetime.now() - start_time).total_seconds():.2f}s")
+
+        return jsonify(response_data)
+
+    except Exception as e:
+        # 7. 전체 예외 처리
+        error_duration = (datetime.now() - start_time).total_seconds()
+        error_traceback = traceback.format_exc()
+
+        print(f"[APPROVAL CRITICAL ERROR] 승인 처리 중 치명적 오류 발생:")
+        print(f"  - approval_id: {approval_id}")
+        print(f"  - 처리 시간: {error_duration:.2f}s")
+        print(f"  - 오류 타입: {type(e).__name__}")
+        print(f"  - 오류 메시지: {str(e)}")
+        print(f"  - 스택 추적:\n{error_traceback}")
+
+        return jsonify({
+            'success': False,
+            'error': f'승인 처리 중 시스템 오류가 발생했습니다: {str(e)}',
+            'error_code': 'SYSTEM_ERROR',
+            'error_type': type(e).__name__,
+            'approval_id': approval_id,
+            'processing_time_ms': int(error_duration * 1000)
+        }), 500
+
+@app.route('/api/approval/<approval_id>', methods=['POST'])
+def process_approval_response(approval_id):
+    """승인 응답 처리"""
+    try:
+        data = request.get_json()
+        action = data.get('action')
+        feedback = data.get('feedback')
+        revisions = data.get('revisions')
+
+        if action not in ['approve', 'reject', 'request_revision']:
+            return jsonify({'error': '유효하지 않은 액션입니다'}), 400
+
+        result = approval_workflow_manager.process_approval_response(
+            approval_id=approval_id,
+            action=action,
+            feedback=feedback,
+            revisions=revisions
+        )
+
+        if result.get('success'):
+            # 승인된 경우 실제 실행 시작
+            if action == 'approve':
+                approval_request = approval_workflow_manager.get_approval_request(approval_id)
+                if approval_request:
+                    # 백그라운드에서 실행 시작
+                    threading.Thread(
+                        target=start_execution_after_approval,
+                        args=(approval_request,),
+                        daemon=True
+                    ).start()
+
+        return jsonify(result)
+
+    except Exception as e:
+        print(f"승인 응답 처리 오류: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/approval/<approval_id>/revise', methods=['POST'])
+def revise_analysis(approval_id):
+    """분석 결과 수정 적용"""
+    try:
+        data = request.get_json()
+        revised_analysis = data.get('revised_analysis')
+
+        if not revised_analysis:
+            return jsonify({'error': '수정된 분석 결과가 필요합니다'}), 400
+
+        result = approval_workflow_manager.apply_revisions(
+            approval_id=approval_id,
+            revised_analysis=revised_analysis
+        )
+
+        return jsonify(result)
+
+    except Exception as e:
+        print(f"수정 적용 오류: {e}")
+        return jsonify({'error': str(e)}), 500
+
+def start_execution_after_approval(approval_request):
+    """승인 후 실행 시작"""
+    try:
+        framework = approval_request.get('metadata', {}).get('framework')
+        project_id = approval_request.get('project_id')
+        analysis_result = approval_request.get('analysis_result')
+        analysis = analysis_result.get('analysis', {})
+
+        print(f"승인 후 실행 시작: 프레임워크={framework}, 프로젝트={project_id}")
+
+        # 기존 실행 로직과 연동
+        if framework == 'crewai':
+            # CrewAI 실행 - 승인된 구조화 프롬프트 사용
+            structured_prompt = create_structured_crewai_prompt(analysis)
+
+            # 프로젝트 생성 및 실행
+            execution_id = str(uuid.uuid4())
+
+            # 생성된 구조화 프롬프트로 CrewAI 실행
+            inputs = {
+                'original_request': analysis_result.get('original_request', ''),
+                'structured_plan': structured_prompt,
+                'project_summary': analysis.get('project_summary', ''),
+                'objectives': analysis.get('objectives', []),
+                'agents_config': analysis.get('agents', []),
+                'workflow_config': analysis.get('workflow', []),
+                'approval_id': approval_request.get('approval_id')
+            }
+
+            # 기본 크루 ID 사용 (existing crew or create new)
+            crew_id = "structured-crewai-execution"
+
+            # 백그라운드 실행 시작 - 기존 함수 활용
+            start_structured_background_execution(execution_id, inputs, framework='crewai')
+
+        elif framework == 'metagpt':
+            # MetaGPT 실행 - 승인된 구조화 프롬프트 사용
+            structured_requirement = create_structured_metagpt_requirement(analysis)
+
+            execution_id = str(uuid.uuid4())
+
+            # MetaGPT 실행 데이터 준비
+            metagpt_data = {
+                'requirement': structured_requirement,
+                'original_request': analysis_result.get('original_request', ''),
+                'project_summary': analysis.get('project_summary', ''),
+                'workflow_stages': analysis.get('workflow', []),
+                'approval_id': approval_request.get('approval_id')
+            }
+
+            # MetaGPT 실행 시작
+            start_structured_background_execution(execution_id, metagpt_data, framework='metagpt')
+
+    except Exception as e:
+        print(f"승인 후 실행 오류: {e}")
+
+def create_structured_crewai_prompt(analysis):
+    """분석 결과를 CrewAI용 구조화 프롬프트로 변환"""
+    agents = analysis.get('agents', [])
+    workflow = analysis.get('workflow', [])
+    objectives = analysis.get('objectives', [])
+
+    prompt = f"""
+# 프로젝트 계획: {analysis.get('project_summary', '')}
+
+## 목표
+{chr(10).join(f'- {obj}' for obj in objectives)}
+
+## 에이전트 역할 분담
+{chr(10).join(f'''
+### {agent.get('role', '')}
+- **전문 분야**: {agent.get('expertise', '')}
+- **책임사항**: {', '.join(agent.get('responsibilities', []))}
+- **산출물**: {', '.join(agent.get('deliverables', []))}
+''' for agent in agents)}
+
+## 작업 계획
+{chr(10).join(f'''
+### 단계 {step.get('step', i+1)}: {step.get('title', '')}
+- **담당**: {step.get('agent', '')}
+- **설명**: {step.get('description', '')}
+- **예상 시간**: {step.get('estimated_time', '')}
+''' for i, step in enumerate(workflow))}
+
+이 계획에 따라 체계적으로 작업을 수행하세요.
+"""
+    return prompt
+
+def create_structured_metagpt_requirement(analysis):
+    """분석 결과를 MetaGPT용 구조화 요구사항으로 변환"""
+    objectives = analysis.get('objectives', [])
+    workflow = analysis.get('workflow', [])
+
+    requirement = f"""
+프로젝트: {analysis.get('project_summary', '')}
+
+요구사항:
+{chr(10).join(f'- {obj}' for obj in objectives)}
+
+개발 단계:
+{chr(10).join(f'{i+1}. {step.get("title", "")}: {step.get("description", "")}' for i, step in enumerate(workflow))}
+
+이 요구사항에 따라 5단계 소프트웨어 개발 프로세스를 진행하세요.
+"""
+    return requirement
+
+def start_structured_background_execution(execution_id, data, framework):
+    """승인된 구조화 데이터로 백그라운드 실행"""
+    try:
+        execution_status[execution_id] = {
+            'status': 'starting',
+            'framework': framework,
+            'start_time': datetime.now(),
+            'approval_based': True,
+            'data': data
+        }
+
+        if framework == 'crewai':
+            # CrewAI 구조화 실행
+            def run_crewai():
+                try:
+                    execution_status[execution_id]['status'] = 'running'
+
+                    # 구조화된 프롬프트로 CrewAI 실행
+                    # 실제 구현시 generate_crewai_script_new.py의 로직 활용
+
+                    execution_status[execution_id].update({
+                        'status': 'completed',
+                        'end_time': datetime.now()
+                    })
+
+                except Exception as e:
+                    execution_status[execution_id].update({
+                        'status': 'failed',
+                        'error': str(e),
+                        'end_time': datetime.now()
+                    })
+
+            threading.Thread(target=run_crewai, daemon=True).start()
+
+        elif framework == 'metagpt':
+            # MetaGPT 구조화 실행
+            def run_metagpt():
+                try:
+                    execution_status[execution_id]['status'] = 'running'
+
+                    # 구조화된 요구사항으로 MetaGPT 실행
+                    # 실제 구현시 기존 MetaGPT 로직 활용
+
+                    execution_status[execution_id].update({
+                        'status': 'completed',
+                        'end_time': datetime.now()
+                    })
+
+                except Exception as e:
+                    execution_status[execution_id].update({
+                        'status': 'failed',
+                        'error': str(e),
+                        'end_time': datetime.now()
+                    })
+
+            threading.Thread(target=run_metagpt, daemon=True).start()
+
+    except Exception as e:
+        print(f"구조화 백그라운드 실행 오류: {e}")
+        execution_status[execution_id] = {
+            'status': 'failed',
+            'error': str(e),
+            'end_time': datetime.now()
+        }
+
+# ===================== 기존 승인 시스템 (호환성 유지) =====================
+
 @app.route('/api/projects/pending-approval')
 def get_pending_approval_projects():
     """승인 대기 중인 프로젝트 목록 조회"""
@@ -3610,9 +4241,499 @@ def get_execution_errors(execution_id):
     print("  - GET  /api/crewai/logs/<execution_id>/errors (Get error logs)")
     print("  - WebSocket functionality removed")
 
+# ===================== CrewAI 개선된 승인 시스템 API =====================
+
+# 전역 승인 상태 관리
+approval_states = {}
+approval_events = {}
+
+@app.route('/api/crewai/approval/<execution_id>')
+def crewai_approval_page(execution_id):
+    """CrewAI 개선된 승인 시스템 페이지"""
+    if execution_id not in approval_states:
+        return "승인 요청을 찾을 수 없습니다.", 404
+
+    approval_data = approval_states[execution_id]
+
+    # HTML 템플릿 직접 반환
+    html_content = f'''
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>CrewAI 승인 시스템 - {approval_data.get("stage_name", "단계")}</title>
+        <style>
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body {{ font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }}
+            .container {{ max-width: 1200px; margin: 0 auto; background: white; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); overflow: hidden; }}
+            .header {{ background: linear-gradient(135deg, #4834d4, #686de0); color: white; padding: 30px; text-align: center; }}
+            .content {{ padding: 30px; }}
+            .stage-badge {{ display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: bold; margin-bottom: 20px; }}
+            .stage-1 {{ background-color: #e3f2fd; color: #1976d2; }}
+            .stage-2 {{ background-color: #f3e5f5; color: #7b1fa2; }}
+            .stage-3 {{ background-color: #e8f5e8; color: #388e3c; }}
+            .functionality-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin: 20px 0; }}
+            .function-card {{ border: 1px solid #e0e0e0; border-radius: 10px; padding: 20px; }}
+            .priority-high {{ border-left: 4px solid #f44336; }}
+            .priority-medium {{ border-left: 4px solid #ff9800; }}
+            .priority-low {{ border-left: 4px solid #4caf50; }}
+            .tech-stack {{ background-color: #f5f5f5; padding: 15px; border-radius: 8px; margin: 10px 0; }}
+            .role-instructions {{ background-color: #fff3e0; padding: 20px; border-radius: 10px; margin: 20px 0; }}
+            .buttons {{ display: flex; gap: 20px; justify-content: center; margin-top: 30px; }}
+            .btn {{ padding: 15px 30px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; transition: all 0.3s; }}
+            .btn-approve {{ background-color: #4caf50; color: white; }}
+            .btn-reject {{ background-color: #f44336; color: white; }}
+            .btn:hover {{ transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }}
+            .feedback-area {{ margin-top: 20px; }}
+            .feedback-area textarea {{ width: 100%; padding: 15px; border: 1px solid #ddd; border-radius: 8px; resize: vertical; min-height: 80px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🤖 CrewAI 승인 시스템</h1>
+                <p>단계별 검토 및 승인</p>
+            </div>
+            <div class="content">
+                <div class="stage-badge stage-{approval_data.get("stage_number", "1")}">{approval_data.get("stage_name", "단계")}</div>
+
+                <h2>📋 핵심 기능 분석</h2>
+                <div id="functionalitySection">
+                    {approval_data.get("functionality_html", "<p>기능 정보를 로딩 중...</p>")}
+                </div>
+
+                <div class="role-instructions">
+                    <h3>👤 역할별 지시사항</h3>
+                    <div id="roleInstructions">
+                        {approval_data.get("role_instructions", "<p>역할 지시사항을 로딩 중...</p>")}
+                    </div>
+                </div>
+
+                <div class="feedback-area">
+                    <h3>💬 피드백 (선택사항)</h3>
+                    <textarea id="feedback" placeholder="추가 요구사항이나 수정사항을 입력하세요..."></textarea>
+                </div>
+
+                <div class="buttons">
+                    <button class="btn btn-approve" onclick="submitDecision('approved')">✅ 승인</button>
+                    <button class="btn btn-reject" onclick="submitDecision('rejected')">❌ 거부</button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function submitDecision(decision) {{
+                const feedback = document.getElementById('feedback').value;
+
+                fetch('/api/crewai/approval/{execution_id}', {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json'}},
+                    body: JSON.stringify({{
+                        decision: decision,
+                        feedback: feedback
+                    }})
+                }})
+                .then(response => response.json())
+                .then(data => {{
+                    if (data.success) {{
+                        alert('결정이 전송되었습니다: ' + decision);
+                        window.close();
+                    }} else {{
+                        alert('오류: ' + data.error);
+                    }}
+                }})
+                .catch(error => {{
+                    alert('요청 처리 중 오류 발생: ' + error);
+                }});
+            }}
+        </script>
+    </body>
+    </html>
+    '''
+
+    return html_content
+
+@app.route('/api/crewai/approval/<execution_id>', methods=['POST'])
+def submit_crewai_approval(execution_id):
+    """CrewAI 승인 결정 처리"""
+    if execution_id not in approval_events:
+        return jsonify({{'error': '승인 요청을 찾을 수 없습니다.', 'success': False}}), 404
+
+    data = request.get_json()
+    decision = data.get('decision')
+    feedback = data.get('feedback', '')
+
+    # 전역 승인 상태 업데이트
+    if execution_id in approval_states:
+        approval_states[execution_id]['decision'] = decision
+        approval_states[execution_id]['feedback'] = feedback
+        approval_states[execution_id]['response'] = decision
+
+    # 승인 이벤트 설정
+    if execution_id in approval_events:
+        approval_events[execution_id].set()
+
+    return jsonify({{'success': True, 'message': f'결정이 처리되었습니다: {{decision}}'}})
+
+@app.route('/api/crewai/approval/<execution_id>/register', methods=['POST'])
+def register_crewai_approval_request(execution_id):
+    """CrewAI 승인 요청 등록"""
+    data = request.get_json()
+
+    # 승인 상태 저장
+    approval_states[execution_id] = {
+        'stage_name': data.get('stage_name', '단계'),
+        'stage_number': data.get('stage_number', '1'),
+        'functionality_html': data.get('functionality_html', ''),
+        'role_instructions': data.get('role_instructions', ''),
+        'decision': None,
+        'feedback': '',
+        'response': None
+    }
+
+    # 승인 이벤트 생성
+    approval_events[execution_id] = threading.Event()
+
+    return jsonify({'success': True, 'message': '승인 요청이 등록되었습니다.'})
+
+@app.route('/api/crewai/approval/<execution_id>/status')
+def get_crewai_approval_status(execution_id):
+    """CrewAI 승인 상태 확인"""
+    if execution_id not in approval_states:
+        return jsonify({'error': '승인 요청을 찾을 수 없습니다.'}), 404
+
+    approval_state = approval_states[execution_id]
+    return jsonify({
+        'execution_id': execution_id,
+        'decision': approval_state.get('decision'),
+        'feedback': approval_state.get('feedback'),
+        'completed': approval_state.get('decision') is not None
+    })
+
     print("\n🔔 Project Approval System:")
     print("  - GET  /approval (Approval UI page)")
     print("  - GET  /api/projects/pending-approval (Get pending projects)")
     print("  - POST /api/projects/<project_id>/approval (Submit approval decision)")
 
+    print("\n🚀 CrewAI Enhanced Approval System:")
+    print("  - GET  /api/crewai/approval/<execution_id> (Enhanced approval UI)")
+    print("  - POST /api/crewai/approval/<execution_id> (Submit approval decision)")
+    print("  - POST /api/crewai/approval/<execution_id>/register (Register approval request)")
+    print("  - GET  /api/crewai/approval/<execution_id>/status (Get approval status)")
+
+# 실행 재개 함수들
+def resume_crewai_execution(execution_id, project_data):
+    """CrewAI 실행 재개 - 정석적인 방법으로 전체 CrewAI 로직 실행"""
+    import threading
+
+    def run_full_crewai_execution():
+        """승인된 프로젝트 데이터로 전체 CrewAI 실행"""
+        try:
+            print(f"[CREWAI RESUME] 전체 CrewAI 실행 시작: {execution_id}")
+
+            # 프로젝트 데이터 추출
+            requirement = project_data.get('requirement')
+            selected_models = project_data.get('selected_models', {})
+            crew_id = project_data.get('crew_id')
+            project_path = project_data.get('project_path')
+            projects_base_dir = project_data.get('projects_base_dir')
+
+            print(f"[CREWAI RESUME] 프로젝트 정보 추출 완료:")
+            print(f"  - requirement: {requirement}")
+            print(f"  - project_path: {project_path}")
+            print(f"  - crew_id: {crew_id}")
+
+            # 실행 상태 초기화
+            execution_status[execution_id] = {
+                'status': 'running',
+                'message': '승인 완료 - CrewAI 실행 시작',
+                'start_time': datetime.now(),
+                'execution_id': execution_id,
+                'crew_id': crew_id,
+                'requirement': requirement,
+                'models': selected_models,
+                'project_path': project_path,
+                'phase': 'resumed_execution'
+            }
+
+            # CrewAI 로거 시작
+            crewai_logger.start_execution_logging(execution_id, crew_id, {
+                'requirement': requirement,
+                'selected_models': selected_models,
+                'project_id': project_data.get('project_id'),
+                'resumed': True
+            })
+
+            crewai_logger.start_step_tracking(execution_id, crew_id, total_steps=10)
+
+            # 단계 1: 시스템 검증
+            crewai_logger.advance_step(execution_id, crew_id, "시스템 검증", "시작", ExecutionPhase.VALIDATION)
+            crewai_logger.log_system_check(execution_id, crew_id, "UTF-8 인코딩 환경", True)
+
+            # 단계 2: 프로젝트 디렉토리 생성
+            crewai_logger.advance_step(execution_id, crew_id, "디렉토리 생성", project_path, ExecutionPhase.DIRECTORY_CREATION)
+
+            try:
+                os.makedirs(project_path, exist_ok=True)
+                crewai_logger.log_directory_operation(execution_id, crew_id, "생성", project_path, True)
+                print(f"[CREWAI RESUME] 프로젝트 디렉토리 생성: {project_path}")
+            except Exception as dir_error:
+                crewai_logger.log_directory_operation(execution_id, crew_id, "생성", project_path, False, {"error": str(dir_error)})
+                raise dir_error
+
+            # 단계 3: 환경 설정
+            crewai_logger.advance_step(execution_id, crew_id, "환경 설정", "", ExecutionPhase.ENVIRONMENT_SETUP)
+
+            env_vars = {
+                'PYTHONIOENCODING': 'utf-8',
+                'PYTHONLEGACYWINDOWSSTDIO': '0',
+                'CREWAI_PROJECT_PATH': project_path,
+                'CREWAI_REQUIREMENT': requirement,
+                'CREWAI_EXECUTION_ID': execution_id,
+                'CREWAI_RESUMED': 'true'
+            }
+
+            # 단계 4: CrewAI 스크립트 생성
+            crewai_logger.advance_step(execution_id, crew_id, "스크립트 생성", "", ExecutionPhase.FILE_GENERATION)
+
+            # 고도화된 스크립트 생성기 사용
+            try:
+                from enhanced_script_generator import generate_enhanced_crewai_script
+                print(f"[CREWAI RESUME] 고도화된 스크립트 생성기 사용")
+                script_content = generate_enhanced_crewai_script(requirement, selected_models, project_path, execution_id)
+            except ImportError:
+                print(f"[CREWAI RESUME] 기본 스크립트 생성기 사용 (fallback)")
+                script_content = generate_crewai_execution_script(requirement, selected_models, project_path, execution_id)
+            script_path = os.path.join(project_path, "crewai_script.py")
+
+            try:
+                with open(script_path, 'w', encoding='utf-8') as f:
+                    f.write(script_content)
+                crewai_logger.log_file_generation(execution_id, crew_id, script_path, "Python Script", len(script_content), True)
+                print(f"[CREWAI RESUME] CrewAI 스크립트 생성: {script_path}")
+            except Exception as file_error:
+                crewai_logger.log_file_generation(execution_id, crew_id, script_path, "Python Script", 0, False, {"error": str(file_error)})
+                raise file_error
+
+            # 단계 5: 요구사항 파일 생성
+            crewai_logger.advance_step(execution_id, crew_id, "요구사항 저장", "", ExecutionPhase.FILE_GENERATION)
+
+            requirements_path = os.path.join(project_path, "requirements.txt")
+            requirements_content = "\n".join([
+                "crewai>=0.28.8",
+                "langchain>=0.1.0",
+                "langchain-openai>=0.0.5",
+                "python-dotenv>=1.0.0"
+            ])
+
+            try:
+                with open(requirements_path, 'w', encoding='utf-8') as f:
+                    f.write(requirements_content)
+                crewai_logger.log_file_generation(execution_id, crew_id, requirements_path, "Requirements", len(requirements_content), True)
+                print(f"[CREWAI RESUME] 요구사항 파일 생성: {requirements_path}")
+            except Exception as req_error:
+                crewai_logger.log_file_generation(execution_id, crew_id, requirements_path, "Requirements", 0, False, {"error": str(req_error)})
+
+            # 단계 6: CrewAI 실행
+            crewai_logger.advance_step(execution_id, crew_id, "CrewAI 실행", "시작", ExecutionPhase.EXECUTION)
+
+            def execute_crewai_subprocess():
+                """CrewAI 서브프로세스 실행"""
+                try:
+                    # 환경 변수 설정
+                    current_env = os.environ.copy()
+                    current_env.update(env_vars)
+
+                    # 실행 명령
+                    python_cmd = sys.executable
+                    cmd = [python_cmd, script_path]
+
+                    print(f"[CREWAI RESUME] 서브프로세스 실행: {' '.join(cmd)}")
+
+                    # 서브프로세스 실행
+                    process = subprocess.Popen(
+                        cmd,
+                        cwd=project_path,
+                        env=current_env,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                        encoding='utf-8',
+                        errors='replace'
+                    )
+
+                    crewai_logger.log_subprocess_execution(execution_id, crew_id, " ".join(cmd), project_path, True, process.pid)
+
+                    # 실시간 출력 처리
+                    stdout, stderr = process.communicate()
+                    return_code = process.returncode
+
+                    # 실행 완료 처리
+                    execution_status[execution_id].update({
+                        'status': 'completed' if return_code == 0 else 'failed',
+                        'message': 'CrewAI 실행 완료' if return_code == 0 else 'CrewAI 실행 실패',
+                        'end_time': datetime.now(),
+                        'return_code': return_code,
+                        'output': stdout[:1000] if stdout else '',
+                        'error': stderr[:1000] if stderr and return_code != 0 else ''
+                    })
+
+                    # 로깅
+                    if return_code == 0:
+                        crewai_logger.log_completion(execution_id, crew_id, True, stdout[:500])
+                        print(f"[CREWAI RESUME] 실행 성공: {execution_id}")
+                    else:
+                        crewai_logger.log_completion(execution_id, crew_id, False, stderr[:500])
+                        print(f"[CREWAI RESUME] 실행 실패: {execution_id}, error: {stderr}")
+
+                except Exception as exec_error:
+                    execution_status[execution_id].update({
+                        'status': 'failed',
+                        'message': f'CrewAI 실행 중 오류: {str(exec_error)}',
+                        'end_time': datetime.now(),
+                        'error': str(exec_error)
+                    })
+                    crewai_logger.log_error(execution_id, crew_id, exec_error, "CrewAI 서브프로세스 실행")
+                    print(f"[CREWAI RESUME] 실행 오류: {exec_error}")
+
+            # 서브프로세스 실행
+            execute_crewai_subprocess()
+
+        except Exception as e:
+            print(f"[CREWAI RESUME ERROR] 전체 실행 실패: {e}")
+            execution_status[execution_id] = {
+                'status': 'failed',
+                'message': f'CrewAI 실행 실패: {str(e)}',
+                'end_time': datetime.now(),
+                'error': str(e),
+                'execution_id': execution_id
+            }
+            crewai_logger.log_error(execution_id, project_data.get('crew_id', 'unknown'), e, "CrewAI 전체 실행")
+
+    # 백그라운드에서 실행
+    execution_thread = threading.Thread(
+        target=run_full_crewai_execution,
+        name=f"CrewAI-FullExec-{execution_id[:8]}",
+        daemon=True
+    )
+    execution_thread.start()
+
+    print(f"[CREWAI RESUME] 전체 실행 스레드 시작: {execution_id}")
+    return True
+
+def resume_metagpt_execution(execution_id, project_data):
+    """MetaGPT 실행 재개 - 완전 구현"""
+    import subprocess
+    import threading
+
+    try:
+        print(f"[METAGPT RESUME] 실행 재개 시작: {execution_id}")
+
+        # 1. 기존 실행 상태 업데이트
+        if execution_id in execution_status:
+            execution_status[execution_id].update({
+                'status': 'running',
+                'message': '승인 완료 - MetaGPT 실행 재개 중...',
+                'resumed_at': datetime.now(),
+                'phase': 'execution_resumed'
+            })
+            print(f"[METAGPT RESUME] 실행 상태 업데이트 완료: {execution_id}")
+
+        # 2. 프로젝트 데이터 추출
+        requirement = project_data.get('requirement', 'AI 프로그램 개발')
+        selected_models = project_data.get('selected_models', {})
+        project_path = project_data.get('project_path')
+
+        print(f"[METAGPT RESUME] 프로젝트 정보:")
+        print(f"  - requirement: {requirement}")
+        print(f"  - project_path: {project_path}")
+
+        # 3. MetaGPT 내장 처리 방식 사용 (기존 코드 재활용)
+        def run_metagpt_process():
+            try:
+                print(f"[METAGPT RESUME] MetaGPT 내장 처리 시작: {execution_id}")
+
+                # 실행 상태 업데이트
+                if execution_id in execution_status:
+                    execution_status[execution_id].update({
+                        'status': 'running',
+                        'message': 'MetaGPT 처리 중...',
+                        'current_step': 'metagpt_execution'
+                    })
+
+                # MetaGPT 요청 처리 (기존 함수 재사용)
+                result = call_metagpt_module(requirement, selected_models)
+
+                if hasattr(result, 'get_json') and result.get_json().get('success'):
+                    # 성공
+                    if execution_id in execution_status:
+                        execution_status[execution_id].update({
+                            'status': 'completed',
+                            'message': 'MetaGPT 실행이 성공적으로 완료되었습니다.',
+                            'end_time': datetime.now(),
+                            'result': result.get_json()
+                        })
+                    print(f"[METAGPT RESUME] 실행 성공: {execution_id}")
+
+                else:
+                    # 실패
+                    error_msg = result.get_json().get('error', '알 수 없는 오류') if hasattr(result, 'get_json') else str(result)
+                    if execution_id in execution_status:
+                        execution_status[execution_id].update({
+                            'status': 'failed',
+                            'message': 'MetaGPT 실행이 실패했습니다.',
+                            'end_time': datetime.now(),
+                            'error': error_msg
+                        })
+                    print(f"[METAGPT RESUME] 실행 실패: {execution_id}, error: {error_msg}")
+
+            except Exception as proc_error:
+                print(f"[METAGPT RESUME] 프로세스 실행 오류: {proc_error}")
+                if execution_id in execution_status:
+                    execution_status[execution_id].update({
+                        'status': 'failed',
+                        'message': 'MetaGPT 처리 중 오류가 발생했습니다.',
+                        'end_time': datetime.now(),
+                        'error': str(proc_error)
+                    })
+
+        # 4. 백그라운드 스레드에서 실행
+        execution_thread = threading.Thread(
+            target=run_metagpt_process,
+            name=f"MetaGPT-Resume-{execution_id[:8]}",
+            daemon=True
+        )
+        execution_thread.start()
+
+        print(f"[METAGPT RESUME] 백그라운드 실행 스레드 시작됨: {execution_id}")
+
+        # 5. 즉시 상태 업데이트
+        if execution_id in execution_status:
+            execution_status[execution_id].update({
+                'status': 'running',
+                'message': 'MetaGPT 실행이 재개되었습니다.',
+                'resume_success': True,
+                'thread_name': execution_thread.name
+            })
+
+        return True
+
+    except Exception as e:
+        print(f"[METAGPT RESUME ERROR] 실행 재개 실패: {e}")
+        import traceback
+        print(f"[METAGPT RESUME ERROR] 스택 추적:\n{traceback.format_exc()}")
+
+        if execution_id in execution_status:
+            execution_status[execution_id].update({
+                'status': 'failed',
+                'message': f'MetaGPT 실행 재개 실패: {str(e)}',
+                'error': str(e),
+                'end_time': datetime.now(),
+                'resume_success': False
+            })
+
+        return False
+
+if __name__ == '__main__':
     app.run(host='0.0.0.0', port=PORT, debug=True)

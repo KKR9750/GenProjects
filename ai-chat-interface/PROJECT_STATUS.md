@@ -44,10 +44,14 @@ AI 프로그램 생성을 위한 대화형 인터페이스 개발
 #### 8. **개별 AI 프레임워크 전용 인터페이스** ⭐ **신규 완성 (2025-09-17)**
 - **CrewAI 전용 페이지** (`crewai.html`, `crewai.js`, `crewai.css`)
   - 보라색 테마의 독립적인 UI 디자인
-  - **4개 전문 에이전트 시스템** ⭐ **업그레이드 완료 (2025-09-27)**
-    - **일반 프로젝트**: Requirements Analyst, Technology Researcher, Solution Architect, Implementation Engineer
-    - **이력서 처리**: Document Parser, Information Extractor, Data Validator, Output Formatter
-    - **Enterprise급 품질**: 자동 품질 평가 시스템 (10.0/10.0 점수 달성)
+  - **4개 전문 에이전트 시스템** ⭐ **완전 재설계 완료 (2025-09-29)**
+    - **새로운 4-에이전트 구조**: Pre-Analyzer + Planner + Researcher + Writer
+      - **Pre-Analyzer**: 사전 분석 및 요구사항 정의 전문가
+      - **Planner**: 프로젝트 계획 수립 + Writer 산출물 품질 검토 전문가
+      - **Researcher**: 기술 조사 및 최적 솔루션 제안 전문가
+      - **Writer**: 구현 및 문서화 + Planner 피드백 반영 전문가
+    - **검토-재작성 3회 반복**: Writer → Planner 검토 → Writer 개선 (3회 반복)
+    - **순수 CrewAI 스크립트**: 모든 메타 로직 제거하여 깔끔한 실행 스크립트 생성
   - 역할별 독립적인 LLM 모델 선택 시스템
   - **Planner-Writer 피드백 루프** ⭐ **고도화 (2025-09-27)**
     - 자동 품질 평가 및 반복 개선 시스템
@@ -60,8 +64,8 @@ AI 프로그램 생성을 위한 대화형 인터페이스 개발
 
 - **MetaGPT 전용 페이지** (`metagpt.html`, `metagpt.js`, `metagpt.css`)
   - 녹색 테마의 독립적인 UI 디자인
-  - 5단계 소프트웨어 개발 프로세스 워크플로우
-  - 단계별 역할 자동 전환: Product Manager → Architect → Project Manager → Engineer → QA Engineer
+  - 6단계 소프트웨어 개발 프로세스 워크플로우
+  - 단계별 역할 자동 전환: Requirements Analyst → Product Manager → Architect → Project Manager → Engineer → QA Engineer
   - 각 단계별 산출물 정의 및 추적
   - 승인 기반 워크플로우 시스템
 
@@ -134,8 +138,8 @@ AI 프로그램 생성을 위한 대화형 인터페이스 개발
 
 - **데이터베이스 테이블 실사용 현황**
   - `projects`: project_00003 메타데이터 저장 (이름, 상태, 진행률)
-  - `project_role_llm_mapping`: 4개 전문 에이전트별 최적화된 LLM 매핑
-  - `project_stages`: 4-에이전트 시스템 각 단계별 상태 추적 (Requirements → Technology → Architecture → Implementation)
+  - `project_role_llm_mapping`: 4개 전문 에이전트별 최적화된 LLM 매핑 (Pre-Analyzer → Planner → Researcher → Writer)
+  - `project_stages`: 4-에이전트 시스템 각 단계별 상태 추적 (사전분석 → 계획 → 조사 → 구현 + 3회 검토-재작성 반복)
   - **주요 발견**: CrewAI는 로컬 파일 시스템 중심, DB는 메타데이터 관리용
 
 - **LLM 설정 완벽 해결**
@@ -698,7 +702,8 @@ ai-chat-interface/
 ## 🔧 주요 구현 특징 ⭐ **업데이트됨 (2025-09-17)**
 
 ### 🎯 **독립적인 AI 프레임워크 인터페이스**
-- **CrewAI 전용 인터페이스**: 4개 전문 에이전트 기반 협업 (Requirements Analyst, Technology Researcher, Solution Architect, Implementation Engineer)
+- **CrewAI 전용 인터페이스**: 통합 4-에이전트 시스템 (Requirements Analyst, Technology Researcher, Solution Architect, Implementation Engineer)
+  - 모든 프로젝트 유형에 동일한 4-에이전트 적용
   - 보라색 테마로 브랜드 아이덴티티 구축
   - 역할별 독립적인 대화 세션 관리
   - 실시간 연결 상태 모니터링
@@ -883,16 +888,16 @@ ai-chat-interface/
 
 ✅ **고품질 4-에이전트 시스템 구현** ⭐ **신규 완성 (2025-09-27)**
 - **4-에이전트 시스템 전면 적용**: `enhanced_script_generator.py` 완전 개편
-  - **일반 프로젝트**: Requirements Analyst → Technology Researcher → Solution Architect → Implementation Engineer
-  - **이력서 처리**: Document Parser → Information Extractor → Data Validator → Output Formatter
+  - **통합 4-에이전트**: Requirements Analyst → Technology Researcher → Solution Architect → Implementation Engineer
+  - **모든 프로젝트**: 일반 프로젝트, 이력서 처리, 웹앱, 데이터 분석 등 모든 요청에 동일한 4-에이전트 적용
   - **Planner-Writer 피드백 루프**: 자동 품질 평가 및 반복 개선 시스템 (10.0/10.0 품질 점수 달성)
 - **Enterprise급 기능 강화**:
   - 포괄적 에러 처리 및 로깅 시스템
   - 실행 메타데이터 및 추적 시스템
   - 구조화된 출력 디렉토리 (`output/`, `logs/`, `deliverables/`)
   - 프로덕션 레디 코드 생성 및 완전한 테스트 스위트
-- **통합 스크립트 생성**: 모든 CrewAI 요청이 4개 전문 에이전트 시스템 사용
-- **품질 보증**: Python 문법 검증 완료, 10,000+ 문자 고품질 스크립트 생성
+- **순수 CrewAI 스크립트 생성**: 모든 메타 로직 제거한 깔끔한 4개 전문 에이전트 시스템
+- **품질 보증**: 3회 검토-재작성 반복으로 project_00055 수준 품질을 모든 프로젝트에 보장
 
 **우선순위 개선사항 완료:**
 ✅ **프로젝트 템플릿 시스템 완전 구현** (1순위 - 최고우선순위)
@@ -1346,7 +1351,8 @@ def health_check():
 ### 🤝 **CrewAI Framework**
 - **Repository**: `D:\GenProjects\CrewAi\`
 - **특징**: 협업 기반 AI 에이전트 시스템
-- **역할 구성**: Requirements Analyst, Technology Researcher, Solution Architect, Implementation Engineer (4개 전문 에이전트)
+- **역할 구성**: 통합 4-에이전트 시스템 (Requirements Analyst, Technology Researcher, Solution Architect, Implementation Engineer)
+- **적용 범위**: 모든 프로젝트 유형에 동일한 4-에이전트 적용
 - **플랫폼**: `crewai_platform/` 디렉토리 구조
 
 ---
@@ -1887,6 +1893,12 @@ CrewAI 서비스가 unavailable인 실제 원인들:
 
 ## 📅 문서 업데이트 이력
 
+- **2025-09-29**: ⭐ **CrewAI 스크립트 생성 시스템 대폭 개선 완료**
+  - **순수 CrewAI 템플릿 구현**: 모든 메타 로직 제거 (요구사항 분석, 승인 처리, 모델 선택 함수 등)
+  - **4개 전문 에이전트 시스템 완성**: Pre-Analyzer + Planner + Researcher + Writer 구조
+  - **검토-재작성 3회 반복 워크플로우**: Writer 산출물을 Planner가 3회 검토하여 최고 품질 보장
+  - **사전 분석 결과 연동 강화**: 요구사항 기반 동적 에이전트 구성 및 구체적 태스크 생성
+  - **수동 모델 선택 시 품질 보장**: fallback 방지하여 project_00055 수준 품질을 모든 프로젝트에 적용
 - **2025-09-24**: CrewAI 스크립트 생성 시스템 개선 및 gemini-flash 기본값 설정 완료
 - **2025-09-23**: Project_00003 성공 사례 및 5단계 피드백 루프 검증 완료
 - **2025-09-22**: 데이터베이스 스키마 최적화 및 환경변수 정책 추가
@@ -1897,4 +1909,4 @@ CrewAI 서비스가 unavailable인 실제 원인들:
 
 *본 문서는 AI 프로그램 생성 채팅 인터페이스 프로젝트의 현재 상태를 정리한 것으로, CrewAI 데이터베이스 통합 계획을 포함하여 지속적으로 업데이트될 예정입니다.*
 
-**최종 업데이트**: 2025-09-24
+**최종 업데이트**: 2025-09-29

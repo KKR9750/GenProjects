@@ -24,6 +24,9 @@
 - **실시간 모니터링**: WebSocket 기반 실시간 진행 상황 추적
 - **통합 프로젝트 관리**: 생성된 모든 프로젝트 통합 대시보드
 - **12개 LLM 모델 지원**: 역할별 최적화된 LLM 매핑
+- **승인 워크플로우**: 사전 분석 및 단계별 승인 시스템
+- **지능형 라우팅**: 메시지 분류 및 최적 프레임워크 자동 선택
+- **다국어 지원**: UTF-8 한글 완벽 지원 및 국제화 대응
 
 ## 🚀 주요 실행 명령어
 
@@ -92,22 +95,33 @@ ai-chat-interface/
 ├── 📋 프로젝트 관리
 │   ├── project_template_system.py      # 템플릿 관리 시스템
 │   ├── project_initializer.py          # 프로젝트 초기화 (D:\GenProjects\Projects\ 저장)
+│   ├── enhanced_project_initializer.py # 강화된 프로젝트 초기화
 │   ├── project_executor.py             # 자동 실행 시스템
+│   ├── project_state_manager.py        # 프로젝트 상태 관리
 │   └── template_api_routes.py          # 템플릿 API 라우트
 ├── 🎯 사용자 인터페이스
 │   ├── dashboard.{html,js,css}         # 통합 대시보드
 │   ├── crewai.{html,js,css}           # CrewAI 전용 인터페이스 (보라색)
 │   ├── metagpt.{html,js,css}          # MetaGPT 전용 인터페이스 (녹색)
 │   ├── templates.html                  # 프로젝트 템플릿 선택
-│   └── projects.html                   # 프로젝트 관리 대시보드
-├── 🔧 유틸리티
+│   ├── projects.html                   # 프로젝트 관리 대시보드
+│   └── admin.html                      # 관리자 대시보드
+├── 🔧 유틸리티 및 지능형 시스템
 │   ├── error_handler.py               # 지능형 에러 처리
 │   ├── realtime_progress_tracker.py   # 실시간 진행 추적
-│   └── websocket_manager.py           # WebSocket 연결 관리
-└── 📊 데이터베이스 (Supabase 통합)
-    ├── database.py                    # ORM 및 CRUD
-    ├── setup_database.sql             # 핵심 스키마
-    └── security_utils.py              # 보안 및 검증
+│   ├── websocket_manager.py           # WebSocket 연결 관리
+│   ├── pre_analysis_service.py        # 사전 분석 서비스
+│   ├── approval_workflow.py           # 승인 워크플로우 관리
+│   ├── message_classifier.py          # 메시지 분류기
+│   └── enhanced_crewai_executor.py    # 강화된 CrewAI 실행기
+├── 📊 데이터베이스 (Supabase 통합)
+│   ├── database.py                    # ORM 및 CRUD
+│   ├── setup_database.sql             # 핵심 스키마
+│   ├── approval_tables_update.sql     # 승인 시스템 스키마
+│   └── security_utils.py              # 보안 및 검증
+└── 🛡️ 관리자 시스템
+    ├── admin_api.py                   # 관리자 API
+    └── admin_auth.py                  # 관리자 인증
 ```
 
 ## 🎯 주요 특징
@@ -118,6 +132,9 @@ ai-chat-interface/
 - **실시간 모니터링**: WebSocket 기반 실시간 진행 상황 추적
 - **통합 프로젝트 관리**: 생성된 모든 프로젝트 통합 대시보드
 - **지능형 에러 처리**: 사용자 친화적 에러 메시지 및 복구 가이드
+- **승인 워크플로우**: LLM 기반 사전 분석 및 단계별 승인 시스템
+- **메시지 분류**: 사용자 요청 의도 자동 분류 및 최적 라우팅
+- **관리자 시스템**: JWT 인증 기반 통합 시스템 관리 대시보드
 
 ### LLM 및 AI 시스템
 - **12개 LLM 모델 지원**: GPT-4, Claude-3, DeepSeek Coder, Gemini Pro 등
@@ -164,6 +181,23 @@ POST /api/metagpt                    # MetaGPT 요청 처리
 POST /api/services/crewai/start      # CrewAI 서비스 시작
 ```
 
+### 승인 워크플로우 및 분석
+```
+POST /api/pre-analysis               # 사전 분석 요청
+GET /api/approval/{id}               # 승인 상태 조회
+POST /api/approval/{id}/approve      # 승인 처리
+POST /api/approval/{id}/reject       # 거부 처리
+POST /api/classify                   # 메시지 분류
+```
+
+### 관리자 시스템
+```
+POST /api/admin/auth/login           # 관리자 로그인
+GET /api/admin/system/status         # 시스템 상태 조회
+GET /api/admin/projects              # 전체 프로젝트 관리
+GET /api/admin/users                 # 사용자 관리
+```
+
 ## 🛠️ 개발 패턴
 
 ### 프로젝트 생성 워크플로우
@@ -195,12 +229,16 @@ POST /api/services/crewai/start      # CrewAI 서비스 시작
 
 ## 🔍 문제 해결
 
-### 일반적인 문제
-- **포트 충돌**: 포트 3000, 5000, 8000 사용 중 확인
-- **경로 오류**: 프로젝트 저장 경로 D:\GenProjects\Projects\ 확인
-- **LLM API 키**: 각 프레임워크별 환경변수 설정 필요
-- **템플릿 오류**: `project_template_system.py` 설정 확인
-- **실행 실패**: `project_executor.py` 로그 및 에러 메시지 확인
+### ✅ 해결된 주요 문제들
+- ✅ **포트 통합**: 단일 포트 3000으로 모든 서비스 통합 완료
+- ✅ **경로 처리**: 크로스 플랫폼 자동 경로 처리 구현
+- ✅ **에러 처리**: 지능형 에러 분석 및 자동 복구 시스템
+- ✅ **템플릿 시스템**: 완전 자동화된 프로젝트 생성 및 실행
+- ✅ **한글 지원**: UTF-8 인코딩 완벽 지원 및 다국어 대응
+
+### 현재 알려진 문제
+- **LLM API 키**: 각 프레임워크별 환경변수 설정 필요 (사용자 설정)
+- **승인 대기**: 장시간 승인 대기 시 자동 만료 (24시간)
 
 ### 디버깅 도구
 ```bash

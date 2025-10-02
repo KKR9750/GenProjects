@@ -1,12 +1,15 @@
 const { useState, useEffect, useRef } = React;
 
 const CrewAIInterface = () => {
+    // SocketIO 연결 상태
+    const [socket, setSocket] = useState(null);
     const [selectedRole, setSelectedRole] = useState('planner');
     const [roleLLMMapping, setRoleLLMMapping] = useState({
-        planner: 'gemini-flash',
-        researcher: 'gemini-flash',
-        writer: 'gemini-flash'
+        planner: 'gemini-2.5-flash',
+        researcher: 'gemini-2.5-flash',
+        writer: 'gemini-2.5-flash'
     });
+    const [preAnalysisModel, setPreAnalysisModel] = useState('gemini-2.5-flash');
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -20,6 +23,28 @@ const CrewAIInterface = () => {
         description: '',
         project_type: 'web_app'
     });
+
+    // 새로운 모델 선택 모드 상태
+    const [modelSelectionMode, setModelSelectionMode] = useState('manual'); // 'auto' 또는 'manual'
+    const [autoRecommendations, setAutoRecommendations] = useState(null);
+    const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
+    const [recommendationStrategy, setRecommendationStrategy] = useState('balanced');
+
+    // 승인 시스템 상태
+    const [showApprovalModal, setShowApprovalModal] = useState(false);
+    const [pendingApproval, setPendingApproval] = useState(null);
+    const [approvalFeedback, setApprovalFeedback] = useState('');
+
+    // 검토-재작성 반복 횟수 상태 (0~3회)
+    const [reviewIterations, setReviewIterations] = useState(3);
+
+    // MCP/도구 선택 상태
+    const [availableMCPs, setAvailableMCPs] = useState([]);
+    const [selectedTools, setSelectedTools] = useState([]);
+    const [apiKeys, setApiKeys] = useState({});
+    const [showMCPModal, setShowMCPModal] = useState(false);
+    const [mcpCategory, setMcpCategory] = useState('all');
+
     // Real-time monitoring states removed
 
     const roles = [
@@ -30,6 +55,96 @@ const CrewAIInterface = () => {
 
     // LLM 모델 목록 (React 상태로 관리)
     const [llmOptions, setLlmOptions] = useState([]);
+
+    // SocketIO 연결 초기화
+    const initializeSocketConnection = () => {
+        try {
+            if (typeof io === 'undefined') {
+                console.warn('Socket.IO 라이브러리가 로드되지 않음');
+                return;
+            }
+
+            const newSocket = io();
+
+            // 연결 성공
+            newSocket.on('connect', () => {
+                console.log('✅ WebSocket 연결 성공');
+                setConnectionStatus('connected');
+            });
+
+            // 연결 실패
+            newSocket.on('disconnect', () => {
+                console.log('🔌 WebSocket 연결 해제');
+                setConnectionStatus('disconnected');
+            });
+
+            // 프로젝트 완성 알림 수신
+            newSocket.on('project_notification', (data) => {
+                console.log('🎉 프로젝트 완성 알림 수신:', data);
+
+                if (data.type === 'project_completion') {
+                    // 대화창에 완성 알림 메시지 추가
+                    const completionMessage = {
+                        id: Date.now(),
+                        text: `## 🎉 프로젝트 완성!
+
+**${data.project_name}**가 성공적으로 완성되었습니다!
+
+📂 **결과 위치**: \`${data.result_path}\`
+⏰ **완성 시간**: ${data.details.completion_time}
+
+생성된 파일들을 확인해보세요!`,
+                        sender: 'system',
+                        timestamp: new Date().toLocaleTimeString(),
+                        isNotification: true
+                    };
+
+                    setMessages(prev => [...prev, completionMessage]);
+
+                    // 브라우저 알림도 표시
+                    if (window.UIHelpers && window.UIHelpers.showNotification) {
+                        window.UIHelpers.showNotification(
+                            `프로젝트 '${data.project_name}' 완성!`,
+                            'success'
+                        );
+                    }
+
+                    // 프로젝트 목록 새로고침
+                    loadProjects();
+                }
+            });
+
+            // 로그 메시지 수신
+            newSocket.on('log_message', (data) => {
+                if (data.level === 'success') {
+                    console.log('📝 로그 메시지:', data.message);
+                }
+            });
+
+            setSocket(newSocket);
+
+        } catch (error) {
+            console.error('❌ WebSocket 연결 실패:', error);
+            setConnectionStatus('error');
+        }
+    };
+
+    // MCP/도구 목록 로드
+    const loadAvailableMCPs = async () => {
+        try {
+            const response = await fetch('/api/mcps/available');
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                setAvailableMCPs(data.mcps);
+                console.log('✅ MCP/도구 로드 완료:', data.count, '개');
+            } else {
+                console.error('❌ MCP 로드 실패:', data.error);
+            }
+        } catch (error) {
+            console.error('❌ MCP 로드 중 오류:', error);
+        }
+    };
 
     // LLM 모델 동적 로드
     const loadLLMModels = async () => {
@@ -214,9 +329,106 @@ const CrewAIInterface = () => {
         };
         setRoleLLMMapping(newMapping);
 
+        // localStorage에 기본값으로 저장
+        window.StorageHelpers.setItem('crewai_default_llm_mapping', newMapping);
+
         // 활성 프로젝트가 있다면 데이터베이스에 즉시 저장
         if (activeProject) {
             updateProjectLLMMapping(activeProject.project_id, newMapping);
+        }
+    };
+
+    // 사전 분석 LLM 변경
+    const handlePreAnalysisModelChange = (llmId) => {
+        setPreAnalysisModel(llmId);
+
+        // localStorage에 즉시 저장
+        window.StorageHelpers.setItem('crewai_pre_analysis_model', llmId);
+
+        // 사전 분석 모델은 프로젝트별로 저장하지 않음 (글로벌 설정)
+        // 역할별 LLM 매핑과는 별개로 처리
+    };
+
+    // 자동 모델 추천 요청
+    const getAutoRecommendations = async (requirement) => {
+        if (!requirement || requirement.trim().length < 10) {
+            setAutoRecommendations(null);
+            return;
+        }
+
+        setIsLoadingRecommendations(true);
+        try {
+            const response = await fetch('/api/llm/models/recommend', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    requirement: requirement,
+                    budget: 'medium',
+                    strategy: recommendationStrategy
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                setAutoRecommendations(data);
+
+                // 자동 모드일 때 추천된 모델을 현재 매핑에 적용
+                if (modelSelectionMode === 'auto' && data.simple_models) {
+                    const newMapping = { ...roleLLMMapping };
+
+                    // 에이전트 이름을 역할 이름으로 매핑
+                    const roleMapping = {
+                        'planner': ['content_strategist', 'requirements_analyst', 'solution_architect'],
+                        'researcher': ['technology_researcher', 'information_extractor', 'data_scientist'],
+                        'writer': ['content_creator', 'document_parser', 'quality_assurance']
+                    };
+
+                    // 추천된 모델을 역할별로 적용
+                    Object.entries(data.simple_models).forEach(([agentName, modelName]) => {
+                        for (const [role, agents] of Object.entries(roleMapping)) {
+                            if (agents.includes(agentName)) {
+                                newMapping[role] = modelName;
+                                break;
+                            }
+                        }
+                    });
+
+                    setRoleLLMMapping(newMapping);
+                }
+            } else {
+                console.error('자동 추천 실패:', data.error);
+                setAutoRecommendations(null);
+            }
+        } catch (error) {
+            console.error('자동 추천 오류:', error);
+            setAutoRecommendations(null);
+        } finally {
+            setIsLoadingRecommendations(false);
+        }
+    };
+
+    // 모델 선택 모드 변경
+    const handleModeChange = (mode) => {
+        setModelSelectionMode(mode);
+        window.StorageHelpers.setItem('crewai_model_selection_mode', mode);
+
+        if (mode === 'auto' && inputText.trim()) {
+            // 자동 모드로 전환하면서 현재 입력된 텍스트가 있으면 추천 요청
+            getAutoRecommendations(inputText);
+        } else if (mode === 'manual') {
+            // 수동 모드로 전환시 추천 초기화
+            setAutoRecommendations(null);
+        }
+    };
+
+    // 추천 전략 변경
+    const handleStrategyChange = (strategy) => {
+        setRecommendationStrategy(strategy);
+        window.StorageHelpers.setItem('crewai_recommendation_strategy', strategy);
+
+        // 자동 모드이고 입력이 있으면 새로운 전략으로 재추천
+        if (modelSelectionMode === 'auto' && inputText.trim()) {
+            getAutoRecommendations(inputText);
         }
     };
 
@@ -229,7 +441,7 @@ const CrewAIInterface = () => {
                 { role_name: 'Writer', llm_model: mapping.writer }
             ];
 
-            const result = await window.apiClient.saveRoleLLMMapping(projectId, mappings);
+            const result = await window.apiClient.setRoleLLMMapping(projectId, mappings);
             if (result.success) {
                 console.log('LLM 매핑 저장 완료');
             } else {
@@ -252,8 +464,14 @@ const CrewAIInterface = () => {
         };
 
         setMessages(prev => [...prev, userMessage]);
+        const currentInput = inputText; // 자동 추천에 사용할 원본 텍스트 보존
         setInputText('');
         setIsLoading(true);
+
+        // 자동 모드일 때 실시간 추천 업데이트
+        if (modelSelectionMode === 'auto') {
+            getAutoRecommendations(currentInput);
+        }
 
         try {
             // Simplified - no log panel
@@ -262,10 +480,16 @@ const CrewAIInterface = () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    requirement: inputText,
+                    requirement: currentInput,
                     selectedModels: roleLLMMapping,
+                    preAnalysisModel: preAnalysisModel,
                     selectedRole: selectedRole,
-                    projectId: activeProject?.project_id
+                    projectId: activeProject?.project_id,
+                    modelSelectionMode: modelSelectionMode,
+                    recommendationStrategy: recommendationStrategy,
+                    reviewIterations: reviewIterations,
+                    selectedTools: selectedTools,
+                    apiKeys: apiKeys
                 })
             });
 
@@ -273,16 +497,37 @@ const CrewAIInterface = () => {
 
             // Real-time monitoring removed
 
+            // 응답 메시지 개선
+            let responseText;
+            if (data.status === 'pending_approval') {
+                responseText = `🔍 AI 계획이 분석되었습니다.\n\n승인 ID: ${data.approval_id}\n상태: 승인 대기 중\n\n승인 팝업을 확인하고 계획을 검토해주세요.`;
+            } else if (data.requires_approval) {
+                responseText = `📋 프로젝트 계획이 준비되었습니다. 승인이 필요합니다.`;
+            } else if (data.error) {
+                responseText = `❌ 오류 발생: ${data.error}`;
+            } else {
+                responseText = data.result || data.message || '요청이 처리되었습니다.';
+            }
+
             const aiMessage = {
                 id: Date.now() + 1,
-                text: data.result || data.message || '처리가 완료되었습니다.',
+                text: responseText,
                 sender: 'ai',
                 role: selectedRole,
                 timestamp: new Date(),
                 data: data,
+                status: data.status || 'completed'
             };
 
             setMessages(prev => [...prev, aiMessage]);
+
+            // 승인이 필요한 경우 즉시 승인 팝업 확인
+            if (data.status === 'pending_approval' || data.requires_approval) {
+                // 약간의 지연 후 승인 확인 (서버에서 데이터 저장 완료 대기)
+                setTimeout(() => {
+                    checkPendingApprovals();
+                }, 1000);
+            }
 
             // 프로젝트 목록 새로고침
             loadProjects();
@@ -291,11 +536,12 @@ const CrewAIInterface = () => {
 
             const errorMessage = {
                 id: Date.now() + 1,
-                text: `오류가 발생했습니다: ${error.message}`,
+                text: `❌ 요청 처리 중 오류가 발생했습니다.\n\n오류 내용: ${error.message}\n\n다시 시도하거나, 다른 방식으로 요청해 주세요.`,
                 sender: 'ai',
                 role: selectedRole,
                 timestamp: new Date(),
-                error: true
+                error: true,
+                status: 'error'
             };
 
             setMessages(prev => [...prev, errorMessage]);
@@ -304,6 +550,77 @@ const CrewAIInterface = () => {
         }
 
         setIsLoading(false);
+    };
+
+    // 승인 관련 함수들
+    const checkPendingApprovals = async () => {
+        try {
+            const response = await fetch('/api/approval/pending');
+            if (response.ok) {
+                const approvals = await response.json();
+                if (approvals.length > 0) {
+                    const latestApproval = approvals[0];
+                    console.log('승인 팝업 표시:', latestApproval);
+                    setPendingApproval(latestApproval);
+                    setShowApprovalModal(true);
+                    console.log('showApprovalModal 상태 변경됨:', true);
+                }
+            }
+        } catch (error) {
+            console.error('승인 확인 실패:', error);
+        }
+    };
+
+    const handleApprovalAction = async (action) => {
+        console.log('handleApprovalAction 호출됨:', action);
+        console.log('pendingApproval:', pendingApproval);
+
+        if (!pendingApproval) {
+            console.error('pendingApproval이 없습니다');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/approval/${pendingApproval.approval_id}/respond`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: action,
+                    feedback: approvalFeedback,
+                    timestamp: new Date().toISOString()
+                })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+
+                console.log('승인 처리 성공:', result);
+
+                // 승인 결과 메시지 추가
+                const resultMessage = {
+                    id: Date.now(),
+                    text: `승인 요청이 ${action === 'approve' ? '승인' : action === 'reject' ? '거부' : '수정 요청'}되었습니다.\n${result.message || ''}`,
+                    sender: 'system',
+                    timestamp: new Date()
+                };
+                setMessages(prev => [...prev, resultMessage]);
+
+                // 모달 닫기
+                setShowApprovalModal(false);
+                setPendingApproval(null);
+                setApprovalFeedback('');
+
+                console.log('승인 처리 완료 - 모달 닫힘');
+
+                // 승인된 경우 실행 계속
+                if (action === 'approve') {
+                    window.UIHelpers.showNotification('승인되었습니다. AI 실행을 계속합니다.', 'success');
+                }
+            }
+        } catch (error) {
+            console.error('승인 처리 실패:', error);
+            window.UIHelpers.showNotification('승인 처리 중 오류가 발생했습니다.', 'error');
+        }
     };
 
     // 키보드 이벤트
@@ -385,27 +702,82 @@ const CrewAIInterface = () => {
         window.location.href = '/';
     };
 
+    // 입력 텍스트 변경 핸들러 (자동 추천용)
+    const handleInputChange = (e) => {
+        const newText = e.target.value;
+        setInputText(newText);
+
+        // 자동 모드일 때 일정 길이 이상이면 실시간 추천
+        if (modelSelectionMode === 'auto' && newText.trim().length >= 15) {
+            // 디바운싱을 위해 타이머 사용
+            clearTimeout(window.recommendationTimer);
+            window.recommendationTimer = setTimeout(() => {
+                getAutoRecommendations(newText);
+            }, 1000); // 1초 지연
+        }
+    };
+
     useEffect(() => {
         const initializeInterface = async () => {
             await loadLLMModels();
-            // Connection check removed
+            await loadAvailableMCPs();
+            // SocketIO 연결 초기화
+            initializeSocketConnection();
             loadProjects();
 
-            // 기본 LLM 매핑 로드 (프로젝트 선택 전)
-            const savedMapping = window.StorageHelpers.getItem('crewai_default_llm_mapping');
-            if (savedMapping) {
-                setRoleLLMMapping(savedMapping);
+            // 기본 LLM 매핑을 Gemini 2.5 Flash로 강제 초기화
+            const defaultMapping = {
+                planner: 'gemini-2.5-flash',
+                researcher: 'gemini-2.5-flash',
+                writer: 'gemini-2.5-flash'
+            };
+
+            // 기존 저장된 매핑이 있어도 새로운 기본값으로 덮어쓰기
+            setRoleLLMMapping(defaultMapping);
+            window.StorageHelpers.setItem('crewai_default_llm_mapping', defaultMapping);
+
+            // 사전 분석 모델도 기본값으로 설정
+            const defaultPreAnalysisModel = 'gemini-2.5-flash';
+            setPreAnalysisModel(defaultPreAnalysisModel);
+            window.StorageHelpers.setItem('crewai_pre_analysis_model', defaultPreAnalysisModel);
+
+            // 모델 선택 모드를 수동으로 강제 설정
+            const defaultMode = 'manual';
+            setModelSelectionMode(defaultMode);
+            window.StorageHelpers.setItem('crewai_model_selection_mode', defaultMode)
+
+            // 추천 전략 로드
+            const savedStrategy = window.StorageHelpers.getItem('crewai_recommendation_strategy');
+            if (savedStrategy) {
+                setRecommendationStrategy(savedStrategy);
             }
+
+            // 승인 대기 확인
+            checkPendingApprovals();
         };
 
         initializeInterface();
+
+        // 30초마다 승인 대기 확인
+        const approvalInterval = setInterval(checkPendingApprovals, 30000);
+
+        return () => {
+            clearInterval(approvalInterval);
+            clearTimeout(window.recommendationTimer);
+
+            // Socket 연결 정리
+            if (socket) {
+                socket.disconnect();
+                console.log('🔌 WebSocket 연결 해제됨');
+            }
+        };
 
         // Initialization simplified - no WebSocket
     }, []);
 
     const renderMessage = (message) => {
         const roleInfo = roles.find(r => r.id === message.role);
-        const roleName = roleInfo ? `${roleInfo.icon} ${roleInfo.name}` : 'CrewAI';
+        const roleName = roleInfo ? `${roleInfo.name}` : 'CrewAI';
 
         return (
             <div key={message.id} className={`message ${message.sender}`}>
@@ -576,43 +948,407 @@ const CrewAIInterface = () => {
 
                         <div className="llm-mapping">
                             <h3>⚙️ 역할별 LLM 설정</h3>
+
+                            {/* 모델 선택 모드 토글 */}
+                            <div className="mode-selector" style={{ marginBottom: '15px', padding: '10px', background: 'rgba(139, 69, 19, 0.1)', borderRadius: '8px', border: '1px solid #8B4513' }}>
+                                <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '8px', color: '#8B4513' }}>🎯 모델 선택 모드</div>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <button
+                                        className={`mode-btn ${modelSelectionMode === 'auto' ? 'active' : ''}`}
+                                        onClick={() => handleModeChange('auto')}
+                                        style={{
+                                            flex: 1,
+                                            padding: '8px 12px',
+                                            fontSize: '12px',
+                                            border: modelSelectionMode === 'auto' ? '2px solid #8B4513' : '1px solid #ccc',
+                                            borderRadius: '6px',
+                                            background: modelSelectionMode === 'auto' ? '#8B4513' : '#fff',
+                                            color: modelSelectionMode === 'auto' ? '#fff' : '#333',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        🤖 자동 추천
+                                    </button>
+                                    <button
+                                        className={`mode-btn ${modelSelectionMode === 'manual' ? 'active' : ''}`}
+                                        onClick={() => handleModeChange('manual')}
+                                        style={{
+                                            flex: 1,
+                                            padding: '8px 12px',
+                                            fontSize: '12px',
+                                            border: modelSelectionMode === 'manual' ? '2px solid #8B4513' : '1px solid #ccc',
+                                            borderRadius: '6px',
+                                            background: modelSelectionMode === 'manual' ? '#8B4513' : '#fff',
+                                            color: modelSelectionMode === 'manual' ? '#fff' : '#333',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        👤 수동 선택
+                                    </button>
+                                </div>
+
+                                {/* 자동 모드일 때 전략 선택 */}
+                                {modelSelectionMode === 'auto' && (
+                                    <div style={{ marginTop: '8px' }}>
+                                        <label style={{ fontSize: '11px', color: '#8B4513', marginBottom: '4px', display: 'block' }}>추천 전략:</label>
+                                        <select
+                                            value={recommendationStrategy}
+                                            onChange={(e) => handleStrategyChange(e.target.value)}
+                                            style={{ width: '100%', padding: '4px', fontSize: '11px', borderRadius: '4px' }}
+                                        >
+                                            <option value="balanced">균형 (비용/성능)</option>
+                                            <option value="cost_optimized">비용 최적화</option>
+                                            <option value="performance_optimized">성능 최적화</option>
+                                            <option value="single_model">단일 모델</option>
+                                        </select>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 자동 추천 결과 표시 */}
+                            {modelSelectionMode === 'auto' && autoRecommendations && (
+                                <div className="auto-recommendations" style={{ marginBottom: '15px', padding: '10px', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '8px', border: '1px solid #22C55E' }}>
+                                    <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#16A34A' }}>
+                                        🎯 AI 추천 결과 (신뢰도: {(autoRecommendations.confidence * 100).toFixed(0)}%)
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: '#16A34A', marginBottom: '8px' }}>
+                                        {autoRecommendations.reasoning}
+                                    </div>
+                                    <div style={{ fontSize: '10px', color: '#666' }}>
+                                        예상 비용: {autoRecommendations.total_cost} |
+                                        에이전트: {autoRecommendations.analysis?.agent_count}개 |
+                                        복잡도: {autoRecommendations.analysis?.complexity}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 자동 추천 로딩 표시 */}
+                            {modelSelectionMode === 'auto' && isLoadingRecommendations && (
+                                <div className="loading-recommendations" style={{ marginBottom: '15px', padding: '10px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px', border: '1px solid #3B82F6' }}>
+                                    <div style={{ fontSize: '12px', color: '#2563EB', textAlign: 'center' }}>
+                                        🔄 최적 모델 분석 중...
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="llm-status" style={{ fontSize: '12px', marginBottom: '10px', padding: '8px', background: 'rgba(0,0,0,0.05)', borderRadius: '6px' }}>
                                 {llmOptions.length > 0 ? (
                                     <span style={{ color: 'green' }}>✅ {llmOptions.length}개 모델 로드됨</span>
                                 ) : (
                                     <span style={{ color: 'orange' }}>⏳ LLM 모델 로딩 중...</span>
                                 )}
+                                {modelSelectionMode === 'auto' && (
+                                    <span style={{ color: '#8B4513', fontSize: '11px', marginLeft: '8px' }}>
+                                        (자동 추천 모드)
+                                    </span>
+                                )}
                             </div>
                             <div className="mapping-list">
+                                {/* 사전 분석 모델 선택 */}
+                                <div className="mapping-item" style={{ display: 'flex', alignItems: 'center', gap: '0', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '8px' }}>
+                                    <div className="mapping-role" style={{ minWidth: '70px', width: '70px' }}>
+                                        <span className="role-name" style={{ fontWeight: 'bold', color: '#6B46C1' }}>
+                                            사전 분석
+                                        </span>
+                                    </div>
+                                    <select
+                                        className="llm-select"
+                                        style={{ fontSize: '12px', padding: '6px 8px', minWidth: '160px' }}
+                                        value={preAnalysisModel || 'gemini-2.5-flash'}
+                                        onChange={(e) => handlePreAnalysisModelChange(e.target.value)}
+                                        disabled={llmOptions.length === 0}
+                                    >
+                                        {llmOptions.length === 0 ? (
+                                            <option value="">모델 로딩 중...</option>
+                                        ) : (
+                                            llmOptions.map(llm => (
+                                                <option key={llm.id} value={llm.id}>
+                                                    {llm.name} ({llm.provider})
+                                                    {llm.parameter_size ? ` [${llm.parameter_size}]` : ''}
+                                                </option>
+                                            ))
+                                        )}
+                                    </select>
+                                </div>
+
+                                {/* 역할별 LLM 선택 */}
                                 {roles.map(role => (
-                                    <div key={role.id} className="mapping-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <div className="mapping-role">
-                                            <span className="role-icon" style={{ fontSize: '14px' }}>{role.icon}</span>
-                                            <span className={`role-name ${selectedRole === role.id ? 'current' : ''}`}>
+                                    <div key={role.id} className="mapping-item" style={{ display: 'flex', alignItems: 'center', gap: '0', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '8px' }}>
+                                        <div className="mapping-role" style={{ minWidth: '70px', width: '70px' }}>
+                                            <span className={`role-name ${selectedRole === role.id ? 'current' : ''}`} style={{ fontWeight: 'bold', color: '#6B46C1' }}>
                                                 {role.name}
                                             </span>
-                                        </div>
-                                        <select
-                                            className="llm-select"
-                                            style={{ fontSize: '12px', padding: '6px 8px', minWidth: '160px' }}
-                                            value={roleLLMMapping[role.id] || 'gpt-4'}
-                                            onChange={(e) => handleRoleLLMChange(role.id, e.target.value)}
-                                            disabled={llmOptions.length === 0}
-                                        >
-                                            {llmOptions.length === 0 ? (
-                                                <option value="">모델 로딩 중...</option>
-                                            ) : (
-                                                llmOptions.map(llm => (
-                                                    <option key={llm.id} value={llm.id}>
-                                                        {llm.name} ({llm.provider})
-                                                        {llm.parameter_size ? ` [${llm.parameter_size}]` : ''}
-                                                    </option>
-                                                ))
+                                            {modelSelectionMode === 'auto' && (
+                                                <span style={{ fontSize: '10px', color: '#8B4513', marginLeft: '4px' }}>
+                                                    (자동)
+                                                </span>
                                             )}
-                                        </select>
+                                        </div>
+                                        {modelSelectionMode === 'manual' ? (
+                                            <select
+                                                className="llm-select"
+                                                style={{ fontSize: '12px', padding: '6px 8px', minWidth: '160px' }}
+                                                value={roleLLMMapping[role.id] || 'gemini-2.5-flash'}
+                                                onChange={(e) => handleRoleLLMChange(role.id, e.target.value)}
+                                                disabled={llmOptions.length === 0}
+                                            >
+                                                {llmOptions.length === 0 ? (
+                                                    <option value="">모델 로딩 중...</option>
+                                                ) : (
+                                                    llmOptions.map(llm => (
+                                                        <option key={llm.id} value={llm.id}>
+                                                            {llm.name} ({llm.provider})
+                                                            {llm.parameter_size ? ` [${llm.parameter_size}]` : ''}
+                                                            {llm.available === false ? ' [사용불가]' : ''}
+                                                        </option>
+                                                    ))
+                                                )}
+                                            </select>
+                                        ) : (
+                                            <div style={{
+                                                fontSize: '12px',
+                                                padding: '6px 8px',
+                                                minWidth: '160px',
+                                                background: '#f5f5f5',
+                                                borderRadius: '4px',
+                                                border: '1px solid #ddd',
+                                                color: '#666'
+                                            }}>
+                                                {llmOptions.find(llm => llm.id === roleLLMMapping[role.id])?.name || roleLLMMapping[role.id]}
+                                                {autoRecommendations && (
+                                                    <span style={{ fontSize: '10px', color: '#16A34A', marginLeft: '4px' }}>
+                                                        (AI 추천)
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>
+                        </div>
+
+                        {/* 검토-재작성 반복 횟수 설정 */}
+                        <div className="review-iterations">
+                            <h3>🔄 검토-재작성 반복 횟수</h3>
+                            <div className="iterations-selector" style={{ padding: '15px', background: 'rgba(147, 51, 234, 0.1)', borderRadius: '8px', border: '1px solid #9333EA' }}>
+                                <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '10px', color: '#9333EA' }}>
+                                    품질 검토 반복 설정
+                                </div>
+
+                                {/* 버튼 그리드 */}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '12px' }}>
+                                    {[0, 1, 2, 3].map(count => (
+                                        <button
+                                            key={count}
+                                            onClick={() => setReviewIterations(count)}
+                                            style={{
+                                                padding: '12px 8px',
+                                                fontSize: '14px',
+                                                fontWeight: 'bold',
+                                                border: reviewIterations === count ? '2px solid #9333EA' : '1px solid #ccc',
+                                                borderRadius: '6px',
+                                                background: reviewIterations === count ? '#9333EA' : '#fff',
+                                                color: reviewIterations === count ? '#fff' : '#333',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            {count}회
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* 정보 표시 */}
+                                <div style={{ padding: '10px', background: 'rgba(255,255,255,0.8)', borderRadius: '6px', fontSize: '12px' }}>
+                                    <div style={{ marginBottom: '6px', color: '#666' }}>
+                                        <strong style={{ color: '#9333EA' }}>💡 {reviewIterations}회 선택됨</strong>
+                                    </div>
+                                    <div style={{ color: '#666' }}>
+                                        총 <strong style={{ color: '#E11D48' }}>{4 + (reviewIterations * 2)}개</strong> 태스크 생성
+                                        <span style={{ fontSize: '11px', color: '#999', marginLeft: '4px' }}>
+                                            (사전분석 + 계획 + 조사 + 초기작성 {reviewIterations > 0 ? `+ 검토/재작성 ${reviewIterations}회` : ''})
+                                        </span>
+                                    </div>
+
+                                    {/* 반복 횟수별 설명 */}
+                                    <div style={{ marginTop: '8px', padding: '6px', background: 'rgba(147, 51, 234, 0.05)', borderRadius: '4px', fontSize: '11px', color: '#555' }}>
+                                        {reviewIterations === 0 && '⚡ 빠른 프로토타입 (검토 없음)'}
+                                        {reviewIterations === 1 && '📝 기본 품질 (1회 검토)'}
+                                        {reviewIterations === 2 && '🎯 고품질 (2회 검토)'}
+                                        {reviewIterations === 3 && '💎 최고 품질 (3회 검토, 프로덕션 레벨)'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* MCP/도구 선택 패널 */}
+                        <div className="config-section">
+                            <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#333' }}>🛠️ 도구 선택</h4>
+                                    <span style={{ fontSize: '11px', color: '#999' }}>
+                                        (선택사항 - Researcher에게 도구 제공)
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={() => setShowMCPModal(!showMCPModal)}
+                                    style={{
+                                        padding: '6px 12px',
+                                        background: selectedTools.length > 0 ? '#9333EA' : '#E5E7EB',
+                                        color: selectedTools.length > 0 ? '#fff' : '#666',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        fontSize: '12px',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    {selectedTools.length > 0 ? `${selectedTools.length}개 선택됨` : '도구 선택'}
+                                </button>
+                            </div>
+
+                            {showMCPModal && (
+                                <div style={{
+                                    background: '#fff',
+                                    border: '1px solid #E5E7EB',
+                                    borderRadius: '8px',
+                                    padding: '16px',
+                                    marginTop: '8px'
+                                }}>
+                                    {/* 카테고리 탭 */}
+                                    <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                                        {['all', 'search', 'knowledge', 'media', 'file'].map(cat => (
+                                            <button
+                                                key={cat}
+                                                onClick={() => setMcpCategory(cat)}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    background: mcpCategory === cat ? '#9333EA' : '#F3F4F6',
+                                                    color: mcpCategory === cat ? '#fff' : '#666',
+                                                    border: 'none',
+                                                    borderRadius: '6px',
+                                                    fontSize: '12px',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                {cat === 'all' && '전체'}
+                                                {cat === 'search' && '🔍 검색'}
+                                                {cat === 'knowledge' && '📚 지식베이스'}
+                                                {cat === 'media' && '🎬 미디어'}
+                                                {cat === 'file' && '📁 파일'}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* 도구 목록 */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '10px', maxHeight: '300px', overflowY: 'auto' }}>
+                                        {Object.entries(availableMCPs)
+                                            .filter(([key, mcp]) => mcpCategory === 'all' || mcp.category === mcpCategory)
+                                            .map(([key, mcp]) => (
+                                            <div
+                                                key={key}
+                                                onClick={() => {
+                                                    if (selectedTools.includes(key)) {
+                                                        setSelectedTools(selectedTools.filter(t => t !== key));
+                                                        // API 키도 제거
+                                                        const newKeys = { ...apiKeys };
+                                                        delete newKeys[key];
+                                                        setApiKeys(newKeys);
+                                                    } else {
+                                                        setSelectedTools([...selectedTools, key]);
+                                                    }
+                                                }}
+                                                style={{
+                                                    padding: '12px',
+                                                    background: selectedTools.includes(key) ? 'rgba(147, 51, 234, 0.1)' : '#F9FAFB',
+                                                    border: selectedTools.includes(key) ? '2px solid #9333EA' : '1px solid #E5E7EB',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', alignItems: 'start', gap: '8px' }}>
+                                                    <span style={{ fontSize: '20px' }}>{mcp.icon}</span>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#333', marginBottom: '4px' }}>
+                                                            {mcp.name}
+                                                        </div>
+                                                        <div style={{ fontSize: '11px', color: '#666', lineHeight: '1.4' }}>
+                                                            {mcp.description}
+                                                        </div>
+                                                        {mcp.config?.cost && (
+                                                            <div style={{ fontSize: '10px', color: '#999', marginTop: '4px' }}>
+                                                                {mcp.config.cost}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    {selectedTools.includes(key) && (
+                                                        <span style={{ color: '#9333EA', fontSize: '18px' }}>✓</span>
+                                                    )}
+                                                </div>
+
+                                                {/* API 키 입력 */}
+                                                {selectedTools.includes(key) && mcp.config?.env_vars && mcp.config.env_vars.length > 0 && (
+                                                    <div style={{ marginTop: '10px' }} onClick={(e) => e.stopPropagation()}>
+                                                        {mcp.config.env_vars.map(envVar => (
+                                                            <input
+                                                                key={envVar}
+                                                                type="password"
+                                                                placeholder={`${envVar} 입력`}
+                                                                value={apiKeys[key] || ''}
+                                                                onChange={(e) => setApiKeys({
+                                                                    ...apiKeys,
+                                                                    [key]: e.target.value
+                                                                })}
+                                                                style={{
+                                                                    width: '100%',
+                                                                    padding: '6px 8px',
+                                                                    border: '1px solid #E5E7EB',
+                                                                    borderRadius: '4px',
+                                                                    fontSize: '11px',
+                                                                    marginTop: '4px'
+                                                                }}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* 선택 요약 */}
+                                    {selectedTools.length > 0 && (
+                                        <div style={{
+                                            marginTop: '12px',
+                                            padding: '10px',
+                                            background: 'rgba(147, 51, 234, 0.05)',
+                                            borderRadius: '6px',
+                                            fontSize: '12px',
+                                            color: '#555'
+                                        }}>
+                                            <strong style={{ color: '#9333EA' }}>✓ {selectedTools.length}개 도구 선택됨:</strong>
+                                            <div style={{ marginTop: '6px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                                {selectedTools.map(toolKey => (
+                                                    <span
+                                                        key={toolKey}
+                                                        style={{
+                                                            padding: '4px 8px',
+                                                            background: '#fff',
+                                                            border: '1px solid #9333EA',
+                                                            borderRadius: '4px',
+                                                            fontSize: '11px',
+                                                            color: '#9333EA'
+                                                        }}
+                                                    >
+                                                        {availableMCPs[toolKey]?.icon} {availableMCPs[toolKey]?.name}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                     </div>
@@ -670,9 +1406,9 @@ const CrewAIInterface = () => {
                             <div className="input-container">
                                 <textarea
                                     value={inputText}
-                                    onChange={(e) => setInputText(e.target.value)}
+                                    onChange={handleInputChange}
                                     onKeyPress={handleKeyPress}
-                                    placeholder={`${roles.find(r => r.id === selectedRole)?.name}에게 작업을 요청하세요...`}
+                                    placeholder={`${roles.find(r => r.id === selectedRole)?.name}에게 작업을 요청하세요...${modelSelectionMode === 'auto' ? ' (15자 이상 입력시 자동 모델 추천)' : ''}`}
                                     disabled={isLoading || connectionStatus !== 'connected'}
                                     rows="3"
                                 />
@@ -778,6 +1514,110 @@ const CrewAIInterface = () => {
                                 disabled={isLoading || !newProjectData.name.trim()}
                             >
                                 {isLoading ? '생성 중...' : '프로젝트 생성'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 승인 팝업 모달 */}
+            {showApprovalModal && pendingApproval && (
+                <div className="modal-overlay approval-overlay" onClick={() => setShowApprovalModal(false)}>
+                    <div className="modal-content approval-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header approval-header">
+                            <h2>🔍 AI 계획 승인 요청</h2>
+                            <button
+                                className="modal-close"
+                                onClick={() => setShowApprovalModal(false)}
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="modal-body approval-body">
+                            <div className="approval-info">
+                                <div className="info-grid compact">
+                                    <div className="info-item">
+                                        <div className="info-label">프레임워크</div>
+                                        <div className="info-value">{pendingApproval.analysis_result?.framework?.toUpperCase() || 'N/A'}</div>
+                                    </div>
+                                    <div className="info-item">
+                                        <div className="info-label">생성 시간</div>
+                                        <div className="info-value">{new Date(pendingApproval.created_at).toLocaleString('ko-KR')}</div>
+                                    </div>
+                                    <div className="info-item">
+                                        <div className="info-label">예상 시간</div>
+                                        <div className="info-value">{pendingApproval.metadata?.estimated_completion_time || '미정'}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="approval-content">
+                                <div className="content-section compact">
+                                    <h4>📋 원본 요청</h4>
+                                    <div className="content-box compact">
+                                        {pendingApproval.analysis_result?.original_request || '요청 정보 없음'}
+                                    </div>
+                                </div>
+
+                                <div className="content-section compact">
+                                    <h4>🎯 프로젝트 목표</h4>
+                                    <div className="content-box compact">
+                                        <div className="objectives-list">
+                                            {pendingApproval.analysis_result?.analysis?.objectives?.map((obj, index) => (
+                                                <div key={index} className="objective-item">• {obj}</div>
+                                            )) || <div>목표 정보 없음</div>}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="content-section compact">
+                                    <h4>👥 AI 에이전트 ({pendingApproval.analysis_result?.analysis?.agents?.length || 0}명)</h4>
+                                    <div className="content-box compact">
+                                        {pendingApproval.analysis_result?.analysis?.agents?.map((agent, index) => (
+                                            <div key={index} className="agent-item compact">
+                                                <strong>🤖 {agent.role}</strong>
+                                                <div className="agent-details">
+                                                    <span className="expertise">{agent.expertise}</span>
+                                                </div>
+                                            </div>
+                                        )) || <div>에이전트 정보 없음</div>}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="feedback-section compact">
+                                <label htmlFor="approval-feedback" className="feedback-label">
+                                    💬 피드백 (선택사항):
+                                </label>
+                                <textarea
+                                    id="approval-feedback"
+                                    className="feedback-textarea compact"
+                                    value={approvalFeedback}
+                                    onChange={(e) => setApprovalFeedback(e.target.value)}
+                                    placeholder="승인/거부 사유나 수정 요청사항을 입력하세요..."
+                                />
+                            </div>
+                        </div>
+
+                        <div className="modal-footer approval-actions">
+                            <button
+                                className="modal-button approve-btn"
+                                onClick={() => handleApprovalAction('approve')}
+                            >
+                                ✅ 승인
+                            </button>
+                            <button
+                                className="modal-button modify-btn"
+                                onClick={() => handleApprovalAction('request_revision')}
+                            >
+                                🔄 수정 요청
+                            </button>
+                            <button
+                                className="modal-button reject-btn"
+                                onClick={() => handleApprovalAction('reject')}
+                            >
+                                ❌ 거부
                             </button>
                         </div>
                     </div>

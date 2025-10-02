@@ -507,10 +507,30 @@ body {
 
 .chat-messages {
     flex: 1;
+    max-height: calc(100vh - 220px);
     padding: 12px;
     overflow-y: auto;
     background: rgba(255, 255, 255, 0.05);
     min-height: 0;
+}
+
+/* 스크롤바 스타일링 */
+.chat-messages::-webkit-scrollbar {
+    width: 8px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+    background: rgba(79, 70, 229, 0.5);
+    border-radius: 4px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+    background: rgba(79, 70, 229, 0.7);
 }
 
 .welcome-message {
@@ -1139,4 +1159,517 @@ body {
     color: #4F46E5;
     white-space: nowrap;
     display: inline-block;
+}
+
+/* ===== APPROVAL POPUP STYLES ===== */
+.approval-overlay {
+    background-color: rgba(0, 0, 0, 0.6);
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+.approval-modal {
+    max-width: 700px;
+    max-height: 85vh;
+    width: 90%;
+    animation: slideIn 0.3s ease-out;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.approval-header {
+    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+    color: white;
+    padding: 16px 20px;
+    border-radius: 12px 12px 0 0;
+    font-size: 14px;
+}
+
+.approval-header h2 {
+    font-size: 16px;
+    margin: 0;
+    font-weight: 600;
+}
+
+.approval-body {
+    padding: 16px 20px;
+    max-height: 60vh;
+    overflow-y: auto;
+    font-size: 13px;
+}
+
+.approval-info {
+    margin-bottom: 16px;
+    background: rgba(79, 70, 229, 0.05);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.info-grid.compact {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+}
+
+.info-grid.compact .info-item {
+    padding: 8px 10px;
+    background: white;
+    border-radius: 6px;
+    border-left: 3px solid #4F46E5;
+}
+
+.info-grid.compact .info-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #666;
+    margin-bottom: 2px;
+    text-transform: uppercase;
+}
+
+.info-grid.compact .info-value {
+    font-size: 12px;
+    color: #333;
+    font-weight: 500;
+}
+
+.approval-content {
+    margin-bottom: 16px;
+}
+
+.content-section.compact {
+    margin-bottom: 12px;
+}
+
+.content-section.compact h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: #4F46E5;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.content-box.compact {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 12px;
+    line-height: 1.4;
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+.objectives-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.objective-item {
+    color: #555;
+    font-size: 12px;
+}
+
+.agent-item.compact {
+    margin-bottom: 8px;
+    padding: 6px;
+    background: rgba(79, 70, 229, 0.05);
+    border-radius: 4px;
+}
+
+.agent-item.compact strong {
+    font-size: 12px;
+    color: #4F46E5;
+    display: block;
+    margin-bottom: 2px;
+}
+
+.agent-details {
+    margin-top: 2px;
+}
+
+.agent-details .expertise {
+    font-size: 11px;
+    color: #666;
+    font-style: italic;
+}
+
+.feedback-section.compact {
+    margin-top: 16px;
+    margin-bottom: 16px;
+}
+
+.feedback-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 6px;
+    display: block;
+}
+
+.feedback-textarea.compact {
+    width: 100%;
+    min-height: 60px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 12px;
+    resize: vertical;
+    background: white;
+}
+
+.feedback-textarea.compact:focus {
+    outline: none;
+    border-color: #4F46E5;
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+}
+
+.approval-actions {
+    padding: 12px 20px;
+    background: #f8f9fa;
+    border-radius: 0 0 12px 12px;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    border-top: 1px solid #e9ecef;
+}
+
+.modal-button.approve-btn {
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 80px;
+}
+
+.modal-button.modify-btn {
+    background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 80px;
+}
+
+.modal-button.reject-btn {
+    background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 80px;
+}
+
+.modal-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.modal-button:active {
+    transform: translateY(0);
+}
+
+/* 애니메이션 */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+/* 모바일 승인 팝업 */
+@media (max-width: 768px) {
+    .approval-modal {
+        max-width: 95%;
+        max-height: 90vh;
+        width: 95%;
+    }
+
+    .approval-header {
+        padding: 12px 16px;
+    }
+
+    .approval-header h2 {
+        font-size: 14px;
+    }
+
+    .approval-body {
+        padding: 12px 16px;
+        font-size: 12px;
+    }
+
+    .approval-actions {
+        padding: 8px 16px;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .modal-button {
+        width: 100%;
+        padding: 10px;
+        font-size: 13px;
+    }
+
+    .info-grid.compact {
+        grid-template-columns: 1fr;
+    }
+
+    .content-box.compact {
+        max-height: 80px;
+    }
+}
+
+/* ===== MCP/도구 선택 UI ===== */
+.config-section {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    border: 1px solid rgba(79, 70, 229, 0.2);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.config-section .section-header h4 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+
+/* MCP 도구 카드 스타일 */
+.mcp-tool-card {
+    padding: 12px;
+    background: #F9FAFB;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.mcp-tool-card:hover {
+    border-color: #9333EA;
+    box-shadow: 0 2px 8px rgba(147, 51, 234, 0.1);
+    transform: translateY(-2px);
+}
+
+.mcp-tool-card.selected {
+    background: rgba(147, 51, 234, 0.1);
+    border: 2px solid #9333EA;
+}
+
+.mcp-tool-card .tool-header {
+    display: flex;
+    align-items: start;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.mcp-tool-card .tool-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.mcp-tool-card .tool-info {
+    flex: 1;
+}
+
+.mcp-tool-card .tool-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+.mcp-tool-card .tool-description {
+    font-size: 11px;
+    color: #666;
+    line-height: 1.4;
+}
+
+.mcp-tool-card .tool-cost {
+    font-size: 10px;
+    color: #999;
+    margin-top: 4px;
+}
+
+.mcp-tool-card .tool-check {
+    color: #9333EA;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+/* MCP 카테고리 탭 */
+.mcp-category-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.mcp-category-tab {
+    padding: 6px 12px;
+    background: #F3F4F6;
+    color: #666;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.mcp-category-tab:hover {
+    background: #E5E7EB;
+}
+
+.mcp-category-tab.active {
+    background: #9333EA;
+    color: #fff;
+}
+
+/* MCP API 키 입력 */
+.mcp-api-key-input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #E5E7EB;
+    border-radius: 4px;
+    font-size: 11px;
+    margin-top: 4px;
+    transition: all 0.2s ease;
+}
+
+.mcp-api-key-input:focus {
+    outline: none;
+    border-color: #9333EA;
+    box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.1);
+}
+
+/* MCP 선택 요약 */
+.mcp-selection-summary {
+    margin-top: 12px;
+    padding: 10px;
+    background: rgba(147, 51, 234, 0.05);
+    border-radius: 6px;
+    font-size: 12px;
+    color: #555;
+}
+
+.mcp-selection-summary strong {
+    color: #9333EA;
+    font-weight: 600;
+}
+
+.mcp-selected-tags {
+    margin-top: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.mcp-selected-tag {
+    padding: 4px 8px;
+    background: #fff;
+    border: 1px solid #9333EA;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #9333EA;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* MCP 도구 그리드 */
+.mcp-tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 4px;
+}
+
+/* 스크롤바 스타일 */
+.mcp-tools-grid::-webkit-scrollbar {
+    width: 8px;
+}
+
+.mcp-tools-grid::-webkit-scrollbar-track {
+    background: #F3F4F6;
+    border-radius: 4px;
+}
+
+.mcp-tools-grid::-webkit-scrollbar-thumb {
+    background: #9333EA;
+    border-radius: 4px;
+}
+
+.mcp-tools-grid::-webkit-scrollbar-thumb:hover {
+    background: #7C3AED;
+}
+
+/* MCP 모달 패널 */
+.mcp-modal-panel {
+    background: #fff;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 도구 선택 버튼 */
+.mcp-toggle-button {
+    padding: 6px 12px;
+    background: #E5E7EB;
+    color: #666;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.mcp-toggle-button:hover {
+    background: #D1D5DB;
+}
+
+.mcp-toggle-button.has-selection {
+    background: #9333EA;
+    color: #fff;
+}
+
+.mcp-toggle-button.has-selection:hover {
+    background: #7C3AED;
 }

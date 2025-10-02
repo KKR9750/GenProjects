@@ -1,0 +1,151 @@
+{
+  "news_search": {
+    "name": "Google News Search",
+    "description": "구글 뉴스 실시간 검색 (SerpAPI 기반)",
+    "category": "search",
+    "icon": "🔍",
+    "type": "serper_tool",
+    "config": {
+      "tool_class": "SerperDevTool",
+      "import_from": "crewai_tools",
+      "init_params": {
+        "search_type": "news",
+        "n_results": 10
+      },
+      "env_vars": ["SERPER_API_KEY"],
+      "cost": "무료 250회/월, 유료 $75/월 5000회"
+    }
+  },
+  "web_search": {
+    "name": "Web Search",
+    "description": "일반 웹 검색 (Google)",
+    "category": "search",
+    "icon": "🌐",
+    "type": "serper_tool",
+    "config": {
+      "tool_class": "SerperDevTool",
+      "import_from": "crewai_tools",
+      "init_params": {
+        "search_type": "search",
+        "n_results": 10
+      },
+      "env_vars": ["SERPER_API_KEY"],
+      "cost": "무료 250회/월"
+    }
+  },
+  "wikipedia": {
+    "name": "Wikipedia Search",
+    "description": "위키피디아 검색 및 정보 조회",
+    "category": "knowledge",
+    "icon": "📚",
+    "type": "builtin_tool",
+    "config": {
+      "tool_class": "WikipediaTool",
+      "import_from": "crewai_tools",
+      "init_params": {},
+      "env_vars": [],
+      "cost": "무료"
+    }
+  },
+  "youtube_channel": {
+    "name": "YouTube Channel Search",
+    "description": "유튜브 채널 내 콘텐츠 검색 (RAG)",
+    "category": "media",
+    "icon": "📺",
+    "type": "builtin_tool",
+    "config": {
+      "tool_class": "YoutubeChannelSearchTool",
+      "import_from": "crewai_tools",
+      "init_params": {},
+      "env_vars": [],
+      "cost": "무료"
+    }
+  },
+  "file_read": {
+    "name": "File Reader",
+    "description": "로컬 파일 읽기 및 분석",
+    "category": "file",
+    "icon": "📄",
+    "type": "builtin_tool",
+    "config": {
+      "tool_class": "FileReadTool",
+      "import_from": "crewai_tools",
+      "init_params": {},
+      "env_vars": [],
+      "cost": "무료"
+    }
+  },
+  "file_write": {
+    "name": "File Writer",
+    "description": "파일 생성 및 내용 쓰기",
+    "category": "file",
+    "icon": "💾",
+    "type": "builtin_tool",
+    "config": {
+      "tool_class": "FileWriteTool",
+      "import_from": "crewai_tools",
+      "init_params": {},
+      "env_vars": [],
+      "cost": "무료"
+    }
+  },
+  "web_scraper": {
+    "name": "Web Scraper",
+    "description": "웹사이트 스크래핑 및 데이터 추출",
+    "category": "search",
+    "icon": "🌍",
+    "type": "builtin_tool",
+    "config": {
+      "tool_class": "ScrapeWebsiteTool",
+      "import_from": "crewai_tools",
+      "init_params": {},
+      "env_vars": [],
+      "cost": "무료"
+    }
+  },
+  "directory_read": {
+    "name": "Directory Reader",
+    "description": "디렉토리 구조 읽기 및 탐색",
+    "category": "file",
+    "icon": "🔗",
+    "type": "builtin_tool",
+    "config": {
+      "tool_class": "DirectoryReadTool",
+      "import_from": "crewai_tools",
+      "init_params": {},
+      "env_vars": [],
+      "cost": "무료"
+    }
+  },
+  "dalle_image": {
+    "name": "DALL-E Image Generator",
+    "description": "AI 기반 이미지 생성",
+    "category": "media",
+    "icon": "🖼️",
+    "type": "builtin_tool",
+    "config": {
+      "tool_class": "DallETool",
+      "import_from": "crewai_tools",
+      "init_params": {},
+      "env_vars": ["OPENAI_API_KEY"],
+      "cost": "OpenAI API 사용량 기준"
+    }
+  },
+  "google_news_mcp": {
+    "name": "Google News MCP Server",
+    "description": "구글 뉴스 고급 검색 (MCP 서버 - 자동 분류, 다국어)",
+    "category": "search",
+    "icon": "📰",
+    "type": "mcp_server",
+    "config": {
+      "server_type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@chanmeng666/google-news-server"],
+      "env_vars": ["SERPER_API_KEY"],
+      "adapter_import": "from crewai_tools import MCPServerAdapter",
+      "mcp_import": "from mcp import StdioServerParameters",
+      "features": ["자동 뉴스 분류", "다국어 지원", "주제별 검색"],
+      "cost": "무료 250회/월, SerpAPI 키 필요"
+    }
+  }
+}

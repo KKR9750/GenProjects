@@ -6,7 +6,7 @@ Single Python server integrating CrewAI and MetaGPT
 
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_cors import CORS
-# Real-time monitoring removed
+from flask_socketio import SocketIO
 import os
 import sys
 import json
@@ -107,6 +107,7 @@ from generate_crewai_script_new import generate_crewai_execution_script_with_app
 # 새로운 모듈 import
 from pre_analysis_service import pre_analysis_service
 from approval_workflow import approval_workflow_manager
+from smart_model_allocator import SmartModelAllocator
 
 # Add current directory to Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -123,6 +124,9 @@ sys.path.append(metagpt_path)
 # MetaGPT: D:\GenProjects\MetaGPT
 
 app = Flask(__name__, static_folder='.', static_url_path='')
+
+# SocketIO 초기화
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 # UTF-8 처리 강화
 app.config['JSON_AS_ASCII'] = False
@@ -394,6 +398,30 @@ def health_check():
     })
 
 
+@app.route('/api/mcps/available', methods=['GET'])
+def get_available_mcps():
+    """사용 가능한 MCP/도구 목록 반환"""
+    try:
+        from mcp_manager import MCPManager
+
+        category = request.args.get('category')  # 카테고리 필터 (선택사항)
+
+        mcp_manager = MCPManager()
+        mcps = mcp_manager.get_available_mcps(category)
+
+        return jsonify({
+            'status': 'success',
+            'mcps': mcps,
+            'count': len(mcps)
+        })
+
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'MCP 목록 조회 실패: {str(e)}'
+        }), 500
+
+
 def check_crewai_service():
     """Check CrewAI service status"""
     try:
@@ -422,9 +450,75 @@ def handle_crewai_request():
     selected_models = data.get('selectedModels', {})
     pre_analysis_model = data.get('preAnalysisModel', 'gemini-flash')  # 사전 분석 모델 추가
     project_id = data.get('projectId')
+    model_selection_mode = data.get('modelSelectionMode', 'manual')  # 'auto' 또는 'manual'
+    recommendation_strategy = data.get('recommendationStrategy', 'balanced')  # 자동 추천 전략
+    review_iterations = data.get('reviewIterations', 3)  # 검토-재작성 반복 횟수 (0~3)
+    selected_tools = data.get('selectedTools', [])  # 선택된 MCP/도구 목록
+    api_keys = data.get('apiKeys', {})  # 도구별 API 키
 
     if not requirement:
         return jsonify({'error': 'Requirement is required'}), 400
+
+    # 자동 모델 선택 모드인 경우 SmartModelAllocator 사용
+    if model_selection_mode == 'auto':
+        try:
+            print(f"[CREWAI] 자동 모델 추천 모드 활성화 - 전략: {recommendation_strategy}")
+
+            # SmartModelAllocator를 사용하여 자동 추천
+            from intelligent_requirement_analyzer import IntelligentRequirementAnalyzer
+            from dynamic_agent_matcher import DynamicAgentMatcher
+
+            analyzer = IntelligentRequirementAnalyzer()
+            matcher = DynamicAgentMatcher()
+            allocator = SmartModelAllocator()
+
+            # 요구사항 분석 및 에이전트 매칭
+            analysis = analyzer.analyze_requirement(requirement)
+            agent_selection = matcher.select_optimal_agents(analysis)
+
+            # 모델 할당
+            allocation = allocator.allocate_models(agent_selection, analysis, budget="medium", strategy=recommendation_strategy)
+
+            # 에이전트 이름을 CrewAI 역할로 매핑
+            role_mapping = {
+                'content_strategist': 'planner',
+                'requirements_analyst': 'planner',
+                'solution_architect': 'planner',
+                'technology_researcher': 'researcher',
+                'information_extractor': 'researcher',
+                'data_scientist': 'researcher',
+                'content_creator': 'writer',
+                'document_parser': 'writer',
+                'quality_assurance': 'writer'
+            }
+
+            # 추천된 모델을 selected_models에 적용
+            auto_selected_models = {}
+            for agent_name, model_name in allocation.simple_model_mapping.items():
+                role = role_mapping.get(agent_name)
+                if role:
+                    auto_selected_models[role] = model_name
+
+            # 기본값 설정 (추천되지 않은 역할에 대해)
+            default_roles = {'planner': 'gemini-flash', 'researcher': 'gemini-flash', 'writer': 'gemini-flash'}
+            for role, default_model in default_roles.items():
+                if role not in auto_selected_models:
+                    auto_selected_models[role] = default_model
+
+            selected_models = auto_selected_models
+            print(f"[CREWAI] 자동 추천 완료: {selected_models}")
+            print(f"[CREWAI] 추천 근거: {allocation.allocation_reasoning}")
+            print(f"[CREWAI] 신뢰도: {allocation.confidence_score:.2f}")
+
+        except Exception as e:
+            print(f"[CREWAI] 자동 추천 실패, 기본 모델 사용: {e}")
+            # 자동 추천 실패시 기본 모델 사용
+            selected_models = selected_models or {'planner': 'gemini-flash', 'researcher': 'gemini-flash', 'writer': 'gemini-flash'}
+    else:
+        print(f"[CREWAI] 수동 모델 선택 모드: {selected_models}")
+        # 수동 모드에서도 빈 값이면 기본값 설정
+        if not selected_models:
+            selected_models = {'planner': 'gemini-flash', 'researcher': 'gemini-flash', 'writer': 'gemini-flash'}
 
     # 강화된 메시지 처리 시스템 사용
     try:
@@ -663,15 +757,26 @@ def handle_crewai_request():
         # 고도화된 스크립트 생성기 사용 (모든 CrewAI 요청에 적용)
         try:
             from enhanced_script_generator import generate_enhanced_crewai_script
-            print(f"[CREWAI] 고도화된 스크립트 생성기 사용")
-            script_content = generate_enhanced_crewai_script(requirement, selected_models, project_path, execution_id)
+            print(f"[CREWAI] 고도화된 스크립트 생성기 사용 (반복: {review_iterations}회)")
+            script_content = generate_enhanced_crewai_script(
+                requirement,
+                selected_models,
+                project_path,
+                execution_id,
+                review_iterations=review_iterations,
+                selected_tools=selected_tools,
+                api_keys=api_keys
+            )
         except ImportError:
-            print(f"[CREWAI] 승인 기반 스크립트 생성기 사용 (fallback)")
+            print(f"[CREWAI] 승인 기반 스크립트 생성기 사용 (fallback, 반복: {review_iterations}회)")
             script_content = generate_crewai_execution_script_with_approval(
                 requirement=requirement,
                 selected_models=selected_models,
                 project_path=project_path,
-                execution_id=execution_id
+                execution_id=execution_id,
+                review_iterations=review_iterations,
+                selected_tools=selected_tools,
+                api_keys=api_keys
             )
 
         script_path = os.path.join(project_path, "execute_crewai.py")
@@ -727,6 +832,44 @@ def handle_crewai_request():
             crewai_logger.log_file_generation(execution_id, crew_id, requirements_path, "Requirements", len(safe_requirements), True)
         except Exception as req_error:
             crewai_logger.log_file_generation(execution_id, crew_id, requirements_path, "Requirements", 0, False, {"error": str(req_error)})
+
+        # 단계 6.5: 스크립트 검증 (Phase 1: 로깅 전용)
+        crewai_logger.advance_step(execution_id, crew_id, "스크립트 검증", "시작", ExecutionPhase.FILE_GENERATION)
+
+        try:
+            from script_validator import ScriptValidator
+
+            validator = ScriptValidator(script_path)
+            validation_results = validator.validate_syntax()  # Phase 1: 문법 검증만
+
+            # 검증 결과 로깅
+            if validation_results['valid']:
+                crewai_logger.log_info(execution_id, crew_id, "✅ 스크립트 검증 통과", {
+                    "script_path": script_path,
+                    "validation_level": "syntax",
+                    "message": validation_results['message']
+                })
+            else:
+                crewai_logger.log_warning(execution_id, crew_id, "❌ 스크립트 검증 실패", {
+                    "script_path": script_path,
+                    "validation_level": "syntax",
+                    "error": validation_results.get('error', ''),
+                    "line": validation_results.get('line', 0),
+                    "message": validation_results['message']
+                })
+
+                # Phase 1: 로깅만 수행, 실행은 차단하지 않음
+                # 향후 Phase 2에서 실행 차단 기능 활성화 예정
+                print(f"[VALIDATION] ⚠️ 스크립트에 문법 오류 발견 (로깅 전용 모드)")
+                print(f"[VALIDATION] {validation_results['message']}")
+
+        except Exception as validation_error:
+            # 검증 시스템 자체의 오류는 무시하고 계속 진행
+            crewai_logger.log_error(execution_id, crew_id, validation_error, "스크립트 검증 오류", {
+                "script_path": script_path,
+                "note": "검증 실패, 실행은 계속 진행"
+            })
+            print(f"[VALIDATION] ⚠️ 검증 시스템 오류 (무시하고 계속 진행): {validation_error}")
 
         # 단계 7: CrewAI 실행
         crewai_logger.advance_step(execution_id, crew_id, "CrewAI 실행", "시작", ExecutionPhase.EXECUTION)
@@ -3474,19 +3617,54 @@ def ollama_chat():
 @app.route('/api/llm/models', methods=['GET'])
 @rate_limit(max_requests=20, window_seconds=60)
 def get_all_llm_models():
-    """모든 LLM 모델 목록 조회 (클라우드 + 로컬)"""
+    """모든 LLM 모델 목록 조회 (SmartModelAllocator 기반)"""
     try:
-        # 기본 클라우드 LLM 모델들
-        cloud_models = [
-            { 'id': 'gpt-4', 'name': 'GPT-4', 'description': '범용 고성능 모델', 'provider': 'OpenAI', 'type': 'cloud' },
-            { 'id': 'gpt-4o', 'name': 'GPT-4o', 'description': '멀티모달 최신 모델', 'provider': 'OpenAI', 'type': 'cloud' },
-            { 'id': 'claude-3', 'name': 'Claude-3 Sonnet', 'description': '추론 특화 모델', 'provider': 'Anthropic', 'type': 'cloud' },
-            { 'id': 'claude-3-haiku', 'name': 'Claude-3 Haiku', 'description': '빠른 응답 모델', 'provider': 'Anthropic', 'type': 'cloud' },
-            { 'id': 'gemini-pro', 'name': 'Gemini Pro', 'description': '멀티모달 모델', 'provider': 'Google', 'type': 'cloud' },
-            { 'id': 'gemini-flash', 'name': 'Gemini Flash', 'description': '빠른 응답 멀티모달 모델', 'provider': 'Google', 'type': 'cloud' },
-            { 'id': 'deepseek-coder', 'name': 'DeepSeek Coder', 'description': '코딩 전문 모델', 'provider': 'DeepSeek', 'type': 'cloud' },
-            { 'id': 'codellama', 'name': 'Code Llama', 'description': '코드 생성 특화', 'provider': 'Meta', 'type': 'cloud' }
-        ]
+        # SmartModelAllocator에서 모델 정보 가져오기
+        allocator = SmartModelAllocator()
+        available_models = allocator.get_available_models()
+
+        cloud_models = []
+        for model_name in available_models:
+            model_info = allocator.get_model_info(model_name)
+            if model_info:
+                # 모델명을 더 친화적으로 변환
+                friendly_names = {
+                    'gpt-4': 'GPT-4',
+                    'gpt-3.5-turbo': 'GPT-3.5 Turbo',
+                    'gemini-2.5-flash': 'Gemini 2.5 Flash',
+                    'gemini-2.5-pro': 'Gemini 2.5 Pro',
+                    'gemini-flash': 'Gemini Flash',
+                    'gemini-pro': 'Gemini Pro',
+                    'claude-3': 'Claude-3 Sonnet',
+                    'claude-3-opus': 'Claude-3 Opus',
+                    'deepseek-coder': 'DeepSeek Coder'
+                }
+
+                # 설명 생성
+                descriptions = {
+                    'gpt-4': '범용 고성능 모델',
+                    'gpt-3.5-turbo': '빠른 응답 범용 모델',
+                    'gemini-2.5-flash': '최신 고속 멀티모달 모델',
+                    'gemini-2.5-pro': '최신 고성능 추론 모델',
+                    'gemini-flash': '빠른 응답 멀티모달 모델',
+                    'gemini-pro': '균형잡힌 멀티모달 모델',
+                    'claude-3': '추론 특화 모델',
+                    'claude-3-opus': '최고 품질 창작 모델',
+                    'deepseek-coder': '코딩 전문 모델'
+                }
+
+                cloud_models.append({
+                    'id': model_name,
+                    'name': friendly_names.get(model_name, model_name.title()),
+                    'description': descriptions.get(model_name, model_info.get('strengths', ['범용 모델'])[0] if model_info.get('strengths') else '범용 모델'),
+                    'provider': model_info['api_provider'].title(),
+                    'type': 'cloud',
+                    'cost_level': model_info.get('cost_level', 'medium'),
+                    'speed_level': model_info.get('speed_level', 'medium'),
+                    'strengths': model_info.get('strengths', []),
+                    'env_key': model_info.get('env_key', ''),
+                    'available': allocator.check_model_availability(model_name)
+                })
 
         all_models = cloud_models.copy()
 
@@ -3496,6 +3674,7 @@ def get_all_llm_models():
             if ollama_result['success']:
                 for model in ollama_result['models']:
                     model['type'] = 'local'
+                    model['available'] = True
                     all_models.append(model)
 
         return jsonify({
@@ -3504,7 +3683,9 @@ def get_all_llm_models():
             'count': len(all_models),
             'cloud_count': len(cloud_models),
             'local_count': len(all_models) - len(cloud_models),
-            'ollama_available': ollama_client.is_available()
+            'ollama_available': ollama_client.is_available(),
+            'available_models': len([m for m in all_models if m.get('available', True)]),
+            'env_status': allocator.env_status
         })
 
     except Exception as e:
@@ -3512,6 +3693,64 @@ def get_all_llm_models():
             'success': False,
             'error': f'LLM 모델 목록 조회 오류: {str(e)}',
             'models': []
+        }), 500
+
+# 자동 모델 추천 엔드포인트 추가
+@app.route('/api/llm/models/recommend', methods=['POST'])
+@rate_limit(max_requests=10, window_seconds=60)
+def recommend_models():
+    """요구사항 기반 자동 모델 추천"""
+    try:
+        data = get_json_safely()
+        requirement = data.get('requirement', '')
+        budget = data.get('budget', 'medium')
+        strategy = data.get('strategy', 'balanced')
+
+        if not requirement:
+            return jsonify({
+                'success': False,
+                'error': '요구사항이 필요합니다'
+            }), 400
+
+        # SmartModelAllocator를 사용하여 추천
+        allocator = SmartModelAllocator()
+
+        # 요구사항 분석 및 에이전트 매칭 (임시로 간단한 분석 구현)
+        from intelligent_requirement_analyzer import IntelligentRequirementAnalyzer
+        from dynamic_agent_matcher import DynamicAgentMatcher
+
+        analyzer = IntelligentRequirementAnalyzer()
+        matcher = DynamicAgentMatcher()
+
+        analysis = analyzer.analyze_requirement(requirement)
+        agent_selection = matcher.select_optimal_agents(analysis)
+
+        # 모델 할당
+        allocation = allocator.allocate_models(agent_selection, analysis, budget, strategy)
+
+        return jsonify({
+            'success': True,
+            'requirement': requirement,
+            'analysis': {
+                'complexity': analysis.complexity.value if hasattr(analysis.complexity, 'value') else str(analysis.complexity),
+                'domain': analysis.domain,
+                'agent_count': len(agent_selection.agents)
+            },
+            'recommended_models': allocation.agent_model_mapping,
+            'simple_models': allocation.simple_model_mapping,
+            'total_cost': allocation.total_estimated_cost,
+            'reasoning': allocation.allocation_reasoning,
+            'confidence': allocation.confidence_score,
+            'backup_models': allocation.backup_allocations,
+            'env_keys_required': allocation.env_keys_required,
+            'missing_env_keys': allocation.missing_env_keys,
+            'agents': [{'name': agent.name, 'role': agent.role} for agent in agent_selection.agents]
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'모델 추천 오류: {str(e)}'
         }), 500
 
 # ==================== END OLLAMA INTEGRATION ====================
@@ -4736,4 +4975,13 @@ def resume_metagpt_execution(execution_id, project_data):
         return False
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=PORT, debug=True)
+    # WebSocket 매니저 초기화
+    try:
+        from websocket_manager import init_websocket_manager
+        init_websocket_manager(socketio)
+        print("✅ WebSocket 매니저 초기화 완료")
+    except ImportError as e:
+        print(f"⚠️ WebSocket 매니저 초기화 실패: {e}")
+
+    # SocketIO로 서버 실행
+    socketio.run(app, host='0.0.0.0', port=PORT, debug=True)

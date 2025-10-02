@@ -1,45 +1,365 @@
 #!/usr/bin/env python3
-# Enhanced CrewAI Script Generator with Planner-Writer Feedback Loop
+# -*- coding: utf-8 -*-
+"""
+통합 CrewAI 스크립트 생성 시스템
+새로운 적응형 스크립트 생성 엔진과 기존 시스템 통합
+"""
 
-def generate_enhanced_crewai_script(requirement, selected_models, project_path, execution_id):
-    """Enhanced CrewAI Script Generator with Quality Feedback System"""
+import os
+from adaptive_script_generator import AdaptiveScriptGenerator
+from datetime import datetime
 
-    # Check if this is a resume processing request
-    resume_keywords = ['이력서', '문서', '파싱', '추출', 'pdf', 'docx', 'resume']
-    is_resume_processing = any(keyword in requirement.lower() for keyword in resume_keywords)
+def generate_enhanced_crewai_script(requirement, selected_models, project_path, execution_id, review_iterations=3, selected_tools=None, api_keys=None):
+    """새로운 적응형 시스템을 사용한 CrewAI 스크립트 생성
 
-    # Generate initial script - 모든 프로젝트에 4-에이전트 시스템 적용
-    if is_resume_processing:
-        initial_script = generate_improved_resume_processing_script(requirement, selected_models, project_path, execution_id, {'improvements': [], 'issues': []})
+    Args:
+        requirement: 사용자 요구사항
+        selected_models: 역할별 LLM 모델 딕셔너리
+        project_path: 프로젝트 저장 경로
+        execution_id: 실행 ID
+        review_iterations: 검토-재작성 반복 횟수 (0-3)
+        selected_tools: 선택된 MCP/도구 ID 리스트
+        api_keys: 도구별 API 키 딕셔너리
+    """
+
+    print(f"🚀 새로운 적응형 CrewAI 생성 시스템 사용")
+    print(f"   요구사항: {requirement[:100]}...")
+    print(f"   프로젝트 경로: {project_path}")
+    print(f"   실행 ID: {execution_id}")
+    print(f"   검토-재작성 반복: {review_iterations}회")
+
+    if selected_tools:
+        from mcp_manager import MCPManager
+        mcp_manager = MCPManager()
+        tool_names = mcp_manager.get_tool_names(selected_tools)
+        print(f"   선택된 도구: {', '.join(tool_names)}")
+
+    try:
+        # 적응형 스크립트 생성기 초기화
+        generator = AdaptiveScriptGenerator("model_config.json")
+
+        # 수동 모델 선택과 관계없이 항상 고품질 스크립트 생성
+        if selected_models and any(selected_models.values()):
+            print(f"🎯 수동 모델 선택 감지: {selected_models}")
+            print(f"🚀 수동 모델을 사용한 고품질 스크립트 생성 시도...")
+            # 수동 선택된 모델을 AdaptiveScriptGenerator에 전달
+            budget = "medium"
+            strategy = "balanced"
+
+            # 고품질 스크립트 생성 (수동 모델 사용)
+            result = generator.generate_optimal_script_with_manual_models(
+                requirement=requirement,
+                selected_models=selected_models,
+                project_path=project_path,
+                execution_id=execution_id,
+                budget=budget,
+                strategy=strategy,
+                max_quality_iterations=2
+            )
+        else:
+            print(f"🤖 자동 모델 할당 모드 사용")
+            # 기존 selected_models 형식을 새로운 시스템에 맞게 변환
+            budget = "medium"  # 기본값
+            strategy = "balanced"  # 기본값
+
+            # 고품질 스크립트 생성
+            result = generator.generate_optimal_script(
+                requirement=requirement,
+                project_path=project_path,
+                execution_id=execution_id,
+                budget=budget,
+                strategy=strategy,
+                max_quality_iterations=2
+            )
+
+        print(f"✅ 적응형 시스템 생성 완료!")
+        print(f"   품질 점수: {result.quality_score:.1f}/100")
+        print(f"   프로덕션 준비: {'✅' if result.is_production_ready else '❌'}")
+
+        return result.script_content
+
+    except ImportError as e:
+        print(f"❌ 적응형 시스템 import 실패: {e}")
+        print(f"🔄 고품질 대안 시스템 시도...")
+
+        # Import 실패 시 고품질 대안 시도
+        try:
+            return generate_high_quality_alternative_script(requirement, selected_models, project_path, execution_id, review_iterations)
+        except Exception:
+            print(f"🔄 최종 폴백 시스템 사용...")
+            return generate_fallback_script(requirement, selected_models, project_path, execution_id, review_iterations)
+
+    except Exception as e:
+        print(f"❌ 적응형 시스템 실행 실패: {e}")
+        print(f"🔄 고품질 대안 시스템 시도...")
+
+        # 일반 예외 시 고품질 대안 먼저 시도
+        try:
+            return generate_high_quality_alternative_script(requirement, selected_models, project_path, execution_id, review_iterations)
+        except Exception as fallback_e:
+            print(f"❌ 고품질 대안도 실패: {fallback_e}")
+            print(f"🔄 최종 폴백 시스템 사용...")
+            return generate_fallback_script(requirement, selected_models, project_path, execution_id, review_iterations)
+
+def generate_high_quality_alternative_script(requirement, selected_models, project_path, execution_id, review_iterations=3):
+    """고품질 대안 스크립트 생성 (적응형 시스템 실패 시)"""
+
+    print(f"🚀 고품질 대안 스크립트 생성 시작 (검토-재작성 {review_iterations}회)...")
+
+    try:
+        # project_00055 수준의 고품질 스크립트 생성
+        from generate_crewai_script_new import generate_crewai_execution_script_with_approval
+
+        print(f"📋 전문 에이전트 기반 고품질 스크립트 생성...")
+
+        # 고품질 스크립트 생성 (승인 기반 템플릿 사용)
+        script_content = generate_crewai_execution_script_with_approval(
+            requirement=requirement,
+            selected_models=selected_models or {'planner': 'gemini-flash', 'researcher': 'gemini-flash', 'writer': 'gemini-flash'},
+            project_path=project_path,
+            execution_id=execution_id,
+            review_iterations=review_iterations,
+            selected_tools=selected_tools,
+            api_keys=api_keys
+        )
+
+        print(f"✅ 고품질 대안 스크립트 생성 완료!")
+
+        # README.md 생성
+        try:
+            create_high_quality_readme(project_path, requirement, selected_models)
+        except Exception as readme_e:
+            print(f"⚠️ README 생성 실패 (무시): {readme_e}")
+
+        return script_content
+
+    except Exception as e:
+        print(f"❌ 고품질 대안 생성 실패: {e}")
+        raise e
+
+def create_high_quality_readme(project_path, requirement, selected_models):
+    """고품질 README.md 파일 생성"""
+    import os
+
+    readme_content = f'''# 고품질 CrewAI 프로젝트
+
+## 📋 프로젝트 개요
+**요구사항**: {requirement}
+
+**분야**: 전문 AI 에이전트 협업 시스템
+
+**핵심 기술**: CrewAI, Python, 전문 에이전트 구성
+
+## 🤖 에이전트 구성
+- **Planner** ({selected_models.get('planner', 'gemini-flash')}): 전략 수립 및 계획 전문가
+- **Researcher** ({selected_models.get('researcher', 'gemini-flash')}): 정보 수집 및 분석 전문가
+- **Writer** ({selected_models.get('writer', 'gemini-flash')}): 콘텐츠 생성 및 문서화 전문가
+
+**협업 구조**: 3개 전문 에이전트가 순차적으로 협업하여 고품질 결과물 생성
+
+## 🚀 실행 방법
+### 1. 환경 설정
+```bash
+pip install -r requirements.txt
+```
+
+### 2. API 키 설정
+`.env` 파일에 필요한 API 키를 설정하세요
+
+### 3. 프로그램 실행
+```bash
+python crewai_script.py
+```
+
+### 4. 결과 확인
+실행 결과는 `output/` 폴더에 저장됩니다
+
+## 📈 예상 결과
+- 요구사항에 맞는 고품질 결과물
+- 전문 에이전트 협업을 통한 최적화된 솔루션
+- 체계적인 프로젝트 구조 및 문서
+
+## 🔧 기술 스택
+- CrewAI
+- Python
+- 선택된 LLM 모델들
+
+## 📦 주요 의존성
+- crewai
+- python-dotenv
+'''
+
+    readme_path = os.path.join(project_path, "README.md")
+    with open(readme_path, 'w', encoding='utf-8') as f:
+        f.write(readme_content)
+
+    print(f"✅ README.md 생성 완료: {readme_path}")
+
+def generate_fallback_script(requirement, selected_models, project_path, execution_id, review_iterations=3):
+    """폴백 스크립트 생성 (기존 시스템 호환)"""
+
+    print(f"📋 폴백 스크립트 생성 중...")
+
+    # 간단한 폴백 스크립트 생성
+    fallback_script = f'''#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+폴백 CrewAI 스크립트
+실행 ID: {execution_id}
+요구사항: {requirement}
+"""
+
+import os
+import sys
+import json
+from datetime import datetime
+from pathlib import Path
+from dotenv import load_dotenv
+from crewai import Agent, Task, Crew, Process
+from langchain_litellm import ChatLiteLLM
+
+# 현재 스크립트 파일의 디렉토리를 기준으로 .env 파일의 경로를 지정
+dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
+load_dotenv(dotenv_path=dotenv_path)
+
+# API 키 확인
+missing_keys = []
+if not os.getenv('GOOGLE_API_KEY'):
+    missing_keys.append('GOOGLE_API_KEY')
+if not os.getenv('OPENAI_API_KEY'):
+    missing_keys.append('OPENAI_API_KEY')
+
+if missing_keys:
+    print(f'⚠️  경고: 다음 환경변수가 설정되지 않았습니다: {{", ".join(missing_keys)}}', file=sys.stderr)
+    print('   .env 파일에 해당 키를 추가하거나 시스템 환경변수를 설정해주세요.', file=sys.stderr)
+
+# LLM 모델 설정 (ChatLiteLLM 객체 생성)
+MODELS = {{}}
+api_key_mapping = {{
+    'gemini': 'GOOGLE_API_KEY',
+    'openai': 'OPENAI_API_KEY',
+    'anthropic': 'ANTHROPIC_API_KEY',
+    'deepseek': 'DEEPSEEK_API_KEY'
+}}
+
+for role, model_name in {selected_models}.items():
+    provider = model_name.split('/')[0] if '/' in model_name else 'gemini'
+    api_key_env = api_key_mapping.get(provider, 'GOOGLE_API_KEY')
+
+    MODELS[role] = ChatLiteLLM(
+        model=model_name,
+        api_key=os.getenv(api_key_env)
+    )
+    print(f"📍 {{role}} 역할: {{model_name}} (API 키: {{api_key_env}})")
+
+# 기본 에이전트 구성
+# 에이전트들을 모델 키에 맞춰 동적으로 생성
+agents = []
+tasks = []
+
+# 사용 가능한 모델 키를 기반으로 에이전트 생성
+model_keys = list(MODELS.keys()) if MODELS else ['researcher', 'writer', 'planner']
+
+for i, role_key in enumerate(model_keys):
+    if role_key == 'researcher' or 'research' in role_key.lower():
+        agent = Agent(
+            role="Senior Researcher",
+            goal="Analyze requirements and research optimal solutions",
+            backstory="Expert researcher with deep domain knowledge.",
+            verbose=True,
+            llm=MODELS[role_key],  # ChatLiteLLM 객체 직접 전달
+            allow_delegation=False
+        )
+    elif role_key == 'writer' or 'writ' in role_key.lower():
+        agent = Agent(
+            role="Professional Writer",
+            goal="Create high-quality documentation and deliverables",
+            backstory="Professional writer with expertise in technical documentation.",
+            verbose=True,
+            llm=MODELS[role_key],  # ChatLiteLLM 객체 직접 전달
+            allow_delegation=False
+        )
+    elif role_key == 'planner' or 'plan' in role_key.lower():
+        agent = Agent(
+            role="Strategic Planner",
+            goal="Develop comprehensive implementation plans",
+            backstory="Strategic planning expert with project management experience.",
+            verbose=True,
+            llm=MODELS[role_key],  # ChatLiteLLM 객체 직접 전달
+            allow_delegation=False
+        )
     else:
-        initial_script = generate_enhanced_general_script(requirement, selected_models, project_path, execution_id)
+        # 기타 역할들 (data_scientist, data_engineer, visualization_specialist 등)
+        agent = Agent(
+            role=f"{{role_key.replace('_', ' ').title()}} Specialist",
+            goal="전문 분야에서 최고 품질의 결과물을 생성합니다.",
+            backstory=f"당신은 {{role_key.replace('_', ' ')}} 전문가입니다. 해당 분야에서 뛰어난 전문성을 가지고 있습니다.",
+            verbose=True,
+            llm=MODELS[role_key],  # ChatLiteLLM 객체 직접 전달
+            allow_delegation=False
+        )
 
-    # Apply Planner-Writer feedback loop for quality improvement
-    improved_script = apply_feedback_loop(initial_script, requirement, selected_models, project_path, execution_id)
+    agents.append(agent)
 
-    return improved_script
+    # 각 에이전트에 대한 태스크 생성
+    task = Task(
+        description=f"전문 분야에서 최고 품질의 결과물을 생성하세요: {requirement}",
+        expected_output="전문 분야의 고품질 결과물",
+        agent=agent
+    )
+    tasks.append(task)
+
+# 크루 구성
+crew = Crew(
+    agents=agents,
+    tasks=tasks,
+    process=Process.sequential,
+    verbose=True
+)
+
+def main():
+    """메인 실행 함수"""
+    print("CrewAI 폴백 시스템 - 실행 시작")
+    print(f"실행 ID: {execution_id}")
+    print(f"프로젝트 경로: {project_path}")
+
+    try:
+        # 출력 디렉토리 생성
+        output_dir = Path("{project_path}") / "output"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # CrewAI 실행
+        start_time = datetime.now()
+        result = crew.kickoff()
+        end_time = datetime.now()
+
+        print("실행 완료!")
+        print(result)
+
+        # 결과 저장
+        result_file = output_dir / f"crew_result_{{datetime.now().strftime('%Y%m%d_%H%M%S')}}.txt"
+        with open(result_file, 'w', encoding='utf-8') as f:
+            f.write(str(result))
+
+        print(f"결과 저장: {{result_file}}")
+
+    except Exception as e:
+        print(f"오류 발생: {{e}}")
+        import traceback
+        traceback.print_exc()
+
+if __name__ == "__main__":
+    main()
+'''
+
+    return fallback_script
+
+# ===== 기존 시스템 호환성 함수들 =====
 
 def apply_feedback_loop(script_content, requirement, selected_models, project_path, execution_id, max_iterations=2):
-    """Apply Planner-Writer feedback loop to improve script quality"""
-
-    current_script = script_content
-
-    for iteration in range(max_iterations):
-        print(f"[FEEDBACK LOOP] Iteration {iteration + 1}/{max_iterations}")
-
-        # Planner review
-        planner_feedback = planner_review_script(current_script, requirement)
-
-        if planner_feedback['quality_score'] >= 8.0:  # High quality, no need for further improvement
-            print(f"[FEEDBACK LOOP] High quality achieved (Score: {planner_feedback['quality_score']:.1f})")
-            break
-
-        # Writer improvement
-        current_script = writer_improve_script(current_script, planner_feedback, requirement, selected_models, project_path, execution_id)
-
-        print(f"[FEEDBACK LOOP] Script improved based on Planner feedback")
-
-    return current_script
+    """기존 시스템 호환용 피드백 루프 (더이상 사용하지 않음)"""
+    print("⚠️  기존 피드백 루프는 새로운 품질 보증 시스템으로 대체되었습니다.")
+    return script_content
 
 def planner_review_script(script_content, requirement):
     """Planner agent reviews script and provides structured feedback"""
@@ -167,7 +487,11 @@ import pandas as pd
 import re
 from datetime import datetime
 from pathlib import Path
+from dotenv import load_dotenv
 from crewai import Agent, Task, Crew, Process
+
+# 환경변수 로드
+load_dotenv()
 
 # Model configuration
 MODELS = ''' + str(selected_models) + '''
@@ -219,7 +543,7 @@ output_formatter = Agent(
 
 # Enhanced task definitions
 task1_parse_documents = Task(
-    description="""Implement a comprehensive document parsing system for: """ + requirement + """
+    description=f"""Implement a comprehensive document parsing system for: {requirement}
 
 **Core Requirements:**
 - Support PDF, DOCX, Excel, TXT formats
@@ -646,7 +970,7 @@ implementation_engineer = Agent(
 
 # Enhanced task definitions
 task1_analyze_requirements = Task(
-    description="""Perform comprehensive requirements analysis for: ''' + requirement + '''
+    description=f"""Perform comprehensive requirements analysis for: {requirement}
 
 **Analysis Framework:**
 1. **Functional Requirements**: Core features, user stories, business logic
@@ -853,7 +1177,7 @@ researcher = Agent(
     goal="Analyze requirements and collect information",
     backstory="Professional research and analysis expert",
     verbose=True,
-    llm=MODELS.get('researcher', 'gemini-flash'),
+    llm=MODELS.get('researcher', 'gemini-2.5-flash'),
     allow_delegation=False
 )
 
@@ -877,7 +1201,7 @@ planner = Agent(
 
 # Tasks
 task1 = Task(
-    description=f"Analyze requirements and collect information: """ + requirement + """",
+    description=f"Analyze requirements and collect information: {requirement}",
     expected_output="Requirements analysis and collected information",
     agent=researcher
 )

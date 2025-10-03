@@ -35,11 +35,37 @@ AI 프로그램 생성을 위한 대화형 인터페이스 개발
 
 ### ✅ 완료된 기능
 
-#### 1. **통합 대시보드 시스템**
-- **메인 대시보드**: CrewAI와 MetaGPT 통합 관리 중앙 제어 센터 (`dashboard.js`)
-- **시스템 상태 모니터링**: 실시간 시스템 상태 체크 및 표시
-- **시스템 카드 인터페이스**: 각 AI 프레임워크별 상세 정보 및 접근 버튼
-- **반응형 디자인**: 모바일/데스크톱 호환
+#### 1. **탭 기반 SPA 통합 인터페이스** ⭐ **완전 개편 (2025-10-03)**
+- **Single Page Application 구조** (`index.html`, `app-tabs.js`, `component-loader.js`)
+  - 해시 기반 라우팅 시스템으로 페이지 전환 없는 부드러운 내비게이션
+  - 4개 메인 탭 구성: **CrewAI (보라색)** → **MetaGPT (녹색)** → **관리자 (회색)** → **프로젝트 (주황색)**
+  - 동적 컴포넌트 로딩: 각 탭 전환 시 필요한 JS/CSS만 로드
+  - 탭별 배경 그라데이션: 각 페이지마다 고유한 브랜드 색상 자동 적용
+  - 스크립트 클린업: 탭 전환 시 이전 컴포넌트 자동 정리로 메모리 누수 방지
+
+- **통합 컴포넌트 아키텍처**
+  - 순수 JavaScript 컴포넌트 (React 불필요): `crewai.js`, `metagpt.js`, `admin.js`, `projects.js`
+  - 캐시 버스팅 시스템: `?v=16` 버전 파라미터로 브라우저 캐시 관리 (최신: admin.js v16)
+  - 반응형 디자인: 모바일/태블릿/데스크톱 완벽 지원
+  - 일관된 UI/UX: 모든 탭에서 동일한 디자인 언어 적용
+
+- **프로젝트 관리 탭** ⭐ **신규 추가 (2025-10-03)**
+  - 프로젝트 대시보드: 전체/진행중/완료/실패 통계 카드
+  - 프로젝트 그리드 뷰: 카드 기반 프로젝트 목록 with 실시간 상태 업데이트
+  - 필터링 시스템: 상태별/프레임워크별/검색어 기반 필터링
+  - CRUD 작업: 프로젝트 실행/중지/삭제/결과 보기
+  - 자동 새로고침: 5초 간격 실행 상태 자동 업데이트
+  - 진행률 시각화: 실시간 프로그레스 바 with 그라데이션 효과
+
+- **관리자 탭** ⭐ **인증 시스템 개선 (2025-10-04)**
+  - **JWT 인증 완전 통합**: 모든 API 요청에 Authorization 헤더 자동 추가
+  - **apiRequest 헬퍼 함수**: 통일된 인증 및 에러 처리 시스템
+  - **401 Unauthorized 에러 해결**: 직접 fetch 호출 제거, apiRequest로 통합
+    - `/api/admin/projects` 401 에러 수정 (Authorization 헤더 추가)
+    - `/api/admin/users` 401 에러 수정 (Authorization 헤더 추가)
+    - `/api/llm-models` 404 에러 수정 (올바른 URL: `/api/admin/llm-models`)
+  - **캐시 버스팅**: 버전 v15 → v16으로 업데이트
+  - 시스템 상태, 프로젝트 통계, 사용자 통계 정상 로드
 
 #### 8. **개별 AI 프레임워크 전용 인터페이스** ⭐ **신규 완성 (2025-09-17)**
 - **CrewAI 전용 페이지** (`crewai.html`, `crewai.js`, `crewai.css`)
@@ -657,18 +683,23 @@ GROUP BY prm.llm_model, prm.role_name;
 
 ```
 ai-chat-interface/
-├── 📄 index.html              # 메인 HTML 엔트리 포인트 (통합 대시보드)
-├── 📄 dashboard.html          # 통합 대시보드 HTML
-├── 📄 dashboard.js            # 통합 대시보드 React 컴포넌트
-├── 📄 dashboard.css           # 대시보드 전용 스타일
-├── 📄 crewai.html            # CrewAI 전용 페이지 ⭐ 신규
-├── 📄 crewai.js              # CrewAI React 컴포넌트 ⭐ 신규
-├── 📄 crewai.css             # CrewAI 테마 스타일 (보라색) ⭐ 신규
-├── 📄 metagpt.html           # MetaGPT 전용 페이지 ⭐ 신규
-├── 📄 metagpt.js             # MetaGPT React 컴포넌트 ⭐ 신규
-├── 📄 metagpt.css            # MetaGPT 테마 스타일 (녹색) ⭐ 신규
-├── 📄 app_simple.js           # 레거시 AI 채팅 인터페이스
-├── 📄 styles.css              # 공통 스타일시트
+├── 📄 index.html              # 메인 HTML 엔트리 포인트 (탭 기반 SPA) ⭐ 개편
+├── 📄 app-tabs.js             # 탭 라우팅 및 상태 관리 ⭐ 신규
+├── 📄 app-tabs.css            # 탭 UI 및 배경 그라데이션 스타일 ⭐ 신규
+├── 📄 component-loader.js     # 동적 컴포넌트 로더 ⭐ 신규
+├── 📄 api-utils.js            # API 통신 유틸리티 ⭐ 신규
+│
+├── 🎨 탭 컴포넌트
+│   ├── 📄 crewai.js           # CrewAI 탭 컴포넌트 (순수 JS) ⭐ 개편
+│   ├── 📄 crewai.css          # CrewAI 테마 스타일 (보라색)
+│   ├── 📄 metagpt.js          # MetaGPT 탭 컴포넌트 (순수 JS) ⭐ 개편
+│   ├── 📄 metagpt.css         # MetaGPT 테마 스타일 (녹색)
+│   ├── 📄 admin.js            # 관리자 탭 컴포넌트 (순수 JS) ⭐ 신규
+│   ├── 📄 admin.css           # 관리자 테마 스타일 (회색)
+│   ├── 📄 projects.js         # 프로젝트 관리 탭 (순수 JS) ⭐ 신규
+│   └── 📄 projects.css        # 프로젝트 테마 스타일 (주황색) ⭐ 신규
+│
+├── 📄 templates.html          # 프로젝트 템플릿 선택 페이지 (독립)
 ├── 📄 app.py                  # 통합 Flask 백엔드 서버 ⭐ 완전 개편
 ├── 📄 metagpt_bridge.py       # MetaGPT 연동 브리지
 ├── 📄 start.py                # 서버 실행 스크립트
@@ -679,44 +710,36 @@ ai-chat-interface/
 
 ---
 
-## 🎮 사용자 인터페이스 플로우
-
-### 1. **AI 프레임워크 선택**
-```
-사용자 → [CREW AI / MetaGPT 선택] → 해당 역할 목록 표시
-```
-
-### 2. **역할별 LLM 설정**
-```
-역할 선택 → LLM 모델 선택 → 매핑 저장 → 실시간 표시 업데이트
-```
-
-### 3. **프로젝트 워크플로우**
-```
-[신규 프로젝트] → 요구사항 입력 → AI 처리 → 결과 표시
-[기존 프로젝트] → 프로젝트 선택 → 이어서 작업 → 단계별 진행
-```
-
 ---
 
-## 🔧 주요 구현 특징 ⭐ **업데이트됨 (2025-09-17)**
+## 🔧 주요 구현 특징 ⭐ **최신 업데이트 (2025-10-04)**
 
-### 🎯 **독립적인 AI 프레임워크 인터페이스**
-- **CrewAI 전용 인터페이스**: 통합 4-에이전트 시스템 (Requirements Analyst, Technology Researcher, Solution Architect, Implementation Engineer)
-  - 모든 프로젝트 유형에 동일한 4-에이전트 적용
-  - 보라색 테마로 브랜드 아이덴티티 구축
-  - 역할별 독립적인 대화 세션 관리
-  - 실시간 연결 상태 모니터링
+### 🎯 **탭 기반 SPA 아키텍처**
+- **Single Page Application**: 페이지 전환 없는 부드러운 사용자 경험
+- **해시 라우팅**: URL 해시로 상태 관리 및 북마크 지원
+- **동적 컴포넌트 로딩**: 필요한 모듈만 선택적으로 로드하여 성능 최적화
+- **순수 JavaScript**: React 의존성 제거로 빠른 로딩 및 가벼운 번들 사이즈
+- **메모리 관리**: 탭 전환 시 이전 컴포넌트 자동 정리로 메모리 누수 방지
 
-- **MetaGPT 전용 인터페이스**: 5단계 소프트웨어 개발 프로세스
-  1. Product Manager → 요구사항 분석 (PRD 작성)
-  2. Architect → 시스템 설계 (아키텍처 설계)
-  3. Project Manager → 작업 계획 (일정 수립)
-  4. Engineer → 코드 구현 (개발 실행)
-  5. QA Engineer → 테스트 및 검증 (품질 보증)
-  - 녹색 테마로 차별화된 시각적 경험
-  - 단계별 워크플로우 자동 진행 시스템
-  - 승인 기반 단계 전환 메커니즘
+### 🎨 **통합 디자인 시스템** ⭐ **정리 완료 (2025-10-04)**
+- **4개 탭 구성**: CrewAI (보라색) → MetaGPT (녹색) → 관리자 (회색) → 프로젝트 (주황색)
+- **탭별 브랜드 색상**: 각 페이지마다 고유한 그라데이션 배경 자동 적용
+- **일관된 UI/UX**: 모든 탭에서 동일한 디자인 언어 및 인터랙션 패턴
+- **미니멀 헤더 디자인**:
+  - 불필요한 "대시보드 이동" 버튼 제거 (탭 네비게이션으로 충분)
+  - 중복 페이지 타이틀 제거 (상단 탭이 유일한 페이지 식별자)
+  - `.header-title` 불필요한 DOM 래퍼 제거
+  - 프로젝트 상태 정보에 집중하는 깔끔한 헤더
+- **반응형 레이아웃**: 모바일/태블릿/데스크톱 완벽 지원
+- **캐시 관리**: 버전 파라미터 시스템으로 안정적인 업데이트 배포
+- **코드 정리**: 미사용 HTML 파일 7개 및 라우트 5개 제거
+
+### 📁 **프로젝트 관리 시스템** ⭐ **신규**
+- **통계 대시보드**: 전체/진행중/완료/실패 프로젝트 실시간 통계
+- **고급 필터링**: 상태별/프레임워크별/검색어 기반 다중 필터링
+- **실시간 모니터링**: 5초 간격 자동 새로고침으로 실행 상태 추적
+- **CRUD 작업**: 프로젝트 실행/중지/삭제/결과 보기 원클릭 지원
+- **시각적 진행률**: 프로그레스 바 with 그라데이션으로 진행 상황 표시
 
 ### 🤖 **고도화된 LLM 모델 관리**
 - **프레임워크별 최적화**: CrewAI와 MetaGPT 각각의 특성에 맞는 모델 선택
@@ -728,17 +751,11 @@ ai-chat-interface/
 - **동적 모델 전환**: 실시간으로 LLM 모델 변경 및 적용
 - **설정 영속성**: 프로젝트별 LLM 매핑 설정 저장
 
-### 📊 **통합 상태 관리 시스템**
-- **대시보드 중앙 제어**: 모든 AI 프레임워크 상태를 한 눈에 모니터링
-- **실시간 연결 체크**: 각 프레임워크별 독립적인 상태 확인
-- **프로젝트 진행률**: 단계별 완료 상태 시각화
-- **크로스 플랫폼 호환**: 통합 서버를 통한 일관된 상태 관리
-
-### 🎨 **차별화된 사용자 경험**
-- **프레임워크별 테마**: 시각적으로 구분되는 브랜드 경험
-- **직관적인 워크플로우**: 단계별 진행 상황을 명확하게 표시
-- **반응형 디자인**: 모든 디바이스에서 최적화된 인터페이스
-- **실시간 피드백**: 사용자 액션에 대한 즉각적인 시각적 반응
+### 📊 **관리자 대시보드**
+- **시스템 모니터링**: 전체 시스템 상태 및 성능 지표 실시간 확인
+- **프로젝트 관리**: 모든 프로젝트 통합 관리 및 상태 제어
+- **사용자 관리**: 사용자 목록, 권한 설정, 활동 로그
+- **JWT 인증**: 안전한 관리자 세션 관리 및 토큰 기반 인증
 
 ---
 
@@ -841,8 +858,47 @@ ai-chat-interface/
       - 프로젝트 디렉토리 구조 및 설정 파일 자동 생성
       - 즉시 실행 가능한 프로젝트 환경 제공 (Ready-to-Run)
 
+**2025-10-03 완료** ⭐ **탭 기반 SPA 인터페이스 전환**
+11. **Single Page Application 아키텍처 구축**
+    - **탭 시스템 구현**: `index.html`, `app-tabs.js`, `app-tabs.css`
+      - 4개 메인 탭 구성: CrewAI, MetaGPT, 관리자, 프로젝트
+      - 해시 기반 라우팅 시스템 (#crewai, #metagpt, #admin, #projects)
+      - 탭별 고유 배경 그라데이션 (보라색/녹색/회색/주황색)
+      - 페이지 전환 없는 부드러운 내비게이션
+
+    - **동적 컴포넌트 로더**: `component-loader.js`
+      - 탭 전환 시 필요한 JS/CSS만 선택적 로드
+      - 이전 컴포넌트 자동 정리로 메모리 누수 방지
+      - 캐시 버스팅 시스템 (최신: admin.js v16)
+      - 순수 JavaScript 컴포넌트 (React 의존성 제거)
+
+    - **프로젝트 관리 탭 통합**: `projects.js`, `projects.css`
+      - 독립 페이지에서 탭 컴포넌트로 완전 전환
+      - 통계 대시보드 (전체/진행중/완료/실패)
+      - 상태별/프레임워크별/검색 필터링
+      - 실시간 실행 상태 모니터링 (5초 자동 새로고침)
+      - CRUD 작업: 실행/중지/결과보기/삭제
+
+    - **관리자 대시보드 탭화**: `admin.js`, `admin.css`
+      - 시스템 상태 모니터링 통합
+      - 프로젝트/사용자 관리 인터페이스
+      - **JWT 기반 인증 시스템 완전 통합** ⭐ **개선 (2025-10-04)**
+        - apiRequest 헬퍼 함수로 모든 API 요청 통일
+        - 401 Unauthorized 에러 해결: Authorization 헤더 자동 추가
+        - `/api/admin/projects`, `/api/admin/users` 정상 작동
+        - `/api/admin/llm-models` URL 수정 (404 → 200)
+        - 캐시 버전 v15 → v16 업데이트
+
+    - **UI 정리 및 최적화** ⭐ **추가 완료 (2025-10-04)**
+      - 미사용 HTML 파일 제거 (7개): crewai.html, metagpt.html, admin.html, projects.html, dashboard.html, index_backup.html, test.html
+      - app.py 라우트 정리: 미사용 라우트 5개 제거 (/crewai, /metagpt, /admin, /projects, /crewai/logs)
+      - CrewAI/MetaGPT "대시보드 이동" 버튼 제거: 탭 네비게이션으로 통일
+      - 불필요한 `.header-title` 래퍼 제거: DOM 구조 단순화
+      - 페이지 타이틀 제거: "🤝 CrewAI Platform", "🏗️ MetaGPT Platform" 중복 타이틀 제거
+      - 상단 탭만으로 페이지 식별하는 일관된 UX 구현
+
 **2025-09-20 완료** ⭐ **프로젝트 자동 실행 및 관리 시스템 구현**
-11. **프로젝트 자동 실행 시스템**: `project_executor.py`
+12. **프로젝트 자동 실행 시스템**: `project_executor.py`
     - **자동 실행 연동**: 템플릿 선택 → 프로젝트 생성 → 즉시 AI 실행 시작
     - **실시간 실행 추적**: CrewAI/MetaGPT 프레임워크별 특화된 실행 모니터링
     - **백그라운드 처리**: 논블로킹 프로젝트 실행 및 진행 상황 추적
@@ -1168,240 +1224,7 @@ ai-chat-interface/
 
 ---
 
-## 🚀 **배포 및 운영 환경**
-
-### 🐳 **컨테이너 배포**
-
-#### **Docker 구성**
-```dockerfile
-# Dockerfile.frontend
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-EXPOSE 3000
-CMD ["npm", "start"]
-
-# Dockerfile.backend
-FROM python:3.11-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-EXPOSE 5000
-CMD ["python", "app.py"]
-```
-
-#### **Docker Compose 설정**
-```yaml
-version: '3.8'
-services:
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-    ports:
-      - "3000:3000"
-    environment:
-      - REACT_APP_API_URL=http://backend:5000
-    depends_on:
-      - backend
-
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile.backend
-    ports:
-      - "5000:5000"
-    environment:
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-      - REDIS_URL=${REDIS_URL}
-    depends_on:
-      - redis
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-
-volumes:
-  redis_data:
-```
-
-### ☁️ **클라우드 배포 옵션**
-
-#### **1. Vercel + Supabase (권장)**
-```yaml
-# vercel.json
-{
-  "builds": [
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/static-build"
-    },
-    {
-      "src": "backend/app.py",
-      "use": "@vercel/python"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "backend/app.py"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "frontend/$1"
-    }
-  ]
-}
-```
-
-#### **2. AWS 배포**
-```yaml
-# AWS ECS Task Definition
-{
-  "family": "ai-chat-interface",
-  "taskRoleArn": "arn:aws:iam::account:role/ecsTaskRole",
-  "executionRoleArn": "arn:aws:iam::account:role/ecsTaskExecutionRole",
-  "networkMode": "awsvpc",
-  "containerDefinitions": [
-    {
-      "name": "frontend",
-      "image": "your-account.dkr.ecr.region.amazonaws.com/ai-chat-frontend:latest",
-      "portMappings": [{"containerPort": 3000}],
-      "memory": 512,
-      "cpu": 256
-    },
-    {
-      "name": "backend",
-      "image": "your-account.dkr.ecr.region.amazonaws.com/ai-chat-backend:latest",
-      "portMappings": [{"containerPort": 5000}],
-      "memory": 1024,
-      "cpu": 512,
-      "environment": [
-        {"name": "SUPABASE_URL", "value": "https://your-project.supabase.co"}
-      ]
-    }
-  ]
-}
-```
-
-#### **3. Google Cloud Run**
-```yaml
-# cloud-run.yaml
-apiVersion: serving.knative.dev/v1
-kind: Service
-metadata:
-  name: ai-chat-interface
-spec:
-  template:
-    metadata:
-      annotations:
-        autoscaling.knative.dev/minScale: "1"
-        autoscaling.knative.dev/maxScale: "10"
-    spec:
-      containers:
-      - image: gcr.io/your-project/ai-chat-interface:latest
-        ports:
-        - containerPort: 8080
-        env:
-        - name: SUPABASE_URL
-          value: "https://your-project.supabase.co"
-        resources:
-          limits:
-            cpu: 1000m
-            memory: 2Gi
-```
-
-### 🔧 **환경 변수 관리**
-
-#### **환경별 설정**
-```bash
-# .env.development
-REACT_APP_API_URL=http://localhost:5000
-SUPABASE_URL=https://dev-project.supabase.co
-SUPABASE_ANON_KEY=dev-anon-key
-LOG_LEVEL=debug
-
-# .env.staging
-REACT_APP_API_URL=https://staging-api.yourdomain.com
-SUPABASE_URL=https://staging-project.supabase.co
-SUPABASE_ANON_KEY=staging-anon-key
-LOG_LEVEL=info
-
-# .env.production
-REACT_APP_API_URL=https://api.yourdomain.com
-SUPABASE_URL=https://prod-project.supabase.co
-SUPABASE_ANON_KEY=prod-anon-key
-LOG_LEVEL=error
-```
-
-### 📊 **모니터링 및 로깅**
-
-#### **애플리케이션 모니터링**
-```python
-# monitoring.py
-import logging
-from prometheus_client import Counter, Histogram, start_http_server
-
-# 메트릭 정의
-request_count = Counter('http_requests_total', 'Total HTTP requests', ['method', 'endpoint'])
-request_duration = Histogram('http_request_duration_seconds', 'HTTP request duration')
-
-# 로깅 설정
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('app.log'),
-        logging.StreamHandler()
-    ]
-)
-```
-
-#### **헬스 체크**
-```python
-@app.route('/health')
-def health_check():
-    """시스템 상태 확인"""
-    try:
-        # 데이터베이스 연결 확인
-        result = supabase.table('projects').select('count').execute()
-
-        # Redis 연결 확인 (캐시 사용시)
-        # redis_client.ping()
-
-        return jsonify({
-            "status": "healthy",
-            "timestamp": datetime.now().isoformat(),
-            "database": "connected",
-            "version": "1.0.0"
-        }), 200
-    except Exception as e:
-        return jsonify({
-            "status": "unhealthy",
-            "error": str(e)
-        }), 503
-```
-
-### 🔒 **보안 고려사항**
-
-#### **프로덕션 보안 체크리스트**
-- [ ] HTTPS 강제 적용
-- [ ] CORS 정책 적절히 설정
-- [ ] API Rate Limiting 구현
-- [ ] SQL Injection 방지
-- [ ] XSS 방지 (Content Security Policy)
-- [ ] 환경 변수 암호화
-- [ ] 정기적인 의존성 보안 업데이트
-- [ ] 접근 로그 모니터링
-
----
+> 📌 **배포 및 운영 환경 설정은 CLAUDE.md 참조**
 
 ## 🔍 참조 프레임워크
 
@@ -1435,328 +1258,7 @@ def health_check():
 - **보안 준수**: 로컬 데이터 처리로 정보 유출 방지
 - **비용 효율**: 적재적소 LLM 활용으로 비용 최적화
 
----
-
-## ⚙️ 데이터베이스 연동 설정
-
-### 🔧 **Supabase 환경 설정**
-
-1. **환경 변수 설정** (`D:\GenProjects\CrewAi\.env`)
-```bash
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-```
-
-2. **필수 Python 패키지**
-```bash
-pip install supabase-py flask flask-sockets gevent geventwebsocket python-dotenv
-```
-
-3. **데이터베이스 연결 테스트**
-```python
-from supabase import create_client
-import os
-
-supabase_url = os.getenv("SUPABASE_URL")
-supabase_key = os.getenv("SUPABASE_ANON_KEY")
-supabase = create_client(supabase_url, supabase_key)
-
-# 연결 테스트
-result = supabase.table('projects').select('*').execute()
-print(f"연결 성공! 프로젝트 수: {len(result.data)}")
-```
-
-### 📡 **확장된 API 엔드포인트**
-
-#### **프로젝트 관리 API**
-```javascript
-// 프로젝트 생성 (AI 선택 포함)
-POST http://localhost:5000/api/projects
-Content-Type: application/json
-{
-  "name": "E-commerce 웹사이트",
-  "description": "온라인 쇼핑몰 개발",
-  "selected_ai": "meta-gpt",
-  "project_type": "web_app",
-  "target_audience": "온라인 쇼핑 고객",
-  "technical_requirements": {
-    "frontend": "React.js",
-    "backend": "Node.js",
-    "database": "PostgreSQL"
-  }
-}
-
-// 프로젝트별 역할-LLM 매핑 설정
-POST http://localhost:5000/api/projects/{project_id}/role-llm-mapping
-Content-Type: application/json
-{
-  "mappings": [
-    {"role_name": "Product Manager", "llm_model": "gpt-4"},
-    {"role_name": "Architect", "llm_model": "claude-3"},
-    {"role_name": "Engineer", "llm_model": "deepseek-coder"},
-    {"role_name": "QA Engineer", "llm_model": "llama-3"}
-  ]
-}
-
-// 프로젝트 진행 상태 조회
-GET http://localhost:5000/api/projects/{project_id}/status
-```
-
-#### **프로젝트 단계 관리 API**
-```javascript
-// 프로젝트 단계 목록 조회
-GET http://localhost:5000/api/projects/{project_id}/stages
-
-// 특정 단계 시작
-PUT http://localhost:5000/api/projects/{project_id}/stages/{stage_id}/start
-Content-Type: application/json
-{
-  "responsible_role": "Product Manager",
-  "estimated_hours": 8
-}
-
-// 단계 완료 처리
-PUT http://localhost:5000/api/projects/{project_id}/stages/{stage_id}/complete
-Content-Type: application/json
-{
-  "actual_hours": 10,
-  "notes": "요구사항 분석 완료. 총 15개 기능 식별."
-}
-```
-
-#### **산출물 관리 API**
-```javascript
-// 산출물 생성
-POST http://localhost:5000/api/projects/{project_id}/deliverables
-Content-Type: application/json
-{
-  "stage_id": "uuid-stage-id",
-  "deliverable_type": "requirement",
-  "title": "E-commerce 요구사항 명세서",
-  "content": "# 요구사항 명세서\n\n## 1. 기능 요구사항...",
-  "created_by_role": "Product Manager",
-  "tags": ["requirement", "specification", "functional"]
-}
-
-// 프로젝트별 모든 산출물 조회
-GET http://localhost:5000/api/projects/{project_id}/deliverables
-
-// 특정 단계의 산출물 조회
-GET http://localhost:5000/api/projects/{project_id}/stages/{stage_id}/deliverables
-
-// 산출물 내용 조회 (역할별 접근 로그 기록)
-GET http://localhost:5000/api/deliverables/{deliverable_id}?accessed_by_role=Architect
-```
-
-#### **문서 공유 및 협업 API**
-```javascript
-// 역할이 접근 가능한 산출물 목록
-GET http://localhost:5000/api/projects/{project_id}/accessible-deliverables?role=Engineer
-
-// 산출물 검색
-GET http://localhost:5000/api/projects/{project_id}/deliverables/search?q=요구사항&type=requirement
-
-// 산출물 승인/반려
-PUT http://localhost:5000/api/deliverables/{deliverable_id}/review
-Content-Type: application/json
-{
-  "status": "approved",
-  "reviewed_by_role": "Architect",
-  "review_comments": "설계 요구사항이 명확하게 정의되었습니다."
-}
-```
-
-#### **실시간 협업 WebSocket**
-```javascript
-// 프로젝트별 실시간 업데이트 구독
-ws://localhost:5000/ws/projects/{project_id}/updates
-
-// 메시지 예시:
-{
-  "type": "stage_started",
-  "data": {
-    "stage_name": "design",
-    "responsible_role": "Architect",
-    "started_at": "2025-01-15T10:30:00Z"
-  }
-}
-
-{
-  "type": "deliverable_created",
-  "data": {
-    "deliverable_type": "design_doc",
-    "title": "시스템 아키텍처 설계서",
-    "created_by_role": "Architect"
-  }
-}
-```
-
----
-
-## 🎯 **실제 활용 시나리오 예시**
-
-### 📋 **시나리오 1: E-commerce 웹사이트 개발**
-
-#### **1단계: 프로젝트 생성 및 설정**
-```javascript
-// 1. 프로젝트 생성
-POST /api/projects
-{
-  "name": "Modern E-commerce Platform",
-  "selected_ai": "meta-gpt",
-  "project_type": "web_app"
-}
-
-// 2. 역할별 LLM 매핑 설정
-POST /api/projects/{project_id}/role-llm-mapping
-{
-  "mappings": [
-    {"role_name": "Product Manager", "llm_model": "gpt-4"},      // 기획 특화
-    {"role_name": "Architect", "llm_model": "claude-3"},        // 설계 특화
-    {"role_name": "Engineer", "llm_model": "deepseek-coder"},   // 코딩 특화
-    {"role_name": "QA Engineer", "llm_model": "llama-3"}        // 테스트 특화
-  ]
-}
-```
-
-#### **2단계: 순차적 단계별 진행**
-```javascript
-// 1단계: 요구사항 정리 (Product Manager + GPT-4)
-PUT /api/projects/{project_id}/stages/requirement/start
-→ 산출물: "E-commerce 요구사항 명세서" (deliverable_type: 'requirement')
-
-// 2단계: 시스템 설계 (Architect + Claude-3)
-// - 이전 단계 산출물 자동 참조
-GET /api/projects/{project_id}/deliverables?type=requirement
-→ 산출물: "시스템 아키텍처 설계서" (deliverable_type: 'architecture')
-
-// 3단계: 코드 개발 (Engineer + DeepSeek Coder)
-// - 요구사항서 + 설계서 참조
-→ 산출물: "프론트엔드/백엔드 코드" (deliverable_type: 'code')
-
-// 4단계: 테스트 (QA Engineer + Llama-3)
-// - 모든 이전 산출물 참조
-→ 산출물: "테스트 계획서 및 결과" (deliverable_type: 'test_plan')
-```
-
-#### **3단계: 실시간 협업 및 문서 공유**
-```javascript
-// 실시간 진행 상황 모니터링
-ws://localhost:5000/ws/projects/{project_id}/updates
-
-// 역할 간 산출물 공유
-- Product Manager가 요구사항서 작성
-- Architect가 실시간으로 요구사항서 조회 및 설계 진행
-- Engineer가 설계서 기반으로 코드 개발
-- QA Engineer가 모든 문서 기반으로 테스트 설계
-
-// 접근 이력 추적
-deliverable_access_log 테이블에 모든 문서 접근 기록
-```
-
-### 🔄 **시나리오 2: 모바일 앱 개발 (CREW AI 활용)**
-
-#### **프로젝트 설정**
-```javascript
-POST /api/projects
-{
-  "name": "Health Tracking Mobile App",
-  "selected_ai": "crew-ai",
-  "project_type": "mobile_app",
-  "target_audience": "헬스케어 사용자"
-}
-
-// CREW AI 3역할 LLM 매핑
-{
-  "mappings": [
-    {"role_name": "Researcher", "llm_model": "gemini-pro"},    // 리서치 특화
-    {"role_name": "Writer", "llm_model": "gpt-4"},           // 문서 작성 특화
-    {"role_name": "Planner", "llm_model": "claude-3"}       // 전략 수립 특화
-  ]
-}
-```
-
-#### **협업 워크플로우**
-```javascript
-// 동시 병렬 작업
-- Researcher: 시장 조사 및 사용자 분석
-- Writer: 기술 문서 및 사용자 가이드 작성
-- Planner: 개발 일정 및 리소스 계획
-
-// 산출물 상호 참조
-- Writer가 Researcher의 조사 결과를 참조하여 문서 작성
-- Planner가 모든 산출물을 종합하여 실행 계획 수립
-```
-
-### 📊 **시나리오 3: 대시보드를 통한 프로젝트 모니터링**
-
-#### **관리자 뷰**
-```javascript
-// 전체 프로젝트 현황
-GET /api/admin/dashboard
-{
-  "total_projects": 15,
-  "active_projects": 8,
-  "completed_projects": 7,
-  "total_deliverables": 127,
-  "projects_by_stage": {
-    "requirement": 3,
-    "design": 2,
-    "development": 2,
-    "testing": 1
-  }
-}
-
-// 프로젝트별 상세 진행 현황
-GET /api/projects/{project_id}/analytics
-{
-  "progress_percentage": 65,
-  "stages_completed": 3,
-  "total_stages": 5,
-  "deliverables_created": 12,
-  "average_stage_duration": "2.5 days",
-  "role_activity": {
-    "Product Manager": {"hours": 24, "deliverables": 4},
-    "Architect": {"hours": 18, "deliverables": 3},
-    "Engineer": {"hours": 32, "deliverables": 5}
-  }
-}
-```
-
----
-
-## 📋 문서 동기화 가이드
-
-### 🔄 정기적 문서 업데이트 방식
-1. **새로운 기능 완료 시**:
-   - PROJECT_STATUS.md에 완료된 기능 추가
-   - CLAUDE.md에 해당 기능의 개발 가이드 추가
-
-2. **아키텍처 변경 시**:
-   - CLAUDE.md 즉시 업데이트 (개발 명령어, API 엔드포인트 등)
-   - PROJECT_STATUS.md에 변경 배경 및 영향 설명
-
-3. **마일스톤 완료 시**:
-   - 두 문서 모두 종합적 리뷰 및 정리
-   - 사용하지 않는 내용 제거 및 새로운 패턴 추가
-
-### 📖 업데이트 체크리스트
-- [ ] 새로운 실행 명령어 → CLAUDE.md 개발명령어 섹션
-- [ ] 새로운 API 엔드포인트 → CLAUDE.md API 섹션
-- [ ] 파일 구조 변경 → CLAUDE.md 파일구조 섹션
-- [ ] 새로운 개발 패턴 → CLAUDE.md 가이드라인 섹션
-- [ ] 기능 완료 → PROJECT_STATUS.md 완료된 기능 섹션
-
----
-
-## 📞 개발팀 연락처
-
-**프로젝트 위치**: `D:\GenProjects\ai-chat-interface\`
-**AI 채팅 서버**: `http://localhost:3000`
-**CrewAI 플랫폼**: `http://localhost:5000`
-**데이터베이스**: Supabase (PostgreSQL)
-**개발 환경**: React.js + Flask + Python + Supabase
+> 📌 **상세 API 엔드포인트 및 활용 시나리오는 CLAUDE.md 참조**
 
 ---
 
@@ -1928,59 +1430,15 @@ os.environ['SUPABASE_ANON_KEY'] = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
 
 ---
 
-## 🔴 중요: 환경변수 설정 완료 - 반복 질문 금지
+## 📅 최근 업데이트 (2025년 10월)
 
-### ❌ 금지된 질문들
-다음 질문들은 **절대 하지 말 것** - 이미 모든 환경변수가 정상 설정되어 있음:
+- **2025-10-04**: Admin 탭 JWT 인증 시스템 완전 통합 (apiRequest 헬퍼 함수, 401/404 에러 수정)
+- **2025-10-03**: 탭 기반 SPA 인터페이스 전환 완료 (4개 탭 통합, 동적 컴포넌트 로딩)
+- **2025-10-02**: MCP 도구 선택 시스템 구축 (10개 도구 레지스트리, 동적 통합)
+- **2025-10-01**: 지능형 스크립트 생성 및 품질 보증 프레임워크 완성
+- **2025-09**: CrewAI 4-에이전트 시스템 완성, 템플릿 시스템, 품질 검증 프레임워크 구축
 
-1. **"환경변수 설정이 필요합니다"** ❌
-2. **"GOOGLE_API_KEY를 설정하세요"** ❌
-3. **"SUPABASE_URL을 확인하세요"** ❌
-4. **"API 키가 없어서 실행이 안됩니다"** ❌
-5. **"환경변수를 다음과 같이 설정하세요"** ❌
-
-### ✅ 확정된 사실들
-- **모든 필수 환경변수 설정 완료**: GOOGLE_API_KEY, SUPABASE_URL, SUPABASE_ANON_KEY
-- **데이터베이스 연결 정상**: database.py에서 강제 설정으로 안정적 연결
-- **API 키 모두 유효**: Google, Supabase 등 모든 외부 서비스 연동 완료
-- **CrewAI 시스템 업그레이드 완료**: 임시2 수준 품질 생성 가능한 상태
-
-### 🎯 실제 문제들 (환경변수 아님)
-CrewAI 서비스가 unavailable인 실제 원인들:
-1. **Supabase 연결 타임아웃**: 네트워크 이슈 (환경변수 문제 아님)
-2. **포트 충돌**: 3001/3003 포트 사용 충돌 (환경변수 문제 아님)
-3. **서버 부팅 시간**: 초기 로딩 시간 필요 (환경변수 문제 아님)
-
-### 📝 기록 목적
-이 섹션은 동일한 환경변수 관련 질문 반복을 방지하기 위해 2025-09-22에 추가되었습니다. **모든 환경변수는 이미 올바르게 설정되어 있으므로** 더 이상 환경변수 설정 관련 질문을 하지 않습니다.
-
----
-
-## 📅 문서 업데이트 이력
-
-- **2025-10-02**: ⭐ **MCP (Model Context Protocol) 도구 선택 시스템 구축 완료**
-  - **MCP 레지스트리**: 10개 도구 사전 등록 및 카테고리별 분류 (`mcp_registry.json`)
-  - **MCP 관리자**: 동적 코드 생성 및 도구 통합 시스템 (`mcp_manager.py`)
-  - **백엔드 통합**: API 엔드포인트 추가 및 스크립트 생성기 MCP 지원 (`app.py`, `generate_crewai_script_new.py`, `enhanced_script_generator.py`)
-  - **프론트엔드 UI**: 도구 선택 패널, 카테고리 필터링, API 키 입력, 선택 요약 표시 (`crewai.js`, `crewai.css`)
-  - **사용자 워크플로우**: UI에서 도구 선택 → Researcher 에이전트 자동 할당 → CrewAI 스크립트 자동 생성
-- **2025-10-01**: ⭐ **지능형 스크립트 생성 시스템 및 품질 보증 프레임워크 구축 완료**
-  - **적응형 스크립트 생성 엔진**: 요구사항 기반 동적 CrewAI 스크립트 자동 생성 (`adaptive_script_generator.py`)
-  - **지능형 요구사항 분석**: 도메인, 복잡도, 기술스택 자동 감지 및 최적 에이전트 추천 (`intelligent_requirement_analyzer.py`)
-  - **품질 보증 프레임워크**: 6단계 품질 검증 및 자동 개선사항 제안 (`quality_assurance_framework.py`)
-  - **통합 지능형 시스템**: 동적 에이전트 매칭, 스마트 모델 할당, 스크립트 검증 시스템 완성
-  - **문서화 강화**: 코딩 표준(`CODING_STANDARDS.md`) 및 검증 시스템(`VALIDATION_SYSTEM.md`) 문서 추가
-- **2025-09-29**: ⭐ **CrewAI 스크립트 생성 시스템 대폭 개선 완료**
-  - **순수 CrewAI 템플릿 구현**: 모든 메타 로직 제거 (요구사항 분석, 승인 처리, 모델 선택 함수 등)
-  - **4개 전문 에이전트 시스템 완성**: Pre-Analyzer + Planner + Researcher + Writer 구조
-  - **검토-재작성 3회 반복 워크플로우**: Writer 산출물을 Planner가 3회 검토하여 최고 품질 보장
-  - **사전 분석 결과 연동 강화**: 요구사항 기반 동적 에이전트 구성 및 구체적 태스크 생성
-  - **수동 모델 선택 시 품질 보장**: fallback 방지하여 project_00055 수준 품질을 모든 프로젝트에 적용
-- **2025-09-24**: CrewAI 스크립트 생성 시스템 개선 및 gemini-flash 기본값 설정 완료
-- **2025-09-23**: Project_00003 성공 사례 및 5단계 피드백 루프 검증 완료
-- **2025-09-22**: 데이터베이스 스키마 최적화 및 환경변수 정책 추가
-- **2025-09-21**: 시뮬레이션 모드 금지 및 데이터베이스 URL 관리 정책 수립
-- **2025-09-20**: 프로젝트 템플릿 시스템 및 관리자 시스템 완성
+> 📌 **상세 개발 이력 및 타임라인은 CLAUDE.md 참조**
 
 ---
 

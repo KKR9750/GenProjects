@@ -385,10 +385,6 @@ const MetaGPTInterface = () => {
         setMessages([initialMessage]);
     };
 
-    // 대시보드로 돌아가기
-    const goToDashboard = () => {
-        window.location.href = '/';
-    };
 
     useEffect(() => {
         loadLLMModels().then(() => {
@@ -446,44 +442,6 @@ const MetaGPTInterface = () => {
 
     return (
         <div className="metagpt-container">
-            <header className="metagpt-header">
-                <div className="header-left">
-                    <button className="dashboard-btn" onClick={goToDashboard}>
-                        ← 대시보드
-                    </button>
-                    <div className="header-title">
-                        <h1>🏗️ MetaGPT Platform</h1>
-                        <div className="header-status">
-                            {activeProject ? (
-                                <div className="current-project-header">
-                                    🏗️ {activeProject.name} | {currentStep}/5 단계 | {activeProject.status}
-                                </div>
-                            ) : (
-                                <span className="step-indicator">새 프로젝트</span>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="header-controls">
-                    <button
-                        className={`projects-btn ${showProjects ? 'active' : ''}`}
-                        onClick={() => {
-                            setShowProjects(!showProjects);
-                            if (!showProjects) loadProjects();
-                        }}
-                    >
-                        📂 프로젝트 ({projects.length})
-                    </button>
-                    <button
-                        className="new-project-btn"
-                        onClick={openNewProjectModal}
-                    >
-                        ➕ 새 프로젝트
-                    </button>
-                </div>
-            </header>
-
             <div className="metagpt-main">
                 {showProjects && (
                     <div className="projects-panel">
@@ -541,6 +499,37 @@ const MetaGPTInterface = () => {
 
                 <div className="workflow-area">
                     <div className="sidebar">
+                        {/* Project controls at sidebar top */}
+                        <div className="project-controls">
+                            <div className="current-project">
+                                {activeProject ? (
+                                    <div className="project-info-compact">
+                                        🏗️ {activeProject.name}
+                                        <span className="step-badge">{currentStep}/5</span>
+                                        <span className="project-status-badge">{activeProject.status}</span>
+                                    </div>
+                                ) : (
+                                    <span className="project-indicator">새 프로젝트</span>
+                                )}
+                            </div>
+                            <div className="control-buttons">
+                                <button
+                                    className={`control-btn projects-btn ${showProjects ? 'active' : ''}`}
+                                    onClick={() => {
+                                        setShowProjects(!showProjects);
+                                        if (!showProjects) loadProjects();
+                                    }}
+                                >
+                                    📂 프로젝트
+                                </button>
+                                <button
+                                    className="control-btn new-project-btn"
+                                    onClick={openNewProjectModal}
+                                >
+                                    ➕ 새 프로젝트
+                                </button>
+                            </div>
+                        </div>
                         <div className="workflow-progress">
                             <h3>🏗️ 개발 워크플로</h3>
                             <div className="steps-list">

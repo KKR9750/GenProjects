@@ -697,10 +697,6 @@ const CrewAIInterface = () => {
         setShowProjects(false);
     };
 
-    // 대시보드로 돌아가기
-    const goToDashboard = () => {
-        window.location.href = '/';
-    };
 
     // 입력 텍스트 변경 핸들러 (자동 추천용)
     const handleInputChange = (e) => {
@@ -812,53 +808,6 @@ const CrewAIInterface = () => {
 
     return (
         <div className="crewai-container">
-            <header className="crewai-header">
-                <div className="header-left">
-                    <button className="dashboard-btn" onClick={goToDashboard}>
-                        ← 대시보드
-                    </button>
-                    <div className="header-title">
-                        <h1>🤝 CrewAI Platform</h1>
-                        <div className="header-status">
-                            {activeProject ? (
-                                <div className="current-project-header">
-                                    📋 {activeProject.name} | {activeProject.progress}% | {activeProject.status}
-                                </div>
-                            ) : (
-                                <span className="project-indicator">새 프로젝트</span>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="header-controls">
-                    <button
-                        className={`projects-btn ${showProjects ? 'active' : ''}`}
-                        onClick={() => {
-                            setShowProjects(!showProjects);
-                            if (!showProjects) loadProjects();
-                        }}
-                    >
-                        📂 프로젝트 ({projects.length})
-                    </button>
-                    <button
-                        className="new-project-btn"
-                        onClick={() => setShowNewProjectModal(true)}
-                    >
-                        ➕ 새 프로젝트
-                    </button>
-                    {activeProject && (
-                        <button
-                            className="save-mapping-btn"
-                            onClick={saveLLMMapping}
-                            disabled={isLoading}
-                        >
-                            💾 LLM 매핑 저장
-                        </button>
-                    )}
-                </div>
-            </header>
-
             <div className="crewai-main">
                 {showProjects && (
                     <div className="projects-panel">
@@ -927,6 +876,49 @@ const CrewAIInterface = () => {
 
                 <div className="chat-area">
                     <div className="sidebar">
+                        {/* 프로젝트 컨트롤 섹션 - 사이드바 상단에 고정 */}
+                        <div className="project-controls">
+                            <div className="current-project">
+                                {activeProject ? (
+                                    <div className="project-info-compact">
+                                        📋 {activeProject.name}
+                                        <span className="project-status-badge">{activeProject.status}</span>
+                                    </div>
+                                ) : (
+                                    <span className="project-indicator">새 프로젝트</span>
+                                )}
+                            </div>
+                            <div className="control-buttons">
+                                <button
+                                    className={`control-btn projects-btn ${showProjects ? 'active' : ''}`}
+                                    onClick={() => {
+                                        setShowProjects(!showProjects);
+                                        if (!showProjects) loadProjects();
+                                    }}
+                                    title="프로젝트 목록"
+                                >
+                                    📂 프로젝트 ({projects.length})
+                                </button>
+                                <button
+                                    className="control-btn new-project-btn"
+                                    onClick={() => setShowNewProjectModal(true)}
+                                    title="새 프로젝트 생성"
+                                >
+                                    ➕ 새 프로젝트
+                                </button>
+                                {activeProject && (
+                                    <button
+                                        className="control-btn save-mapping-btn"
+                                        onClick={saveLLMMapping}
+                                        disabled={isLoading}
+                                        title="LLM 매핑 저장"
+                                    >
+                                        💾 저장
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
                         <div className="role-selector">
                             <h3>🎭 역할 선택</h3>
                             <div className="roles-grid">

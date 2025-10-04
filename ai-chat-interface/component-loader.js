@@ -208,7 +208,8 @@ class ComponentLoader {
      */
     async loadBabelScript(pageName) {
         try {
-            const response = await fetch(`${pageName}.js`);
+            const jsFile = this.getJSFileName(pageName);
+            const response = await fetch(jsFile);
             const code = await response.text();
 
             // IIFE로 감싸서 스코프 격리
@@ -238,8 +239,8 @@ class ComponentLoader {
     getCSSFileName(pageName) {
         const cssMap = {
             'dashboard': 'dashboard.css',
-            'crewai': 'crewai.css',
-            'metagpt': 'metagpt.css',
+            'crewai': 'crewai.css?v=2',
+            'metagpt': 'metagpt.css?v=2',
             'admin': 'admin.css',
             'projects': 'projects.css'
         };
@@ -252,8 +253,8 @@ class ComponentLoader {
     getJSFileName(pageName) {
         const jsMap = {
             'dashboard': 'dashboard-pure.js',
-            'crewai': 'crewai.js',
-            'metagpt': 'metagpt.js',
+            'crewai': 'crewai.js?v=2',
+            'metagpt': 'metagpt.js?v=2',
             'admin': 'admin.js'
         };
         return jsMap[pageName] || `${pageName}.js`;

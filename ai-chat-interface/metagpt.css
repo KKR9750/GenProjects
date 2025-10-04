@@ -21,93 +21,91 @@ body {
 
 /* ===== HEADER ===== */
 .metagpt-header {
-    background: rgba(255, 255, 255, 0.95);
+    display: none; /* Header removed - controls moved to sidebar */
+}
+
+/* ===== PROJECT CONTROLS (Sticky Sidebar Top) ===== */
+.project-controls {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.98);
     backdrop-filter: blur(10px);
-    padding: 12px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
-    flex-shrink: 0;
-    height: 60px;
+    border-bottom: 2px solid rgba(5, 150, 105, 0.2);
+    padding: 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 20px;
+.current-project {
+    margin-bottom: 8px;
 }
 
-.dashboard-btn {
-    background: rgba(5, 150, 105, 0.1);
+.project-info-compact {
+    font-size: 0.8rem;
     color: #059669;
-    border: 2px solid #059669;
-    padding: 10px 20px;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: all 0.3s ease;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
 }
 
-.dashboard-btn:hover {
-    background: #059669;
-    color: white;
-    transform: translateY(-2px);
-}
-
-.header-title h1 {
-    font-size: 1.2rem;
-    color: #059669;
-    margin-bottom: 5px;
-    font-weight: 700;
-}
-
-.step-indicator {
+.step-badge {
     font-size: 0.7rem;
+    background: rgba(16, 185, 129, 0.15);
+    color: #10B981;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+}
+
+.project-status-badge {
+    font-size: 0.7rem;
+    background: rgba(5, 150, 105, 0.15);
+    color: #059669;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+}
+
+.project-indicator {
+    font-size: 0.75rem;
     color: #10B981;
     font-weight: 500;
-    background: rgba(16, 185, 129, 0.2);
-    padding: 5px 10px;
-    border-radius: 15px;
+    background: rgba(16, 185, 129, 0.15);
+    padding: 4px 10px;
+    border-radius: 12px;
+    display: inline-block;
 }
 
-.header-controls {
+.control-buttons {
     display: flex;
-    gap: 15px;
+    gap: 6px;
 }
 
-.projects-btn, .new-project-btn {
+.control-btn {
     background: rgba(5, 150, 105, 0.1);
     color: #059669;
-    border: 2px solid transparent;
-    padding: 10px 20px;
-    border-radius: 10px;
+    border: 1px solid rgba(5, 150, 105, 0.3);
+    padding: 6px 12px;
+    border-radius: 8px;
     cursor: pointer;
     font-weight: 500;
-    transition: all 0.3s ease;
+    font-size: 0.75rem;
+    transition: all 0.2s ease;
+    flex: 1;
 }
 
-.projects-btn:hover, .new-project-btn:hover {
+.control-btn:hover {
     background: rgba(5, 150, 105, 0.2);
-    transform: translateY(-2px);
+    transform: translateY(-1px);
 }
 
-.projects-btn.active {
+.control-btn.active {
     background: #059669;
     color: white;
     border-color: #059669;
-}
-
-.new-project-btn {
-    background: rgba(16, 185, 129, 0.1);
-    color: #10B981;
-    border-color: #10B981;
-}
-
-.new-project-btn:hover {
-    background: #10B981;
-    color: white;
 }
 
 /* ===== MAIN CONTENT ===== */
@@ -149,7 +147,7 @@ body {
 .close-panel {
     background: none;
     border: none;
-    font-size: 1.5rem;
+    font-size: 1.125rem;
     cursor: pointer;
     color: #666;
     transition: color 0.3s ease;
@@ -382,7 +380,7 @@ body {
 }
 
 .step-status {
-    font-size: 1.2rem;
+    font-size: 0.875rem;
 }
 
 .mapping-list {
@@ -504,11 +502,30 @@ body {
 
 .chat-messages {
     flex: 1;
-    max-height: 400px;
+    max-height: calc(100vh - 220px);
     padding: 12px;
     overflow-y: auto;
     background: rgba(255, 255, 255, 0.05);
     min-height: 200px;
+}
+
+/* 스크롤바 스타일링 */
+.chat-messages::-webkit-scrollbar {
+    width: 8px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+    background: rgba(5, 150, 105, 0.5);
+    border-radius: 4px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+    background: rgba(5, 150, 105, 0.7);
 }
 
 .welcome-message {
@@ -523,7 +540,7 @@ body {
 }
 
 .welcome-message h3 {
-    font-size: 1.4rem;
+    font-size: 1rem;
     margin-bottom: 15px;
     font-weight: 600;
 }
@@ -584,7 +601,7 @@ body {
 }
 
 .step-arrow {
-    font-size: 1.5rem;
+    font-size: 1.125rem;
     color: rgba(255, 255, 255, 0.7);
     margin: 0 10px;
 }
@@ -793,7 +810,7 @@ body {
 .approval-header h4 {
     color: #F59E0B;
     margin-bottom: 8px;
-    font-size: 1.2rem;
+    font-size: 0.875rem;
 }
 
 .approval-header p {
@@ -884,7 +901,7 @@ body {
 }
 
 .current-step .step-icon {
-    font-size: 1.2rem;
+    font-size: 0.875rem;
     background: rgba(5, 150, 105, 0.1);
     padding: 5px;
     border-radius: 8px;
@@ -971,7 +988,7 @@ body {
 }
 
 .current-step-info .step-icon {
-    font-size: 1.5rem;
+    font-size: 1.125rem;
     background: rgba(5, 150, 105, 0.2);
     padding: 8px;
     border-radius: 10px;
@@ -1064,7 +1081,7 @@ body {
     }
 
     .welcome-message h3 {
-        font-size: 1.1rem;
+        font-size: 0.8rem;
     }
 
     .workflow-step {

@@ -19,108 +19,106 @@ body {
     flex-direction: column;
 }
 
-/* ===== HEADER ===== */
+/* ===== HEADER (제거됨 - 헤더 없이 본문 영역 최대화) ===== */
 .crewai-header {
-    background: rgba(255, 255, 255, 0.95);
+    display: none; /* 헤더 완전 제거 */
+}
+
+/* ===== PROJECT CONTROLS (사이드바 상단 고정) ===== */
+.project-controls {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.98);
     backdrop-filter: blur(10px);
-    padding: 12px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
-    flex-shrink: 0;
-    height: 60px;
+    border-bottom: 2px solid rgba(79, 70, 229, 0.2);
+    padding: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 20px;
+.current-project {
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #333;
 }
 
-.dashboard-btn {
+.project-info-compact {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.project-status-badge {
     background: rgba(79, 70, 229, 0.1);
     color: #4F46E5;
-    border: 2px solid #4F46E5;
-    padding: 10px 20px;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: all 0.3s ease;
-}
-
-.dashboard-btn:hover {
-    background: #4F46E5;
-    color: white;
-    transform: translateY(-2px);
-}
-
-.header-title h1 {
-    font-size: 1.2rem;
-    color: #4F46E5;
-    margin-bottom: 5px;
-    font-weight: 700;
-}
-
-.connection-status {
+    padding: 2px 8px;
+    border-radius: 12px;
     font-size: 0.7rem;
     font-weight: 500;
-    padding: 5px 10px;
-    border-radius: 15px;
 }
 
-.connection-status.connected {
-    background: rgba(16, 185, 129, 0.2);
-    color: #10B981;
+.project-indicator {
+    color: #666;
+    font-size: 0.8rem;
+    font-weight: 500;
 }
 
-.connection-status.connecting {
-    background: rgba(245, 158, 11, 0.2);
-    color: #F59E0B;
-}
-
-.connection-status.disconnected {
-    background: rgba(239, 68, 68, 0.2);
-    color: #EF4444;
-}
-
-.header-controls {
+.control-buttons {
     display: flex;
-    gap: 15px;
+    gap: 6px;
+    flex-wrap: wrap;
 }
 
-.projects-btn, .new-project-btn {
+.control-btn {
     background: rgba(79, 70, 229, 0.1);
     color: #4F46E5;
-    border: 2px solid transparent;
-    padding: 10px 20px;
-    border-radius: 10px;
+    border: 1px solid transparent;
+    padding: 6px 12px;
+    border-radius: 8px;
     cursor: pointer;
     font-weight: 500;
-    transition: all 0.3s ease;
+    font-size: 0.75rem;
+    transition: all 0.2s ease;
 }
 
-.projects-btn:hover, .new-project-btn:hover {
+.control-btn:hover {
     background: rgba(79, 70, 229, 0.2);
-    transform: translateY(-2px);
+    transform: translateY(-1px);
 }
 
-.projects-btn.active {
+.control-btn.projects-btn.active {
     background: #4F46E5;
     color: white;
     border-color: #4F46E5;
 }
 
-.new-project-btn {
+.control-btn.new-project-btn {
     background: rgba(16, 185, 129, 0.1);
     color: #10B981;
     border-color: #10B981;
 }
 
-.new-project-btn:hover {
+.control-btn.new-project-btn:hover {
     background: #10B981;
     color: white;
+}
+
+.control-btn.save-mapping-btn {
+    background: rgba(245, 158, 11, 0.1);
+    color: #F59E0B;
+    border-color: #F59E0B;
+}
+
+.control-btn.save-mapping-btn:hover {
+    background: #F59E0B;
+    color: white;
+}
+
+.control-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 /* ===== MAIN CONTENT ===== */
@@ -162,7 +160,7 @@ body {
 .close-panel {
     background: none;
     border: none;
-    font-size: 1.5rem;
+    font-size: 1.125rem;
     cursor: pointer;
     color: #666;
     transition: color 0.3s ease;
@@ -377,7 +375,7 @@ body {
 }
 
 .role-icon {
-    font-size: 1.2rem;
+    font-size: 0.875rem;
     background: rgba(79, 70, 229, 0.1);
     padding: 6px;
     border-radius: 6px;
@@ -432,7 +430,7 @@ body {
 }
 
 .mapping-role .role-icon {
-    font-size: 1.2rem;
+    font-size: 0.875rem;
     padding: 5px;
     min-width: 30px;
     min-height: 30px;
@@ -545,7 +543,7 @@ body {
 }
 
 .welcome-message h3 {
-    font-size: 1.4rem;
+    font-size: 1rem;
     margin-bottom: 15px;
     font-weight: 600;
 }
@@ -575,7 +573,7 @@ body {
 }
 
 .member-icon {
-    font-size: 1.5rem;
+    font-size: 1.125rem;
     margin-bottom: 5px;
 }
 
@@ -737,7 +735,7 @@ body {
 }
 
 .current-role .role-icon {
-    font-size: 1.2rem;
+    font-size: 0.875rem;
     background: rgba(79, 70, 229, 0.1);
     padding: 5px;
     border-radius: 8px;
@@ -875,7 +873,7 @@ body {
     }
 
     .welcome-message h3 {
-        font-size: 1.1rem;
+        font-size: 0.8rem;
     }
 
     .team-preview {
@@ -947,7 +945,7 @@ body {
 
 .modal-header h2 {
     color: #4F46E5;
-    font-size: 1.1rem;
+    font-size: 0.8rem;
     font-weight: 600;
     margin: 0;
 }
@@ -955,7 +953,7 @@ body {
 .modal-close {
     background: none;
     border: none;
-    font-size: 1.5rem;
+    font-size: 1.125rem;
     cursor: pointer;
     color: #666;
     padding: 4px;

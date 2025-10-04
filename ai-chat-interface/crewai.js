@@ -898,14 +898,14 @@ const CrewAIInterface = () => {
                                     }}
                                     title="프로젝트 목록"
                                 >
-                                    📂 프로젝트 ({projects.length})
+                                    프로젝트
                                 </button>
                                 <button
                                     className="control-btn new-project-btn"
                                     onClick={() => setShowNewProjectModal(true)}
                                     title="새 프로젝트 생성"
                                 >
-                                    ➕ 새 프로젝트
+                                    신규
                                 </button>
                                 {activeProject && (
                                     <button
@@ -914,7 +914,7 @@ const CrewAIInterface = () => {
                                         disabled={isLoading}
                                         title="LLM 매핑 저장"
                                     >
-                                        💾 저장
+                                        저장
                                     </button>
                                 )}
                             </div>

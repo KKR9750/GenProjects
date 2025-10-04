@@ -91,20 +91,21 @@ body {
 
 .control-buttons {
     display: flex;
-    gap: 6px;
+    gap: 4px;
 }
 
 .control-btn {
     background: rgba(5, 150, 105, 0.1);
     color: #059669;
     border: 1px solid rgba(5, 150, 105, 0.3);
-    padding: 6px 12px;
+    padding: 4px 8px;
     border-radius: 8px;
     cursor: pointer;
     font-weight: 500;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     transition: all 0.2s ease;
-    flex: 1;
+    flex: 0 1 auto;
+    white-space: nowrap;
 }
 
 .control-btn:hover {

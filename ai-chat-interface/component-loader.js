@@ -239,8 +239,8 @@ class ComponentLoader {
     getCSSFileName(pageName) {
         const cssMap = {
             'dashboard': 'dashboard.css',
-            'crewai': 'crewai.css?v=3',
-            'metagpt': 'metagpt.css?v=3',
+            'crewai': 'crewai.css?v=4',
+            'metagpt': 'metagpt.css?v=4',
             'admin': 'admin.css',
             'projects': 'projects.css'
         };
@@ -253,8 +253,8 @@ class ComponentLoader {
     getJSFileName(pageName) {
         const jsMap = {
             'dashboard': 'dashboard-pure.js',
-            'crewai': 'crewai.js?v=3',
-            'metagpt': 'metagpt.js?v=3',
+            'crewai': 'crewai.js?v=4',
+            'metagpt': 'metagpt.js?v=4',
             'admin': 'admin.js'
         };
         return jsMap[pageName] || `${pageName}.js`;

@@ -77,20 +77,21 @@ body {
 
 .control-buttons {
     display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
+    gap: 4px;
+    flex-wrap: nowrap;
 }
 
 .control-btn {
     background: rgba(79, 70, 229, 0.1);
     color: #4F46E5;
     border: 1px solid transparent;
-    padding: 6px 12px;
+    padding: 4px 8px;
     border-radius: 8px;
     cursor: pointer;
     font-weight: 500;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     transition: all 0.2s ease;
+    white-space: nowrap;
 }
 
 .control-btn:hover {

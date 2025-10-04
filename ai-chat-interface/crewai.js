@@ -36,7 +36,7 @@ const CrewAIInterface = () => {
     const [approvalFeedback, setApprovalFeedback] = useState('');
 
     // 검토-재작성 반복 횟수 상태 (0~3회)
-    const [reviewIterations, setReviewIterations] = useState(3);
+    const [reviewIterations, setReviewIterations] = useState(1);
 
     // MCP/도구 선택 상태
     const [availableMCPs, setAvailableMCPs] = useState([]);
@@ -1079,57 +1079,24 @@ const CrewAIInterface = () => {
                         </div>
 
                         {/* 검토-재작성 반복 횟수 설정 */}
-                        <div className="review-iterations">
-                            <h3>🔄 검토-재작성 반복 횟수</h3>
-                            <div className="iterations-selector" style={{ padding: '15px', background: 'rgba(147, 51, 234, 0.1)', borderRadius: '8px', border: '1px solid #9333EA' }}>
-                                <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '10px', color: '#9333EA' }}>
-                                    품질 검토 반복 설정
-                                </div>
-
-                                {/* 버튼 그리드 */}
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '12px' }}>
-                                    {[0, 1, 2, 3].map(count => (
-                                        <button
-                                            key={count}
-                                            onClick={() => setReviewIterations(count)}
-                                            style={{
-                                                padding: '12px 8px',
-                                                fontSize: '14px',
-                                                fontWeight: 'bold',
-                                                border: reviewIterations === count ? '2px solid #9333EA' : '1px solid #ccc',
-                                                borderRadius: '6px',
-                                                background: reviewIterations === count ? '#9333EA' : '#fff',
-                                                color: reviewIterations === count ? '#fff' : '#333',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s'
-                                            }}
-                                        >
-                                            {count}회
-                                        </button>
-                                    ))}
-                                </div>
-
-                                {/* 정보 표시 */}
-                                <div style={{ padding: '10px', background: 'rgba(255,255,255,0.8)', borderRadius: '6px', fontSize: '12px' }}>
-                                    <div style={{ marginBottom: '6px', color: '#666' }}>
-                                        <strong style={{ color: '#9333EA' }}>💡 {reviewIterations}회 선택됨</strong>
-                                    </div>
-                                    <div style={{ color: '#666' }}>
-                                        총 <strong style={{ color: '#E11D48' }}>{4 + (reviewIterations * 2)}개</strong> 태스크 생성
-                                        <span style={{ fontSize: '11px', color: '#999', marginLeft: '4px' }}>
-                                            (사전분석 + 계획 + 조사 + 초기작성 {reviewIterations > 0 ? `+ 검토/재작성 ${reviewIterations}회` : ''})
-                                        </span>
-                                    </div>
-
-                                    {/* 반복 횟수별 설명 */}
-                                    <div style={{ marginTop: '8px', padding: '6px', background: 'rgba(147, 51, 234, 0.05)', borderRadius: '4px', fontSize: '11px', color: '#555' }}>
-                                        {reviewIterations === 0 && '⚡ 빠른 프로토타입 (검토 없음)'}
-                                        {reviewIterations === 1 && '📝 기본 품질 (1회 검토)'}
-                                        {reviewIterations === 2 && '🎯 고품질 (2회 검토)'}
-                                        {reviewIterations === 3 && '💎 최고 품질 (3회 검토, 프로덕션 레벨)'}
-                                    </div>
-                                </div>
-                            </div>
+                        <div className="review-iterations-compact">
+                            <label className="iterations-label">
+                                품질검토반복횟수:
+                                <input
+                                    type="number"
+                                    className="iterations-input"
+                                    min="0"
+                                    max="3"
+                                    value={reviewIterations}
+                                    onChange={(e) => {
+                                        const val = parseInt(e.target.value);
+                                        if (val >= 0 && val <= 3) {
+                                            setReviewIterations(val);
+                                        }
+                                    }}
+                                />
+                                회
+                            </label>
                         </div>
 
                         {/* MCP/도구 선택 패널 */}

@@ -79,6 +79,16 @@ body {
     display: inline-block;
 }
 
+.project-id-badge {
+    font-size: 0.7rem;
+    background: rgba(5, 150, 105, 0.15);
+    color: #059669;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+}
+
 .control-buttons {
     display: flex;
     gap: 6px;

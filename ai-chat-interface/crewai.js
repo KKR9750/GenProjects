@@ -881,6 +881,7 @@ const CrewAIInterface = () => {
                             <div className="current-project">
                                 {activeProject ? (
                                     <div className="project-info-compact">
+                                        <span className="project-id-badge">#{activeProject.project_id}</span>
                                         📋 {activeProject.name}
                                         <span className="project-status-badge">{activeProject.status}</span>
                                     </div>

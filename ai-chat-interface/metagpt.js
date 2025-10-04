@@ -504,6 +504,7 @@ const MetaGPTInterface = () => {
                             <div className="current-project">
                                 {activeProject ? (
                                     <div className="project-info-compact">
+                                        <span className="project-id-badge">#{activeProject.id}</span>
                                         🏗️ {activeProject.name}
                                         <span className="step-badge">{currentStep}/5</span>
                                         <span className="project-status-badge">{activeProject.status}</span>

@@ -923,7 +923,6 @@ const CrewAIInterface = () => {
                         {/* 모델 선택 모드 토글 */}
                         <div className="model-mode-section">
                             <div className="mode-selector" style={{ marginBottom: '8px', padding: '10px', background: 'rgba(139, 69, 19, 0.1)', borderRadius: '8px', border: '1px solid #8B4513' }}>
-                                <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '8px', color: '#8B4513' }}>🎯 모델 선택 모드</div>
                                 <div style={{ display: 'flex', gap: '8px' }}>
                                     <button
                                         className={`mode-btn ${modelSelectionMode === 'auto' ? 'active' : ''}`}
@@ -1003,14 +1002,6 @@ const CrewAIInterface = () => {
                                 </div>
                             )}
 
-                            {/* LLM 모델 로딩 상태 */}
-                            <div className="llm-status" style={{ fontSize: '11px', marginBottom: '8px', padding: '6px', background: 'rgba(0,0,0,0.05)', borderRadius: '6px', textAlign: 'center' }}>
-                                {llmOptions.length > 0 ? (
-                                    <span style={{ color: 'green' }}>✅ {llmOptions.length}개 모델 로드됨</span>
-                                ) : (
-                                    <span style={{ color: 'orange' }}>⏳ LLM 모델 로딩 중...</span>
-                                )}
-                            </div>
                         </div>
 
                         {/* 사전 분석 모델 선택 */}

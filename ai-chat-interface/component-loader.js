@@ -253,7 +253,7 @@ class ComponentLoader {
     getJSFileName(pageName) {
         const jsMap = {
             'dashboard': 'dashboard-pure.js',
-            'crewai': 'crewai.js?v=5',
+            'crewai': 'crewai.js?v=6',
             'metagpt': 'metagpt.js?v=4',
             'admin': 'admin.js'
         };

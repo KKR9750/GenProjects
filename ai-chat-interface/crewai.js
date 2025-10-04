@@ -898,14 +898,14 @@ const CrewAIInterface = () => {
                                     }}
                                     title="프로젝트 목록"
                                 >
-                                    프로젝트
+                                    프로젝트 목록
                                 </button>
                                 <button
                                     className="control-btn new-project-btn"
                                     onClick={() => setShowNewProjectModal(true)}
                                     title="새 프로젝트 생성"
                                 >
-                                    신규
+                                    신규 프로젝트
                                 </button>
                                 {activeProject && (
                                     <button
@@ -914,36 +914,15 @@ const CrewAIInterface = () => {
                                         disabled={isLoading}
                                         title="LLM 매핑 저장"
                                     >
-                                        저장
+                                        LLM 저장
                                     </button>
                                 )}
                             </div>
                         </div>
 
-                        <div className="role-selector">
-                            <h3>🎭 역할 선택</h3>
-                            <div className="roles-grid">
-                                {roles.map(role => (
-                                    <button
-                                        key={role.id}
-                                        className={`role-btn ${selectedRole === role.id ? 'active' : ''}`}
-                                        onClick={() => setSelectedRole(role.id)}
-                                    >
-                                        <div className="role-icon" style={{ fontSize: '14px' }}>{role.icon}</div>
-                                        <div className="role-info">
-                                            <div className="role-name">{role.name}</div>
-                                            <div className="role-desc">{role.description}</div>
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="llm-mapping">
-                            <h3>⚙️ 역할별 LLM 설정</h3>
-
-                            {/* 모델 선택 모드 토글 */}
-                            <div className="mode-selector" style={{ marginBottom: '15px', padding: '10px', background: 'rgba(139, 69, 19, 0.1)', borderRadius: '8px', border: '1px solid #8B4513' }}>
+                        {/* 모델 선택 모드 토글 */}
+                        <div className="model-mode-section">
+                            <div className="mode-selector" style={{ marginBottom: '8px', padding: '10px', background: 'rgba(139, 69, 19, 0.1)', borderRadius: '8px', border: '1px solid #8B4513' }}>
                                 <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '8px', color: '#8B4513' }}>🎯 모델 선택 모드</div>
                                 <div style={{ display: 'flex', gap: '8px' }}>
                                     <button
@@ -1024,100 +1003,88 @@ const CrewAIInterface = () => {
                                 </div>
                             )}
 
-                            <div className="llm-status" style={{ fontSize: '12px', marginBottom: '10px', padding: '8px', background: 'rgba(0,0,0,0.05)', borderRadius: '6px' }}>
+                            {/* LLM 모델 로딩 상태 */}
+                            <div className="llm-status" style={{ fontSize: '11px', marginBottom: '8px', padding: '6px', background: 'rgba(0,0,0,0.05)', borderRadius: '6px', textAlign: 'center' }}>
                                 {llmOptions.length > 0 ? (
                                     <span style={{ color: 'green' }}>✅ {llmOptions.length}개 모델 로드됨</span>
                                 ) : (
                                     <span style={{ color: 'orange' }}>⏳ LLM 모델 로딩 중...</span>
                                 )}
-                                {modelSelectionMode === 'auto' && (
-                                    <span style={{ color: '#8B4513', fontSize: '11px', marginLeft: '8px' }}>
-                                        (자동 추천 모드)
-                                    </span>
-                                )}
                             </div>
-                            <div className="mapping-list">
-                                {/* 사전 분석 모델 선택 */}
-                                <div className="mapping-item" style={{ display: 'flex', alignItems: 'center', gap: '0', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '8px' }}>
-                                    <div className="mapping-role" style={{ minWidth: '70px', width: '70px' }}>
-                                        <span className="role-name" style={{ fontWeight: 'bold', color: '#6B46C1' }}>
-                                            사전 분석
-                                        </span>
-                                    </div>
-                                    <select
-                                        className="llm-select"
-                                        style={{ fontSize: '12px', padding: '6px 8px', minWidth: '160px' }}
-                                        value={preAnalysisModel || 'gemini-2.5-flash'}
-                                        onChange={(e) => handlePreAnalysisModelChange(e.target.value)}
-                                        disabled={llmOptions.length === 0}
-                                    >
-                                        {llmOptions.length === 0 ? (
-                                            <option value="">모델 로딩 중...</option>
-                                        ) : (
-                                            llmOptions.map(llm => (
-                                                <option key={llm.id} value={llm.id}>
-                                                    {llm.name} ({llm.provider})
-                                                    {llm.parameter_size ? ` [${llm.parameter_size}]` : ''}
-                                                </option>
-                                            ))
-                                        )}
-                                    </select>
-                                </div>
+                        </div>
 
-                                {/* 역할별 LLM 선택 */}
-                                {roles.map(role => (
-                                    <div key={role.id} className="mapping-item" style={{ display: 'flex', alignItems: 'center', gap: '0', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '8px' }}>
-                                        <div className="mapping-role" style={{ minWidth: '70px', width: '70px' }}>
-                                            <span className={`role-name ${selectedRole === role.id ? 'current' : ''}`} style={{ fontWeight: 'bold', color: '#6B46C1' }}>
-                                                {role.name}
-                                            </span>
-                                            {modelSelectionMode === 'auto' && (
-                                                <span style={{ fontSize: '10px', color: '#8B4513', marginLeft: '4px' }}>
-                                                    (자동)
-                                                </span>
+                        {/* 사전 분석 모델 선택 */}
+                        <div className="pre-analysis-section">
+                            <h3>🔍 사전 분석 모델</h3>
+                            <select
+                                className="llm-select-full"
+                                value={preAnalysisModel || 'gemini-2.5-flash'}
+                                onChange={(e) => handlePreAnalysisModelChange(e.target.value)}
+                                disabled={llmOptions.length === 0}
+                            >
+                                {llmOptions.length === 0 ? (
+                                    <option value="">모델 로딩 중...</option>
+                                ) : (
+                                    llmOptions.map(llm => (
+                                        <option key={llm.id} value={llm.id}>
+                                            {llm.name} ({llm.provider})
+                                            {llm.parameter_size ? ` [${llm.parameter_size}]` : ''}
+                                        </option>
+                                    ))
+                                )}
+                            </select>
+                        </div>
+
+                        {/* 통합된 역할 + LLM 설정 */}
+                        <div className="integrated-role-llm">
+                            <h3>🎭 역할 및 LLM 설정</h3>
+                            {roles.map(role => (
+                                <div key={role.id} className="role-llm-item">
+                                    {/* 역할 선택 버튼 */}
+                                    <button
+                                        className={`role-btn ${selectedRole === role.id ? 'active' : ''}`}
+                                        onClick={() => setSelectedRole(role.id)}
+                                    >
+                                        <div className="role-icon">{role.icon}</div>
+                                        <div className="role-info">
+                                            <div className="role-name">{role.name}</div>
+                                            <div className="role-desc">{role.description}</div>
+                                        </div>
+                                    </button>
+
+                                    {/* LLM 선택 드롭다운 (바로 아래) */}
+                                    {modelSelectionMode === 'manual' ? (
+                                        <select
+                                            className="llm-select-inline"
+                                            value={roleLLMMapping[role.id] || 'gemini-2.5-flash'}
+                                            onChange={(e) => handleRoleLLMChange(role.id, e.target.value)}
+                                            disabled={llmOptions.length === 0}
+                                        >
+                                            {llmOptions.length === 0 ? (
+                                                <option value="">모델 로딩 중...</option>
+                                            ) : (
+                                                llmOptions.map(llm => (
+                                                    <option key={llm.id} value={llm.id}>
+                                                        {llm.name} ({llm.provider})
+                                                        {llm.parameter_size ? ` [${llm.parameter_size}]` : ''}
+                                                        {llm.available === false ? ' [사용불가]' : ''}
+                                                    </option>
+                                                ))
+                                            )}
+                                        </select>
+                                    ) : (
+                                        <div className="llm-auto-display">
+                                            {llmOptions.find(llm => llm.id === roleLLMMapping[role.id])?.name || roleLLMMapping[role.id]}
+                                            {autoRecommendations && (
+                                                <span className="auto-badge">(AI 추천)</span>
                                             )}
                                         </div>
-                                        {modelSelectionMode === 'manual' ? (
-                                            <select
-                                                className="llm-select"
-                                                style={{ fontSize: '12px', padding: '6px 8px', minWidth: '160px' }}
-                                                value={roleLLMMapping[role.id] || 'gemini-2.5-flash'}
-                                                onChange={(e) => handleRoleLLMChange(role.id, e.target.value)}
-                                                disabled={llmOptions.length === 0}
-                                            >
-                                                {llmOptions.length === 0 ? (
-                                                    <option value="">모델 로딩 중...</option>
-                                                ) : (
-                                                    llmOptions.map(llm => (
-                                                        <option key={llm.id} value={llm.id}>
-                                                            {llm.name} ({llm.provider})
-                                                            {llm.parameter_size ? ` [${llm.parameter_size}]` : ''}
-                                                            {llm.available === false ? ' [사용불가]' : ''}
-                                                        </option>
-                                                    ))
-                                                )}
-                                            </select>
-                                        ) : (
-                                            <div style={{
-                                                fontSize: '12px',
-                                                padding: '6px 8px',
-                                                minWidth: '160px',
-                                                background: '#f5f5f5',
-                                                borderRadius: '4px',
-                                                border: '1px solid #ddd',
-                                                color: '#666'
-                                            }}>
-                                                {llmOptions.find(llm => llm.id === roleLLMMapping[role.id])?.name || roleLLMMapping[role.id]}
-                                                {autoRecommendations && (
-                                                    <span style={{ fontSize: '10px', color: '#16A34A', marginLeft: '4px' }}>
-                                                        (AI 추천)
-                                                    </span>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="dummy-wrapper">
                         </div>
 
                         {/* 검토-재작성 반복 횟수 설정 */}

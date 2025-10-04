@@ -485,6 +485,121 @@ body {
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
 }
 
+/* ===== 통합 UI 스타일 ===== */
+
+/* 모델 모드 섹션 */
+.model-mode-section {
+    margin-bottom: 12px;
+}
+
+/* 사전 분석 섹션 */
+.pre-analysis-section {
+    margin-bottom: 12px;
+    padding: 10px;
+    background: rgba(107, 70, 193, 0.1);
+    border-radius: 8px;
+    border: 1px solid #6B46C1;
+}
+
+.pre-analysis-section h3 {
+    font-size: 0.75rem;
+    color: #6B46C1;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+/* 통합 역할-LLM 섹션 */
+.integrated-role-llm {
+    margin-bottom: 12px;
+}
+
+.integrated-role-llm h3 {
+    font-size: 0.8rem;
+    color: #333;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+/* 역할-LLM 아이템 */
+.role-llm-item {
+    margin-bottom: 10px;
+}
+
+.role-llm-item .role-btn {
+    width: 100%;
+    margin-bottom: 6px;
+}
+
+/* 전체 너비 LLM 선택 (사전 분석용) */
+.llm-select-full {
+    width: 100%;
+    padding: 6px 8px;
+    font-size: 0.75rem;
+    border: 1px solid rgba(107, 70, 193, 0.3);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.llm-select-full:hover {
+    border-color: #6B46C1;
+    background: white;
+}
+
+.llm-select-full:focus {
+    outline: none;
+    border-color: #6B46C1;
+    box-shadow: 0 0 0 2px rgba(107, 70, 193, 0.2);
+}
+
+/* 인라인 LLM 드롭다운 (역할별) */
+.llm-select-inline {
+    width: 100%;
+    padding: 6px 8px;
+    font-size: 0.75rem;
+    border: 1px solid rgba(79, 70, 229, 0.3);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.llm-select-inline:hover {
+    border-color: #4F46E5;
+    background: white;
+}
+
+.llm-select-inline:focus {
+    outline: none;
+    border-color: #4F46E5;
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+}
+
+.llm-select-inline:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: rgba(200, 200, 200, 0.3);
+}
+
+/* 자동 모드 LLM 표시 */
+.llm-auto-display {
+    width: 100%;
+    font-size: 0.75rem;
+    padding: 6px 8px;
+    background: #f5f5f5;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    color: #666;
+}
+
+.auto-badge {
+    font-size: 0.65rem;
+    color: #16A34A;
+    margin-left: 4px;
+    font-weight: 500;
+}
+
 .active-project-info {
     background: rgba(79, 70, 229, 0.1);
     padding: 20px;

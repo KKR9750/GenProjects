@@ -18,10 +18,6 @@ import bcrypt
 # Load environment variables
 load_dotenv()
 
-# Force update environment variables to new Supabase settings
-os.environ['SUPABASE_URL'] = 'https://vpbkitxgisxbqtxrwjvo.supabase.co'
-os.environ['SUPABASE_ANON_KEY'] = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwYmtpdHhnaXN4YnF0eHJ3anZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgxNzM5NzUsImV4cCI6MjA3Mzc0OTk3NX0._db0ajX3GQVBUdxl7OJ0ykt14Jb7FSRbUNsEnnqDtp8'
-
 class Database:
     """Database connection and operations handler"""
 
@@ -29,7 +25,15 @@ class Database:
         self.supabase_url = os.getenv("SUPABASE_URL")
         self.supabase_key = os.getenv("SUPABASE_ANON_KEY")
         self.service_role_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-        self.jwt_secret = os.getenv("JWT_SECRET_KEY", "default-secret-key")
+
+        # JWT Secret Key - MUST be set in environment variables for security
+        self.jwt_secret = os.getenv("JWT_SECRET_KEY")
+        if not self.jwt_secret:
+            raise ValueError(
+                "JWT_SECRET_KEY must be set in environment variables. "
+                "Generate a secure random key and add it to your .env file."
+            )
+
         self.jwt_algorithm = os.getenv("JWT_ALGORITHM", "HS256")
         self.jwt_expire_hours = int(os.getenv("JWT_EXPIRE_HOURS", 24))
 
@@ -448,6 +452,13 @@ class Database:
 
         try:
             # Prepare project data
+            review_iterations = project_data.get("review_iterations", 1)
+            try:
+                review_iterations = int(review_iterations)
+            except (TypeError, ValueError):
+                review_iterations = 0 # 기본값을 0으로 변경
+            review_iterations = max(0, min(5, review_iterations))
+
             insert_data = {
                 "name": project_data.get("name"),
                 "description": project_data.get("description", ""),
@@ -459,6 +470,7 @@ class Database:
                 "status": "planning",
                 "current_stage": "requirement",
                 "progress_percentage": 0,
+                # "review_iterations": review_iterations, # 존재하지 않는 컬럼 제거
                 "created_at": datetime.now().isoformat(),
                 "updated_at": datetime.now().isoformat()
             }
@@ -493,8 +505,8 @@ class Database:
 
         try:
             query = self.supabase.table('projects').select(
-                'project_id, name, description, created_by_user_id, selected_ai, project_type, status, '
-                'current_stage, progress_percentage, created_at, updated_at'
+                # review_iterations 컬럼을 제거하고, 존재하는 컬럼만 명시적으로 선택
+                'project_id, name, description, created_by_user_id, selected_ai, project_type, status, current_stage, progress_percentage, created_at, updated_at'
             )
 
             # Check if user is admin
@@ -534,13 +546,17 @@ class Database:
                 stages = self._get_project_stages(project_id)
                 # Get role-LLM mappings
                 role_mappings = self._get_project_role_mappings(project_id)
+                # Get project tools
+                tools_result = self.get_project_tools(project_id)
+                tools = tools_result.get('tools', []) if tools_result.get('success', False) else []
 
                 return {
                     "success": True,
                     "project": {
                         **project,
                         "stages": stages,
-                        "role_mappings": role_mappings
+                        "role_mappings": role_mappings,
+                        "tools": tools
                     }
                 }
             else:
@@ -561,6 +577,14 @@ class Database:
             return {"success": False, "error": "DATABASE_CONNECTION_FAILED", "message": "데이터베이스 연결에 실패했습니다."}
 
         try:
+            if 'review_iterations' in update_data:
+                try:
+                    review_iterations = int(update_data['review_iterations'])
+                except (TypeError, ValueError):
+                    review_iterations = 1
+                review_iterations = max(0, min(5, review_iterations))
+                # update_data['review_iterations'] = review_iterations # 존재하지 않는 컬럼 제거
+
             update_data['updated_at'] = datetime.now().isoformat()
 
             result = self.supabase.table('projects').update(update_data).eq('project_id', project_id).execute()
@@ -584,12 +608,15 @@ class Database:
             }
 
     def delete_project(self, project_id: str) -> Dict[str, Any]:
-        """Delete project and all related data"""
+        """Delete project and all related data based on the current schema."""
         if not self.is_connected():
             return {"success": False, "error": "DATABASE_CONNECTION_FAILED", "message": "데이터베이스 연결에 실패했습니다."}
 
         try:
-            # Delete from projects table (CASCADE will handle related tables)
+            # The database schema uses ON DELETE CASCADE for related tables like
+            # project_tools, project_stages, project_role_llm_mapping, etc.
+            # Therefore, we only need to delete from the main 'projects' table.
+            
             result = self.supabase.table('projects').delete().eq('project_id', project_id).execute()
 
             if result.data:
@@ -598,18 +625,39 @@ class Database:
                     "message": f"프로젝트 {project_id}가 성공적으로 삭제되었습니다"
                 }
             else:
+                # This can happen if the project_id doesn't exist, which is not necessarily an error in a DELETE operation.
+                # For simplicity, we'll count it as a success if there's no data, as the end state (project is gone) is achieved.
                 return {
-                    "success": False,
-                    "error": "프로젝트를 찾을 수 없습니다"
+                    "success": True,
+                    "message": f"프로젝트 {project_id}가 이미 삭제되었거나 존재하지 않습니다."
                 }
 
         except Exception as e:
+            # Check for specific PostgREST errors if possible
+            error_str = str(e)
             return {
                 "success": False,
-                "error": f"프로젝트 삭제 중 오류 발생: {str(e)}"
+                "error": f"프로젝트 삭제 중 오류 발생: {error_str}"
             }
 
     # ==================== ROLE-LLM MAPPING ====================
+
+    def _normalize_llm_model_name(self, model_name: str) -> str:
+        """
+        Normalize LLM model names for database compatibility
+        임시 해결책: gemini-2.5-flash -> gemini-flash 매핑
+        """
+        model_mapping = {
+            'gemini-2.5-flash': 'gemini-flash',
+            'gemini-2.5-pro': 'gemini-pro',
+            'gemini-2.0-flash': 'gemini-flash'
+        }
+
+        normalized = model_mapping.get(model_name, model_name)
+        if normalized != model_name:
+            print(f"INFO: 모델명 변환 - {model_name} -> {normalized}")
+
+        return normalized
 
     def set_project_role_llm_mapping(self, project_id: str, mappings: List[Dict[str, str]]) -> Dict[str, Any]:
         """Set role-LLM mappings for a project"""
@@ -623,10 +671,13 @@ class Database:
             # Insert new mappings
             insert_data = []
             for mapping in mappings:
+                # 모델명 정규화 적용
+                normalized_model = self._normalize_llm_model_name(mapping["llm_model"])
+
                 insert_data.append({
                     "projects_project_id": project_id,
                     "role_name": mapping["role_name"],
-                    "llm_model": mapping["llm_model"],
+                    "llm_model": normalized_model,
                     "llm_config": mapping.get("llm_config", {}),
                     "is_active": True,
                     "created_at": datetime.now().isoformat(),
@@ -671,6 +722,71 @@ class Database:
             return {
                 "success": False,
                 "error": f"역할-LLM 매핑 조회 실패: {str(e)}"
+            }
+
+    # ==================== PROJECT TOOLS ====================
+
+    def set_project_tools(self, project_id: str, tools: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Set tool configurations for a project"""
+        if not self.is_connected():
+            return {"success": False, "error": "DATABASE_CONNECTION_FAILED", "message": "데이터베이스 연결에 실패했습니다."}
+
+        try:
+            # Remove existing tool configurations
+            self.supabase.table('project_tools').delete().eq('projects_project_id', project_id).execute()
+
+            insert_data = []
+            for tool in tools or []:
+                tool_key = tool.get('tool_key')
+                if not tool_key:
+                    continue
+
+                insert_data.append({
+                    "projects_project_id": project_id,
+                    "tool_key": tool_key,
+                    "tool_config": tool.get('tool_config', {}),
+                    "is_active": bool(tool.get('is_active', True)),
+                    "created_at": datetime.now().isoformat(),
+                    "updated_at": datetime.now().isoformat()
+                })
+
+            if insert_data:
+                result = self.supabase.table('project_tools').insert(insert_data).execute()
+                return {
+                    "success": True,
+                    "tools": result.data,
+                    "message": "프로젝트 도구 구성이 저장되었습니다"
+                }
+
+            return {
+                "success": True,
+                "tools": [],
+                "message": "프로젝트 도구 구성이 비워졌습니다"
+            }
+
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"프로젝트 도구 구성 저장 실패: {str(e)}"
+            }
+
+    def get_project_tools(self, project_id: str) -> Dict[str, Any]:
+        """Get tool configurations for a project"""
+        if not self.is_connected():
+            return {"success": False, "error": "DATABASE_CONNECTION_FAILED", "message": "데이터베이스 연결에 실패했습니다."}
+
+        try:
+            result = self.supabase.table('project_tools').select('*').eq('projects_project_id', project_id).execute()
+
+            return {
+                "success": True,
+                "tools": result.data
+            }
+
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"프로젝트 도구 조회 실패: {str(e)}"
             }
 
     # ==================== PROJECT STAGES ====================
@@ -918,3 +1034,77 @@ def get_database():
     return Database()
 
 db = get_database()
+
+
+# PostgreSQL 직접 연결 함수 (psycopg2 사용)
+def get_supabase_client():
+    """
+    Supabase Client 반환 (REST API 기반)
+    psycopg2 대신 Supabase Python Client 사용
+    """
+    supabase_url = os.getenv("SUPABASE_URL")
+    supabase_key = os.getenv("SUPABASE_ANON_KEY")
+
+    if not supabase_url or not supabase_key:
+        raise ValueError("SUPABASE_URL 또는 SUPABASE_ANON_KEY 환경변수가 설정되지 않았습니다.")
+
+    try:
+        client = create_client(supabase_url, supabase_key)
+        return client
+    except Exception as e:
+        print(f"Supabase Client 생성 실패: {e}")
+        raise
+
+
+def get_db_connection():
+    """
+    PostgreSQL 직접 연결 반환 (Supabase PostgreSQL)
+    psycopg2를 사용한 저수준 연결
+
+    ⚠️ DEPRECATED: Supabase 연결 문제로 인해 get_supabase_client() 사용 권장
+    """
+    import psycopg2
+    import psycopg2.extras
+
+    # Supabase PostgreSQL 연결 정보
+    # URL 파싱: postgresql://[user]:[password]@[host]:[port]/[database]
+    supabase_url = os.getenv("SUPABASE_URL")
+
+    if not supabase_url:
+        raise ValueError("SUPABASE_URL 환경변수가 설정되지 않았습니다.")
+
+    # Supabase PostgreSQL 직접 연결 정보
+    # 형식: postgresql://postgres.[project_ref]:[password]@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres
+    db_password = os.getenv("SUPABASE_DB_PASSWORD")
+
+    if not db_password:
+        raise ValueError(
+            "SUPABASE_DB_PASSWORD must be set in environment variables. "
+            "Get this password from your Supabase project settings."
+        )
+
+    # project_ref 추출 (URL에서)
+    project_ref = supabase_url.split("//")[1].split(".")[0] if "//" in supabase_url else None
+
+    if not project_ref:
+        raise ValueError("Invalid SUPABASE_URL format. Cannot extract project reference.")
+
+    # 연결 설정
+    conn_params = {
+        "host": f"aws-0-ap-northeast-2.pooler.supabase.com",
+        "port": 6543,
+        "database": "postgres",
+        "user": f"postgres.{project_ref}",
+        "password": db_password,
+        "sslmode": "require"
+    }
+
+    try:
+        conn = psycopg2.connect(**conn_params)
+        # RealDictCursor 사용 - dict 형태로 결과 반환
+        conn.cursor_factory = psycopg2.extras.RealDictCursor
+        return conn
+    except psycopg2.OperationalError as e:
+        print(f"PostgreSQL 연결 실패: {e}")
+        print(f"연결 정보: host={conn_params['host']}, port={conn_params['port']}, user={conn_params['user']}")
+        raise

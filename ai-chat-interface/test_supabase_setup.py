@@ -12,8 +12,12 @@ from database import db
 def create_admin_user():
     """기본 관리자 계정 생성"""
     try:
+        # Use password from environment variable for security
+        import os
+        test_password = os.getenv('ADMIN_PASSWORD', 'test_password_change_me')
+
         # 비밀번호 해시 생성
-        password_hash = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        password_hash = bcrypt.hashpw(test_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
         admin_data = {
             'user_id': 'admin',
@@ -29,7 +33,7 @@ def create_admin_user():
         if result['success']:
             print("관리자 계정 생성 성공")
             print(f"   사용자 ID: admin")
-            print(f"   비밀번호: admin123")
+            print(f"   비밀번호: 환경변수 ADMIN_PASSWORD 참조")
             print(f"   이메일: admin@genprojects.com")
         else:
             print(f"❌ 관리자 계정 생성 실패: {result.get('error')}")
@@ -142,7 +146,7 @@ def main():
     print("1. 웹 브라우저에서 http://localhost:3000 접속")
     print("2. 로그인 정보:")
     print("   - 사용자 ID: admin")
-    print("   - 비밀번호: admin123")
+    print("   - 비밀번호: 환경변수 ADMIN_PASSWORD에 설정")
     print("3. 관리자 대시보드에서 사용자 및 프로젝트 관리")
 
 if __name__ == '__main__':

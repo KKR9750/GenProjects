@@ -11,9 +11,11 @@ AI Chat Interface 관리자 시스템은 시스템 모니터링, 프로젝트 �
 http://localhost:3000/admin
 ```
 
-### 기본 로그인 정보
+### 로그인 정보
 - **사용자명**: `admin`
-- **패스워드**: `admin123`
+- **패스워드**: 환경변수 `ADMIN_PASSWORD`에 설정된 값 (`.env` 파일 참조)
+
+**⚠️ 보안 중요**: 최초 설정 시 반드시 강력한 비밀번호로 변경하세요!
 
 ## 📊 주요 기능
 
@@ -96,7 +98,7 @@ POST /api/admin/login
 Content-Type: application/json
 {
   "username": "admin",
-  "password": "admin123"
+  "password": "your-password-from-env"
 }
 
 # 토큰 검증
@@ -144,7 +146,7 @@ Authorization: Bearer <token>
 
 ### 2. 로그인
 - 사용자명: `admin`
-- 패스워드: `admin123`
+- 패스워드: 환경변수 `ADMIN_PASSWORD`에 설정된 값
 
 ### 3. 대시보드 탐색
 - **시스템 상태**: 실시간 시스템 모니터링
@@ -203,7 +205,7 @@ Authorization: Bearer <token>
 
 ### 로그인 실패
 - 사용자명과 패스워드 확인
-- 기본 계정: admin / admin123
+- 환경변수 `ADMIN_PASSWORD`가 올바르게 설정되었는지 확인
 
 ### 시스템 상태 오류
 - 데이터베이스 연결 확인: Supabase 설정 점검

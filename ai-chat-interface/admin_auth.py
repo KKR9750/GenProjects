@@ -10,6 +10,7 @@ import hashlib
 import secrets
 from datetime import datetime, timedelta
 from functools import wraps
+from typing import List
 from flask import request, jsonify, current_app
 from dotenv import load_dotenv
 
@@ -27,10 +28,18 @@ class AdminAuth:
         # JWT 시크릿 키 (환경변수에서 가져오거나 생성)
         self.secret_key = os.getenv('JWT_SECRET_KEY') or secrets.token_urlsafe(32)
 
+        # 관리자 비밀번호 환경변수 검증
+        admin_password = os.getenv('ADMIN_PASSWORD')
+        if not admin_password:
+            raise ValueError(
+                "ADMIN_PASSWORD must be set in environment variables. "
+                "Add ADMIN_PASSWORD to your .env file with a strong password."
+            )
+
         # 기본 관리자 계정 설정
         self.admin_users = {
             'admin': {
-                'password_hash': self._hash_password(os.getenv('ADMIN_PASSWORD', 'admin123')),
+                'password_hash': self._hash_password(admin_password),
                 'role': 'admin',
                 'permissions': ['all']
             }
@@ -81,17 +90,30 @@ class AdminAuth:
                 if result.get('success'):
                     # 메인 대시보드 토큰이 유효한 경우, 관리자 권한 확인
                     user_data = result.get('user', {})
-                    # 모든 로그인한 사용자에게 관리자 권한 부여 (임시)
+                    # 사용자 역할 기반 권한 확인
+                    user_role = user_data.get('role', 'user')
+                    if user_role != 'admin':
+                        return None  # 관리자가 아닌 경우 접근 거부
+
                     return {
                         'username': user_data.get('user_id', 'user'),
-                        'role': 'admin',
-                        'permissions': ['all'],
+                        'role': user_role,
+                        'permissions': self._get_role_permissions(user_role),
                         'from_main_dashboard': True
                     }
             except Exception:
                 pass
 
         return None
+
+    def _get_role_permissions(self, role: str) -> List[str]:
+        """역할별 권한 목록 반환"""
+        role_permissions = {
+            'admin': ['all'],
+            'moderator': ['read', 'moderate'],
+            'user': ['read']
+        }
+        return role_permissions.get(role, ['read'])
 
     def has_permission(self, token, required_permission):
         """권한 확인"""

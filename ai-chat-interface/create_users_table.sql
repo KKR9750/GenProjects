@@ -41,14 +41,15 @@ CREATE TRIGGER update_users_updated_at
 BEFORE UPDATE ON users
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- 6. 기본 관리자 계정 생성 (비밀번호: admin123)
+-- 6. 기본 관리자 계정 생성
+-- ⚠️ 보안: 운영 환경에서는 반드시 강력한 비밀번호로 변경하세요!
 INSERT INTO users (user_id, email, display_name, role, password_hash)
 VALUES (
     'admin',
     'admin@genprojects.com',
     '시스템 관리자',
     'admin',
-    '$2b$12$sxHPo8qPPoahqbUh/SheZu9Qo1JqNTY7C345KITMhebix45wk2kRW' -- admin123 해시
+    '$2b$12$sxHPo8qPPoahqbUh/SheZu9Qo1JqNTY7C345KITMhebix45wk2kRW' -- 초기 해시 (반드시 변경 필요)
 ) ON CONFLICT (user_id) DO NOTHING;
 
 -- 확인 쿼리

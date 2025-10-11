@@ -1,0 +1,880 @@
+(()=> {
+  function initPreAnalysis() {
+    const analysisPane = document.querySelector('.analysis-pane');
+    if (!analysisPane) {
+      console.warn('[pre_analysis] analysis pane not found.');
+      return;
+    }
+
+    const frameworkButtons = document.querySelectorAll('.framework-btn');
+    const newConversationBtn = document.getElementById('newConversationBtn');
+    const clearConversationBtn = document.getElementById('clearConversationBtn');
+    const sendBtn = document.getElementById('sendBtn');
+    const confirmRequirementBtn = document.getElementById('confirmRequirementBtn');
+    const modelSelect = document.getElementById('modelSelect');
+    const editRequirementBtn = document.getElementById('editRequirementBtn');
+    const userInput = document.getElementById('userInput');
+    const finalizeSection = document.getElementById('finalizeSection');
+    const finalRequirementText = document.getElementById('finalRequirementText');
+    const messagesArea = document.getElementById('messagesArea');
+    const loadingIndicator = document.getElementById('loading');
+
+    const agentPane = document.getElementById('agentPane');
+    const agentPaneOverlay = document.getElementById('agentPaneOverlay');
+    const projectIdDisplay = document.getElementById('projectIdDisplay');
+    const frameworkDisplay = document.getElementById('frameworkDisplay');
+    const requirementCard = document.getElementById('requirementCard');
+    const requirementText = document.getElementById('requirementText');
+    const addAgentButton = document.getElementById('addAgentButton');
+    const executeProjectButton = document.getElementById('executeProjectButton');
+    const agentsGrid = document.getElementById('agentsGrid');
+    const agentModal = document.getElementById('agentModal');
+    const agentForm = document.getElementById('agentForm');
+    const cancelAgentModalBtn = document.getElementById('cancelAgentModalBtn');
+
+    if (!messagesArea || !sendBtn || !userInput) {
+      console.warn('[pre_analysis] essential elements missing, abort init.');
+      return;
+    }
+
+    const activeFrameworkBtn = document.querySelector('.framework-btn.active');
+
+    let conversationHistory = [];
+    let selectedFramework = activeFrameworkBtn && activeFrameworkBtn.dataset.framework ? activeFrameworkBtn.dataset.framework : 'crewai';
+    let currentModel = 'gemini-2.0-flash-exp';
+    let suggestedRequirement = null;
+    let currentProjectId = null;
+    let agents = [];
+    let editingAgentOrder = null;
+    let sharedRequirement = '';
+
+    function saveConversation() {
+      try {
+        const data = {
+          framework: selectedFramework,
+          history: conversationHistory,
+          requirement: suggestedRequirement,
+          timestamp: new Date().toISOString()
+        };
+        localStorage.setItem(`pre_analysis_${selectedFramework}`, JSON.stringify(data));
+      } catch (error) {
+        console.error('[pre_analysis] Failed to save conversation:', error);
+      }
+    }
+
+    function loadConversation() {
+      try {
+        const saved = localStorage.getItem(`pre_analysis_${selectedFramework}`);
+        if (!saved) {
+          return false;
+        }
+        const data = JSON.parse(saved);
+        conversationHistory = Array.isArray(data.history) ? [...data.history] : [];
+        suggestedRequirement = data.requirement || null;
+        restoreMessages();
+        if (suggestedRequirement) {
+          finalRequirementText.textContent = suggestedRequirement;
+          finalizeSection.classList.add('show');
+        } else {
+          finalizeSection.classList.remove('show');
+          finalRequirementText.textContent = '';
+        }
+        return true;
+      } catch (error) {
+        console.error('[pre_analysis] Failed to load conversation:', error);
+        return false;
+      }
+    }
+
+    function restoreMessages() {
+      messagesArea.innerHTML = '';
+      conversationHistory.forEach(msg => {
+        addMessage(msg.role === 'user' ? 'user' : 'ai', msg.content, true);
+      });
+    }
+
+    function addMessage(role, content, skipHistory = false) {
+      const wrapper = document.createElement('div');
+      wrapper.className = `message ${role}`;
+      const icon = role === 'ai' ? '🤖' : '🙋';
+      const safeContent = (content || '').toString().replace(/\n/g, '<br>');
+      wrapper.innerHTML = `
+        ${role === 'ai' ? `<div class="message-icon">${icon}</div>` : ''}
+        <div class="message-bubble">${safeContent}</div>
+        ${role === 'user' ? `<div class="message-icon">${icon}</div>` : ''}
+      `;
+      messagesArea.appendChild(wrapper);
+      messagesArea.scrollTop = messagesArea.scrollHeight;
+      if (!skipHistory) {
+        conversationHistory.push({ role, content });
+        saveConversation();
+      }
+    }
+
+    function handleKeyPress(event) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+      }
+    }
+
+    async function sendMessage() {
+      const message = userInput.value.trim();
+      if (!message) return;
+
+      addMessage('user', message);
+      userInput.value = '';
+      if (loadingIndicator) {
+        loadingIndicator.classList.add('show');
+      }
+      sendBtn.disabled = true;
+
+      try {
+        const response = await fetch('/api/pre-analysis/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userMessage: message,
+            conversationHistory,
+            model: currentModel
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ }));
+          throw new Error(errorData.error || `HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        const aiMessage = data.analysis || '응답을 받을 수 없습니다.';
+        addMessage('ai', aiMessage);
+
+        if (data.canFinalize && data.suggestedRequirement) {
+          suggestedRequirement = data.suggestedRequirement;
+          finalRequirementText.textContent = suggestedRequirement;
+          finalizeSection.classList.add('show');
+          saveConversation();
+        }
+      } catch (error) {
+        console.error('[pre_analysis] sendMessage error:', error);
+        addMessage('ai', `오류가 발생했습니다. 다시 시도해주세요.\n(${error.message})`);
+      } finally {
+        if (loadingIndicator) {
+          loadingIndicator.classList.remove('show');
+        }
+        sendBtn.disabled = false;
+      }
+    }
+
+    async function confirmRequirement() {
+      if (!suggestedRequirement) return;
+
+      // 중복 클릭 방지
+      if (!confirmRequirementBtn || confirmRequirementBtn.disabled) return;
+
+      const originalButtonText = confirmRequirementBtn.textContent;
+      confirmRequirementBtn.disabled = true;
+      confirmRequirementBtn.textContent = '생성 중...';
+
+      try {
+        console.log('[confirmRequirement] 프로젝트 생성 시작:', new Date().toISOString());
+
+        const createResponse = await fetch('/api/v2/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: `동적 프로젝트 - ${new Date().toLocaleDateString()}`,
+            framework: selectedFramework,
+            creation_type: 'dynamic'
+          })
+        });
+
+        const createData = await createResponse.json();
+        if (!createResponse.ok) {
+          throw new Error(createData.error || `HTTP ${createResponse.status}`);
+        }
+
+        currentProjectId = createData.project_id;
+        console.log('[confirmRequirement] 생성 완료:', currentProjectId);
+
+        if (!currentProjectId) {
+          throw new Error('서버에서 project_id를 반환하지 않았습니다.');
+        }
+
+        const initResponse = await fetch(`/api/v2/projects/${currentProjectId}/initialize`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            framework: selectedFramework,
+            finalRequirement: suggestedRequirement,
+            preAnalysisHistory: conversationHistory
+          })
+        });
+
+        const initData = await initResponse.json();
+        if (!initResponse.ok || initData.status !== 'success') {
+          throw new Error(initData.error || `HTTP ${initResponse.status}`);
+        }
+
+        sharedRequirement = suggestedRequirement;
+        alert(`✅ 프로젝트가 생성되었습니다!\n\n프로젝트 ID: ${currentProjectId}`);
+        enableAgentPanel();
+        await loadAgents();
+      } catch (error) {
+        console.error('[pre_analysis] confirmRequirement error:', error);
+        alert(`프로젝트 생성 중 오류가 발생했습니다: ${error.message}`);
+      } finally {
+        // 성공/실패 관계없이 버튼 복원
+        if (confirmRequirementBtn) {
+          confirmRequirementBtn.disabled = false;
+          confirmRequirementBtn.textContent = originalButtonText;
+        }
+      }
+    }
+
+    async function enableAgentPanel() {
+      if (agentPane) {
+        agentPane.classList.remove('disabled');
+      }
+      if (agentPaneOverlay) {
+        agentPaneOverlay.style.display = 'none';
+      }
+      if (addAgentButton) {
+        addAgentButton.disabled = false;
+      }
+      if (executeProjectButton) {
+        executeProjectButton.disabled = false;
+      }
+      // Show agent config section
+      const agentConfigSection = document.getElementById('agentConfigSection');
+      if (agentConfigSection) {
+        agentConfigSection.style.display = 'block';
+      }
+      // Enable tool selection button
+      const selectToolsBtn = document.getElementById('selectToolsBtn');
+      if (selectToolsBtn) {
+        selectToolsBtn.disabled = false;
+        // 이벤트 리스너 재등록 (중복 방지를 위해 기존 제거 후 추가)
+        selectToolsBtn.removeEventListener('click', openToolsModal);
+        selectToolsBtn.addEventListener('click', openToolsModal);
+        console.log('[enableAgentPanel] Tool button enabled and event listener attached');
+      }
+      // Load available tools
+      await loadAvailableTools();
+      if (projectIdDisplay) {
+        projectIdDisplay.textContent = `Project ID: ${currentProjectId}`;
+      }
+      if (frameworkDisplay) {
+        frameworkDisplay.textContent = `Framework: ${selectedFramework}`;
+      }
+      updateRequirementCard();
+    }
+
+    function resetAgentPanel() {
+      currentProjectId = null;
+      agents = [];
+      editingAgentOrder = null;
+      sharedRequirement = '';
+      if (agentPane) {
+        agentPane.classList.add('disabled');
+      }
+      if (agentPaneOverlay) {
+        agentPaneOverlay.style.display = 'flex';
+      }
+      if (addAgentButton) {
+        addAgentButton.disabled = true;
+      }
+      if (executeProjectButton) {
+        executeProjectButton.disabled = true;
+      }
+      if (projectIdDisplay) {
+        projectIdDisplay.textContent = 'Project ID: -';
+      }
+      if (frameworkDisplay) {
+        frameworkDisplay.textContent = `Framework: ${selectedFramework}`;
+      }
+      updateRequirementCard();
+      if (agentsGrid) {
+        agentsGrid.innerHTML = '<p class="empty-placeholder">프로젝트가 생성되면 에이전트 목록이 표시됩니다.</p>';
+      }
+    }
+
+    function updateRequirementCard() {
+      if (!requirementCard || !requirementText) return;
+      if (sharedRequirement) {
+        requirementCard.style.display = 'block';
+        requirementText.textContent = sharedRequirement;
+      } else {
+        requirementCard.style.display = 'none';
+        requirementText.textContent = '';
+      }
+    }
+
+    async function loadAgents() {
+      if (!currentProjectId) {
+        return;
+      }
+      try {
+        const response = await fetch(`/api/v2/projects/${currentProjectId}/agents?framework=${selectedFramework}`);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const data = await response.json();
+        agents = Array.isArray(data.agents) ? data.agents : [];
+        if (!sharedRequirement && data.finalRequirement) {
+          sharedRequirement = data.finalRequirement.trim();
+        }
+        if (!sharedRequirement) {
+          const derived = agents
+            .map(agent => extractRequirementFromGoal(agent.goal))
+            .find(text => text);
+          sharedRequirement = derived ? derived.trim() : '';
+        }
+        updateRequirementCard();
+        renderAgents();
+      } catch (error) {
+        console.error('[pre_analysis] loadAgents error:', error);
+      }
+    }
+
+    function extractRequirementFromGoal(goal) {
+      if (!goal) return '';
+      const idx = goal.indexOf(':');
+      if (idx === -1) return '';
+      return goal.slice(idx + 1).trim();
+    }
+
+    function splitGoal(goal) {
+      if (!goal) {
+        return { summary: '', detail: '' };
+      }
+      const idx = goal.indexOf(':');
+      if (idx === -1) {
+        return { summary: goal.trim(), detail: '' };
+      }
+      return {
+        summary: goal.slice(0, idx).trim(),
+        detail: goal.slice(idx + 1).trim()
+      };
+    }
+
+    function splitBackstory(backstory) {
+      if (!backstory) {
+        return { lead: '', detail: '' };
+      }
+      const trimmed = backstory.trim();
+      const idx = trimmed.indexOf('.');
+      if (idx === -1) {
+        return { lead: trimmed, detail: '' };
+      }
+      return {
+        lead: trimmed.slice(0, idx + 1).trim(),
+        detail: trimmed.slice(idx + 1).trim()
+      };
+    }
+
+    function renderAgents() {
+      if (!agentsGrid) return;
+      agentsGrid.innerHTML = '';
+      if (!agents.length) {
+        agentsGrid.innerHTML = '<p class="empty-placeholder">등록된 Agent가 없습니다.</p>';
+        return;
+      }
+      agents.forEach(agent => {
+        const card = document.createElement('div');
+        card.className = 'agent-card';
+        const goalInfo = splitGoal(agent.goal);
+        const backstoryInfo = splitBackstory(agent.backstory);
+        const requirementDetail = (goalInfo.detail && sharedRequirement && goalInfo.detail.trim() === sharedRequirement.trim()) ? '' : goalInfo.detail;
+        const verboseLabel = agent.is_verbose ? 'Verbose' : 'Concise';
+        const verboseClass = agent.is_verbose ? 'flag-verbose' : 'flag-quiet';
+        const delegationFlag = agent.allow_delegation ? '<span class="flag flag-delegation">Delegation</span>' : '';
+        card.innerHTML = `
+          <div class="agent-header">
+            <div class="agent-order">${agent.agent_order ?? '-'}</div>
+            <div class="agent-role">
+              <h3>${agent.role || '-'}</h3>
+              <span class="agent-llm">${agent.llm_model || '-'}</span>
+              <div class="agent-flags">
+                <span class="flag ${verboseClass}">${verboseLabel}</span>
+                ${delegationFlag}
+              </div>
+            </div>
+          </div>
+          <div class="agent-details">
+            <div class="agent-detail">
+              <label>Goal</label>
+              <p class="goal-summary">${goalInfo.summary || '-'}</p>
+              ${requirementDetail ? `<p class="goal-detail">${requirementDetail}</p>` : ''}
+            </div>
+            <div class="agent-detail">
+              <label>Backstory</label>
+              <p class="backstory-lead">${backstoryInfo.lead || '-'}</p>
+              ${backstoryInfo.detail ? `<p class="backstory-detail">${backstoryInfo.detail}</p>` : ''}
+            </div>
+          </div>
+          <div class="agent-actions">
+            <button class="action-btn edit" data-action="edit">수정</button>
+            <button class="action-btn delete" data-action="delete">삭제</button>
+          </div>
+        `;
+        card.querySelector('[data-action="edit"]').addEventListener('click', () => editAgent(agent.agent_order));
+        card.querySelector('[data-action="delete"]').addEventListener('click', () => deleteAgent(agent.agent_order));
+        agentsGrid.appendChild(card);
+      });
+    }
+
+    function openAddAgentModal() {
+      if (!currentProjectId || !agentModal || !agentForm) return;
+      editingAgentOrder = null;
+      agentForm.reset();
+      agentForm.querySelector('#agentOrder').value = agents.length + 1;
+      const titleEl = document.getElementById('modalTitle');
+      if (titleEl) {
+        titleEl.textContent = 'Agent 추가';
+      }
+      agentModal.classList.add('show');
+    }
+
+    function editAgent(agentOrder) {
+      if (!agentModal || !agentForm) return;
+      const agent = agents.find(a => a.agent_order === agentOrder);
+      if (!agent) return;
+      editingAgentOrder = agentOrder;
+      const titleEl = document.getElementById('modalTitle');
+      if (titleEl) {
+        titleEl.textContent = 'Agent 수정';
+      }
+      agentForm.querySelector('#agentOrder').value = agent.agent_order;
+      agentForm.querySelector('#agentRole').value = agent.role;
+      agentForm.querySelector('#agentGoal').value = agent.goal;
+      agentForm.querySelector('#agentBackstory').value = agent.backstory;
+
+      // LLM 모델 설정 - 옵션에 없으면 동적으로 추가
+      const llmSelect = agentForm.querySelector('#agentLlm');
+      const llmModel = agent.llm_model || 'gemini-2.5-flash';
+
+      // 해당 값이 옵션에 있는지 확인
+      let optionExists = false;
+      for (let i = 0; i < llmSelect.options.length; i++) {
+        if (llmSelect.options[i].value === llmModel) {
+          optionExists = true;
+          break;
+        }
+      }
+
+      // 옵션이 없으면 동적으로 추가
+      if (!optionExists && llmModel) {
+        const newOption = document.createElement('option');
+        newOption.value = llmModel;
+        newOption.textContent = llmModel;
+        llmSelect.appendChild(newOption);
+      }
+
+      llmSelect.value = llmModel;
+
+      agentForm.querySelector('#agentVerbose').checked = !!agent.is_verbose;
+      agentForm.querySelector('#agentDelegation').checked = !!agent.allow_delegation;
+      // Agent의 도구 불러오기
+      selectedTools = agent.tools ? [...agent.tools] : [];
+      updateSelectedToolsCount();
+      agentModal.classList.add('show');
+    }
+
+    function closeAgentModal() {
+      if (agentModal) {
+        agentModal.classList.remove('show');
+      }
+      editingAgentOrder = null;
+    }
+
+    async function saveAgent(event) {
+      event.preventDefault();
+      if (!currentProjectId || !agentForm) return;
+
+      const agentData = {
+        framework: selectedFramework,
+        agentOrder: parseInt(agentForm.querySelector('#agentOrder').value, 10),
+        role: agentForm.querySelector('#agentRole').value,
+        goal: agentForm.querySelector('#agentGoal').value,
+        backstory: agentForm.querySelector('#agentBackstory').value,
+        llmModel: agentForm.querySelector('#agentLlm').value,
+        isVerbose: agentForm.querySelector('#agentVerbose').checked,
+        allowDelegation: agentForm.querySelector('#agentDelegation').checked,
+        tools: selectedTools,
+        toolConfig: {}
+      };
+
+      try {
+        let url = `/api/v2/projects/${currentProjectId}/agents`;
+        let method = 'POST';
+        if (editingAgentOrder !== null) {
+          url = `/api/v2/projects/${currentProjectId}/agents/${editingAgentOrder}`;
+          method = 'PUT';
+        }
+
+        const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(agentData)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ }));
+          throw new Error(errorData.error || `HTTP ${response.status}`);
+        }
+
+        closeAgentModal();
+        await loadAgents();
+      } catch (error) {
+        console.error('[pre_analysis] saveAgent error:', error);
+        alert(`Agent 저장 중 오류가 발생했습니다: ${error.message}`);
+      }
+    }
+
+    async function deleteAgent(agentOrder) {
+      if (!currentProjectId) return;
+      if (!confirm('정말로 이 Agent를 삭제하시겠습니까?')) return;
+
+      try {
+        const response = await fetch(`/api/v2/projects/${currentProjectId}/agents/${agentOrder}?framework=${selectedFramework}`, {
+          method: 'DELETE'
+        });
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ }));
+          throw new Error(errorData.error || `HTTP ${response.status}`);
+        }
+        await loadAgents();
+      } catch (error) {
+        console.error('[pre_analysis] deleteAgent error:', error);
+        alert(`Agent 삭제 중 오류가 발생했습니다: ${error.message}`);
+      }
+    }
+
+    async function generateAndExecute() {
+      if (!currentProjectId) return;
+      if (!confirm('스크립트를 생성하고 실행하시겠습니까?')) return;
+      try {
+        const response = await fetch('/api/generate-script', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            projectId: currentProjectId,
+            framework: selectedFramework
+          })
+        });
+        const data = await response.json();
+        if (response.ok && data.status === 'success') {
+          alert(`🎉 스크립트 생성 완료!\n결과 경로: ${data.script_path}`);
+          window.location.href = `/?tab=crewai&project_id=${currentProjectId}`;
+        } else {
+          throw new Error(data.error || `HTTP ${response.status}`);
+        }
+      } catch (error) {
+        console.error('[pre_analysis] generateAndExecute error:', error);
+        alert(`스크립트 생성 중 오류가 발생했습니다: ${error.message}`);
+      }
+    }
+
+    function resetConversation() {
+      conversationHistory = [];
+      suggestedRequirement = null;
+      messagesArea.innerHTML = '';
+      finalizeSection.classList.remove('show');
+      finalRequirementText.textContent = '';
+      saveConversation();
+      if (!currentProjectId) {
+        resetAgentPanel();
+      }
+    }
+
+    function startNewConversation() {
+      if (conversationHistory.length > 0) {
+        if (confirm('현재 대화를 저장하고 새로 시작할까요?')) {
+          resetConversation();
+        }
+      } else {
+        resetConversation();
+      }
+    }
+
+    function clearSavedConversation() {
+      if (confirm('저장된 대화 기록을 삭제하시겠습니까?')) {
+        localStorage.removeItem(`pre_analysis_${selectedFramework}`);
+        resetConversation();
+      }
+    }
+
+    function editRequirement() {
+      finalizeSection.classList.remove('show');
+      suggestedRequirement = null;
+      finalRequirementText.textContent = '';
+      saveConversation();
+    }
+
+    function initializePreAnalysis() {
+      const restored = loadConversation();
+      if (!restored) {
+        resetConversation();
+      }
+    }
+
+    // Event bindings
+    frameworkButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        frameworkButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedFramework = btn.dataset.framework || 'crewai';
+        if (frameworkDisplay) {
+          frameworkDisplay.textContent = `Framework: ${selectedFramework}`;
+        }
+        resetConversation();
+        resetAgentPanel();
+        initializePreAnalysis();
+      });
+    });
+
+    if (newConversationBtn) {
+      newConversationBtn.addEventListener('click', startNewConversation);
+    }
+
+    if (clearConversationBtn) {
+      clearConversationBtn.addEventListener('click', clearSavedConversation);
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    userInput.addEventListener('keypress', handleKeyPress);
+
+    if (confirmRequirementBtn) {
+      confirmRequirementBtn.addEventListener('click', confirmRequirement);
+    }
+
+    if (editRequirementBtn) {
+      editRequirementBtn.addEventListener('click', editRequirement);
+    }
+
+    if (modelSelect) {
+      currentModel = modelSelect.value || currentModel;
+      modelSelect.addEventListener('change', () => {
+        currentModel = modelSelect.value || currentModel;
+      });
+    }
+
+    if (addAgentButton) {
+      addAgentButton.addEventListener('click', openAddAgentModal);
+    }
+
+    if (executeProjectButton) {
+      executeProjectButton.addEventListener('click', generateAndExecute);
+    }
+
+    if (cancelAgentModalBtn) {
+      cancelAgentModalBtn.addEventListener('click', closeAgentModal);
+    }
+
+    
+    // ===== Tool Selection State Variables =====
+    let selectedTools = [];
+    let availableMCPs = [];
+    let reviewIterations = 1;
+
+    // ===== Tool Selection Functions =====
+    async function loadAvailableTools() {
+      try {
+        const response = await fetch('/api/mcps/available');
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const data = await response.json();
+        if (data.status === 'success' && Array.isArray(data.mcps)) {
+          availableMCPs = data.mcps;
+          console.log('[pre_analysis] Loaded available MCPs:', availableMCPs.length);
+        }
+      } catch (error) {
+        console.error('[pre_analysis] loadAvailableTools error:', error);
+        availableMCPs = [];
+      }
+    }
+
+    async function openToolsModal() {
+      console.log('[openToolsModal] === CALLED ===');
+      const toolsModal = document.getElementById('toolsModal');
+      console.log('[openToolsModal] Modal:', toolsModal);
+      
+      if (!toolsModal) {
+        console.error('[openToolsModal] NOT FOUND!');
+        return;
+      }
+
+      console.log('[openToolsModal] Display before:', toolsModal.style.display);
+      
+      // Load tools if not loaded yet
+      if (!availableMCPs || availableMCPs.length === 0) {
+        console.log('[openToolsModal] Loading tools...');
+        await loadAvailableTools();
+        console.log('[openToolsModal] Loaded:', availableMCPs.length);
+      }
+      
+      renderToolsGrid('all');
+      updateSelectedSummary();
+      
+      toolsModal.style.display = 'flex';
+      console.log('[openToolsModal] Display after:', toolsModal.style.display);
+      console.log('[openToolsModal] Computed:', window.getComputedStyle(toolsModal).display);
+    }
+
+    function closeToolsModal() {
+      const toolsModal = document.getElementById('toolsModal');
+      if (toolsModal) {
+        toolsModal.style.display = 'none';
+      }
+    }
+
+    function renderToolsGrid(category) {
+      const toolsGrid = document.getElementById('toolsGrid');
+      if (!toolsGrid) return;
+
+      toolsGrid.innerHTML = '';
+
+      const filtered = category === 'all'
+        ? availableMCPs
+        : availableMCPs.filter(tool => tool.category === category);
+
+      if (!filtered.length) {
+        toolsGrid.innerHTML = '<p class="empty-placeholder">선택 가능한 도구가 없습니다.</p>';
+        return;
+      }
+
+      filtered.forEach(tool => {
+        const isSelected = selectedTools.includes(tool.key);
+        const card = document.createElement('div');
+        card.className = `tool-card ${isSelected ? 'selected' : ''}`;
+        card.innerHTML = `
+          <div class="tool-card-content">
+            <div class="tool-icon">${tool.icon || '🔧'}</div>
+            <div class="tool-info">
+              <div class="tool-name">${tool.name}</div>
+              <div class="tool-description">${tool.description || ''}</div>
+              <div class="tool-category-badge">${tool.category || '기타'}</div>
+            </div>
+          </div>
+        `;
+        card.addEventListener('click', () => toggleTool(tool.key));
+        toolsGrid.appendChild(card);
+      });
+    }
+
+    function toggleTool(toolKey) {
+      const index = selectedTools.indexOf(toolKey);
+      if (index > -1) {
+        selectedTools.splice(index, 1);
+      } else {
+        selectedTools.push(toolKey);
+      }
+      renderToolsGrid(getCurrentCategory());
+      updateSelectedSummary();
+      updateSelectedToolsCount();
+    }
+
+    function getCurrentCategory() {
+      const activeTab = document.querySelector('.category-tab.active');
+      return activeTab ? activeTab.dataset.category : 'all';
+    }
+
+    function updateSelectedSummary() {
+      const selectedSummary = document.getElementById('selectedSummary');
+      if (selectedSummary) {
+        selectedSummary.textContent = `${selectedTools.length}개 선택됨`;
+      }
+    }
+
+    function updateSelectedToolsCount() {
+      const selectedToolsCount = document.getElementById('selectedToolsCount');
+      if (selectedToolsCount) {
+        selectedToolsCount.textContent = `${selectedTools.length}개 선택됨`;
+      }
+    }
+
+    function saveToolsSelection() {
+      updateSelectedToolsCount();
+      closeToolsModal();
+      console.log('[pre_analysis] Tools saved:', selectedTools);
+    }
+
+    function cancelToolsSelection() {
+      // Restore previous selection (do not modify selectedTools)
+      closeToolsModal();
+    }
+
+    // ===== Tool Modal Event Bindings =====
+    function initToolsModalEvents() {
+      const selectToolsBtn = document.getElementById('selectToolsBtn');
+      const closeToolsModalBtn = document.getElementById('closeToolsModalBtn');
+      const toolsModalOverlay = document.getElementById('toolsModalOverlay');
+      const saveToolsBtn = document.getElementById('saveToolsBtn');
+      const cancelToolsBtn = document.getElementById('cancelToolsBtn');
+      const categoryTabs = document.querySelectorAll('.category-tab');
+      const reviewIterationsInput = document.getElementById('reviewIterationsInput');
+
+      if (selectToolsBtn) {
+        selectToolsBtn.addEventListener('click', openToolsModal);
+      }
+
+      if (closeToolsModalBtn) {
+        closeToolsModalBtn.addEventListener('click', closeToolsModal);
+      }
+
+      if (toolsModalOverlay) {
+        toolsModalOverlay.addEventListener('click', closeToolsModal);
+      }
+
+      if (saveToolsBtn) {
+        saveToolsBtn.addEventListener('click', saveToolsSelection);
+      }
+
+      if (cancelToolsBtn) {
+        cancelToolsBtn.addEventListener('click', cancelToolsSelection);
+      }
+
+      categoryTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          categoryTabs.forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          renderToolsGrid(tab.dataset.category);
+        });
+      });
+
+      if (reviewIterationsInput) {
+        reviewIterationsInput.addEventListener('change', () => {
+          reviewIterations = parseInt(reviewIterationsInput.value, 10) || 1;
+          console.log('[pre_analysis] Review iterations changed:', reviewIterations);
+        });
+      }
+    }
+
+
+    if (agentForm) {
+      agentForm.addEventListener('submit', saveAgent);
+    }
+
+    initToolsModalEvents();
+    resetAgentPanel();
+    initializePreAnalysis();
+
+    window.sendMessage = sendMessage;
+    window.preAnalysis = {
+      sendMessage,
+      resetConversation,
+      confirmRequirement,
+      loadAgents,
+      getCurrentModel: () => currentModel,
+      getSelectedFramework: () => selectedFramework
+    };
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPreAnalysis);
+  } else {
+    initPreAnalysis();
+  }
+})();

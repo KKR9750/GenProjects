@@ -1,0 +1,145 @@
+# {{ project.project_name }}
+
+## 📋 프로젝트 개요
+
+**프로젝트 ID**: `{{ project.project_id }}`
+**프레임워크**: {{ project.framework|upper }}
+**상태**: {{ project.status }}
+
+## 🎯 최종 요구사항
+
+{{ project.final_requirement }}
+
+## 👥 Agent 구성
+
+이 프로젝트는 {{ agents|length }}개의 AI Agent로 구성되어 있습니다.
+
+{% for agent in agents %}
+### {{ loop.index }}. {{ agent.role }}
+
+**목표 (Goal)**: {{ agent.goal }}
+
+**배경 (Backstory)**: {{ agent.backstory }}
+
+**설정**:
+- LLM 모델: `{{ agent.llm_model }}`
+- Verbose: {{ "활성화" if agent.is_verbose else "비활성화" }}
+- Delegation: {{ "허용" if agent.allow_delegation else "비허용" }}
+
+{% endfor %}
+
+## 📝 Task 흐름
+
+총 {{ tasks|length }}개의 Task가 순차적으로 실행됩니다.
+
+{% for task in tasks %}
+### Task {{ task.task_order }}: {{ task.task_type or 'General Task' }}
+
+**설명**:
+{{ task.description }}
+
+**예상 출력**:
+{{ task.expected_output }}
+
+**담당 Agent**: {{ task.agent_role }}
+{% if task.depends_on_task_order %}
+**의존성**: Task {{ task.depends_on_task_order }} 완료 후 실행
+{% endif %}
+
+---
+
+{% endfor %}
+
+## 🚀 실행 방법
+
+### 1. 의존성 설치
+
+```bash
+pip install -r requirements.txt
+```
+
+### 2. 환경 변수 설정
+
+다음 환경 변수를 설정해야 합니다:
+
+{% set llm_models = agents | map(attribute='llm_model') | list %}
+{% set uses_openai = namespace(value=False) %}
+{% set uses_google = namespace(value=False) %}
+{% set uses_anthropic = namespace(value=False) %}
+{% for model in llm_models %}
+  {% if model.startswith('gpt') or model.startswith('deepseek') %}
+    {% set uses_openai.value = True %}
+  {% elif model.startswith('gemini') %}
+    {% set uses_google.value = True %}
+  {% elif model.startswith('claude') %}
+    {% set uses_anthropic.value = True %}
+  {% endif %}
+{% endfor %}
+
+{% if uses_openai.value %}
+- **OPENAI_API_KEY**: OpenAI API 키 (GPT/DeepSeek 모델 사용)
+{% endif %}
+{% if uses_google.value %}
+- **GOOGLE_API_KEY**: Google AI API 키 (Gemini 모델 사용)
+{% endif %}
+{% if uses_anthropic.value %}
+- **ANTHROPIC_API_KEY**: Anthropic API 키 (Claude 모델 사용)
+{% endif %}
+
+환경 변수 설정 방법:
+
+**Windows (PowerShell)**:
+```powershell
+{% if uses_openai.value %}$env:OPENAI_API_KEY="your_openai_api_key"
+{% endif %}{% if uses_google.value %}$env:GOOGLE_API_KEY="your_google_api_key"
+{% endif %}{% if uses_anthropic.value %}$env:ANTHROPIC_API_KEY="your_anthropic_api_key"
+{% endif %}```
+
+**Linux/Mac**:
+```bash
+{% if uses_openai.value %}export OPENAI_API_KEY="your_openai_api_key"
+{% endif %}{% if uses_google.value %}export GOOGLE_API_KEY="your_google_api_key"
+{% endif %}{% if uses_anthropic.value %}export ANTHROPIC_API_KEY="your_anthropic_api_key"
+{% endif %}```
+
+또는 `.env` 파일을 생성하세요:
+```env
+{% if uses_openai.value %}OPENAI_API_KEY=your_openai_api_key
+{% endif %}{% if uses_google.value %}GOOGLE_API_KEY=your_google_api_key
+{% endif %}{% if uses_anthropic.value %}ANTHROPIC_API_KEY=your_anthropic_api_key
+{% endif %}```
+
+### 3. 스크립트 실행
+
+```bash
+python {{ project.framework }}_script.py
+```
+
+## 📁 프로젝트 구조
+
+```
+{{ project.project_id }}/
+├── {{ project.framework }}_script.py    # 실행 스크립트
+├── README.md                            # 이 파일
+└── requirements.txt                     # 의존성 목록
+```
+
+## 🔍 DB 기반 동적 생성 시스템
+
+이 프로젝트는 **데이터베이스 기반 동적 생성 시스템**으로 자동 생성되었습니다.
+
+- Agent 및 Task 정의는 DB의 `project_agents`, `project_tasks` 테이블에서 조회
+- Jinja2 템플릿을 사용하여 실행 가능한 Python 스크립트로 변환
+- 생성된 스크립트는 독립적으로 실행 가능 (DB 연결 불필요)
+
+## 📄 참고사항
+
+- 생성된 스크립트는 DB에서 읽어 하드코딩된 형태로 생성됨
+- 실행 시점에는 DB 연결이 필요하지 않음
+- Agent/Task를 수정하려면 DB를 업데이트한 후 스크립트를 재생성해야 함
+
+---
+
+**생성 시스템**: AI Chat Interface - Dynamic Script Generator
+**문서 버전**: 1.0
+**최종 업데이트**: 자동 생성됨

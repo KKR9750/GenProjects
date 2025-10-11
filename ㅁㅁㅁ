@@ -1,0 +1,257 @@
+이제 각 탭별 화면 구조를 정리해서 분석 보고서를 작성하겠습니다:
+📊 탭별 화면 구성 분석 보고서
+🏗️ 전체 구조 (index.html)
+최상위 컨테이너:
+.app-container - 전체 앱 컨테이너
+공통 헤더:
+.tab-header - 탭 네비게이션 헤더
+.logo - 로고 영역
+.logo-icon - 🏠 아이콘
+.logo-text - "AI Platform" 텍스트
+.tab-nav - 탭 버튼 영역
+.tab[data-page="crewai"] - CrewAI 탭 (보라색)
+.tab[data-page="metagpt"] - MetaGPT 탭 (녹색)
+.tab[data-page="admin"] - 관리자 탭 (회색)
+.tab[data-page="projects"] - 프로젝트 탭 (주황색)
+.user-info - 사용자 정보 영역
+#user-name - 사용자 이름
+#logout-btn - 로그아웃 버튼
+동적 본문:
+#content-area - 탭별 컨텐츠 영역
+#root - React 컴포넌트 렌더링 영역
+1️⃣ CrewAI 탭 (crewai.js)
+메인 컨테이너:
+.crewai-container - CrewAI 전체 컨테이너
+헤더 영역:
+.crewai-header - CrewAI 헤더
+.header-left - 왼쪽 영역
+.header-status - 연결 상태 표시
+.current-project-header - 현재 프로젝트 정보
+.header-controls - 오른쪽 컨트롤 버튼 영역
+본문 영역:
+.crewai-main - 메인 영역 왼쪽 패널:
+.projects-panel - 프로젝트 패널
+.panel-header - 패널 헤더
+.projects-list - 프로젝트 목록
+.no-projects - 빈 상태
+.project-info - 프로젝트 정보 (클릭 가능)
+.project-meta - 프로젝트 메타데이터
+.project-progress - 진행률
+.progress-bar - 진행 바
+.project-actions - 프로젝트 액션 버튼
+중앙 채팅 영역:
+.chat-area - 채팅 영역
+.sidebar - 사이드바 (왼쪽)
+.role-selector - 역할 선택기
+.roles-grid - 역할 그리드
+.role-icon - 역할 아이콘
+.role-info - 역할 정보
+.role-name - 역할 이름
+.role-desc - 역할 설명
+.llm-mapping - LLM 모델 매핑
+.mode-selector - 모드 선택기 (자동/수동)
+.auto-recommendations - 자동 추천 표시
+.loading-recommendations - 로딩 상태
+.llm-status - LLM 상태
+.mapping-list - 매핑 목록
+.mapping-item - 매핑 항목
+.mapping-role - 역할 이름
+.review-iterations - 검토 반복 횟수
+.iterations-selector - 반복 선택기
+.config-section - 설정 섹션
+.section-header - 섹션 헤더
+.chat-main - 채팅 메인 (오른쪽)
+.chat-messages - 메시지 영역
+.welcome-message - 환영 메시지
+.team-preview - 팀 미리보기
+.message - 개별 메시지
+.message-header - 메시지 헤더
+.message-bubble - 메시지 말풍선
+.message-content - 메시지 내용
+.message-timestamp - 타임스탬프
+2️⃣ MetaGPT 탭 (metagpt.js)
+메인 컨테이너:
+.metagpt-container - MetaGPT 전체 컨테이너
+헤더 영역:
+.header-left - 왼쪽 영역
+.header-status - 상태 표시
+.current-project-header - 현재 프로젝트
+.header-controls - 컨트롤 버튼
+본문 영역:
+.metagpt-main - 메인 영역 왼쪽 패널:
+.projects-panel - 프로젝트 패널
+.panel-header - 헤더
+.projects-list - 프로젝트 목록
+.no-projects - 빈 상태
+.project-info - 프로젝트 정보
+.project-meta - 메타데이터
+.step-progress - 단계 진행
+.steps-indicator - 단계 표시기
+워크플로우 영역:
+.workflow-area - 워크플로우 영역
+.sidebar - 사이드바
+.workflow-progress - 워크플로우 진행 상태
+.steps-list - 단계 목록
+.step-icon - 단계 아이콘
+.step-info - 단계 정보
+.step-name - 단계 이름
+.step-role - 담당 역할
+.step-status - 단계 상태
+.llm-mapping - LLM 매핑
+.llm-status - LLM 상태
+.mapping-list - 매핑 목록
+.mapping-role - 역할
+.chat-main - 채팅 메인
+.chat-messages - 메시지 영역
+.welcome-message - 환영 메시지
+.workflow-preview - 워크플로우 미리보기
+.step-number - 단계 번호
+.step-icon - 아이콘
+.step-title - 제목
+.step-arrow - 화살표
+.message - 메시지
+.message-bubble.loading - 로딩 메시지
+.loading-dots - 로딩 점
+.approval-section - 승인 섹션
+.approval-header - 승인 헤더
+.approval-actions - 승인 액션
+.chat-input - 입력 영역
+.input-container - 입력 컨테이너
+.input-header - 입력 헤더
+.current-step - 현재 단계
+.step-line-1 - 단계 라인 1
+.step-line-2 - 단계 라인 2
+.input-right - 오른쪽 영역
+.workflow-controls - 워크플로우 컨트롤
+.current-step-info - 현재 단계 정보
+3️⃣ 관리자 탭 (admin.js)
+메인 컨테이너:
+.admin-container-tab - 관리자 탭 컨테이너
+사이드바:
+.admin-sidebar - 관리자 사이드바
+.sidebar-header - 사이드바 헤더
+h1 - "🛡️ Admin Panel"
+p - "AI Chat Interface"
+.sidebar-menu - 사이드바 메뉴
+.menu-item[data-section="dashboard"] - 📊 대시보드
+.menu-item[data-section="users"] - 👥 사용자 관리
+.menu-item[data-section="llm"] - 🤖 LLM 관리
+.menu-item[data-section="system"] - ⚙️ 시스템 설정
+메인 영역:
+.admin-main - 관리자 메인
+.admin-header-tab - 헤더
+#contentArea.admin-content-tab - 컨텐츠 영역
+대시보드 섹션 (data-section="dashboard"):
+.stats-grid - 통계 그리드
+.stat-card.stat-blue - 시스템 상태
+.stat-number#systemStatus - 상태 숫자
+.stat-label - 라벨
+.stat-card.stat-red - 프로젝트 수
+.stat-number#projectCount
+.stat-card.stat-green - LLM 모델 수
+.stat-number#llmCount
+.stat-card.stat-orange - 사용자 수
+.stat-number#userCount
+.info-grid - 정보 그리드
+.info-card - 시스템 정보 카드
+.info-item - 정보 항목 (버전, 시간, 포트 등)
+.info-card - 빠른 접속 카드
+.quick-access - 빠른 접속
+.quick-title - 제목
+.quick-subtitle - 부제목
+사용자 관리 섹션 (data-section="users"):
+.loading - 로딩 상태
+LLM 관리 섹션 (data-section="llm"):
+.loading - 로딩 상태
+시스템 설정 섹션 (data-section="system"):
+.loading - 로딩 상태
+4️⃣ 프로젝트 탭 (projects.js)
+메인 컨테이너:
+.projects-container-tab - 프로젝트 탭 컨테이너
+헤더 영역:
+.projects-header - 프로젝트 헤더
+h1 - "📁 프로젝트 관리"
+p - 설명
+.header-actions - 액션 버튼
+.btn.btn-primary - 새 프로젝트 생성
+.btn.btn-secondary - 새로고침
+통계 섹션:
+#statsGrid.stats-grid - 통계 그리드
+필터 섹션:
+.filters-section - 필터 섹션
+.filters-controls - 필터 컨트롤
+.filter-group - 필터 그룹
+#statusFilter - 실행 상태 선택
+#frameworkFilter - AI 프레임워크 선택
+.filter-group.search-box - 검색 박스
+#searchInput - 검색 입력
+프로젝트 그리드:
+#projectsGrid.projects-grid - 프로젝트 카드 그리드
+상태 표시:
+#loadingState.loading - 로딩 상태
+#errorState.error - 에러 상태
+#errorMessage - 에러 메시지
+#emptyState.empty-state - 빈 상태
+.empty-state-icon - 📂 아이콘
+h3 - 제목
+p - 설명
+.btn.btn-primary - 첫 프로젝트 생성 버튼
+📝 화면 수정 요청 시 참고사항
+주요 ID 요소:
+#root - React 컴포넌트 렌더링
+#content-area - 탭 본문 영역
+#user-name - 사용자 이름
+#logout-btn - 로그아웃 버튼
+#systemStatus - 시스템 상태 (Admin)
+#projectCount - 프로젝트 수 (Admin)
+#llmCount - LLM 모델 수 (Admin)
+#userCount - 사용자 수 (Admin)
+#statsGrid - 통계 그리드 (Projects)
+#projectsGrid - 프로젝트 그리드 (Projects)
+#statusFilter - 상태 필터 (Projects)
+#frameworkFilter - 프레임워크 필터 (Projects)
+#searchInput - 검색 입력 (Projects)
+주요 클래스 네이밍 패턴:
+React 컴포넌트: className="xxx" (camelCase)
+Pure JS 컴포넌트: class="xxx" (kebab-case)
+탭별 컨테이너: .crewai-container, .metagpt-container, .admin-container-tab, .projects-container-tab
+공통 헤더: .header-left, .header-controls
+공통 사이드바: .sidebar, .sidebar-menu
+공통 채팅: .chat-main, .chat-messages, .message-bubble
+
+
+
+  1. CrewAI 또는 MetaGPT탭을 선택한다
+   2. 신규프로젝트 버튼을 클릭하면 "요구사항 분석" 화면이 출력
+   3. 확정된 요구사항을 기준으로 각 AGENT 와 TASK를 자동으로 정의
+      정의내용 페이지가 출력되고 프로젝트 저장버튼을 클릭하면 데이터베이스에 저장
+   4. 프로젝트 탭페이지에서 projects 테이블을 조회하여 목록을 보여주고
+      선택한 프로젝트의 내용 및 AGENT 와 TASK의 내용을 출력하고
+      실행버튼을 클릭하면 실행처리
+
+
+
+ 화면 구성
+
+좌측 analysis-pane: 요구사항 분석 영역.
+
+analysis-toolbar: 제목(h2), 프레임워크 선택 버튼(framework-btn 2개), 대화 제어 버튼(control-btn – 새 대화, 기록 삭제).
+chat-container:
+messages-area → 대화 메시지 (message ai/user, message-bubble, message-icon).
+loading → 분석 중 표시.
+finalize-section → 확정된 요구사항 카드(finalize-content h4/p)와 액션 버튼 (finalize-btn confirm/edit).
+input-area → 텍스트 입력(input#userInput)과 전송 버튼(send-btn#sendBtn).
+우측 agent-pane: Agent 관리 영역.
+
+agent-pane-overlay: 프로젝트 생성 전 안내 오버레이.
+agent-pane-body: 생성 후 실제 UI.
+agent-pane-header: 제목과 설명; 우측 agent-project-meta에서 projectIdDisplay, frameworkDisplay 표시.
+agent-requirement-card: 최종 요구사항 출력(requirementText).
+agent-toolbar: add-agent-btn (Agent 추가).
+agents-grid: Agent 카드 목록. 각 카드(agent-card)는 agent-header, agent-role, agent-flags, agent-details (goal-summary, goal-detail, backstory-*), agent-actions (action-btn).
+execute-section: 실행 설명과 execute-btn.
+모달 #agentModal: Agent 추가/수정 폼.
+
+
+
+전체소스 검토해서 API_KEY처럼 보안에 문제되는 소스있는지 확인해서 리스업하고 대상 소스가 있으면 변경해줘

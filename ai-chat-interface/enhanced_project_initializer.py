@@ -332,7 +332,7 @@ try:
 
     executor = EnhancedCrewAIExecutor(
         project_path="{project_path}",
-        original_requirements="""{requirement}""",
+        original_requirements=\"\"\"{requirement}\"\"\",
         project_name="{project_name}",
         description="{description}"
     )

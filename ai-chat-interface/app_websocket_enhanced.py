@@ -82,21 +82,11 @@ def test_progress_tracking():
             project_id, 3, ['Phase 1', 'Phase 2', 'Phase 3']
         )
 
-        # 진행 상황 시뮬레이션
-        import threading
-        import time
+        # 실제 프로젝트 실행 시작
+        logger.info(f"프로젝트 {project_id} 실행을 시작합니다")
 
-        def simulate_progress():
-            for i in range(1, 101, 10):
-                global_progress_tracker.update_progress(
-                    project_id, 'Phase 1', 'Test Agent', i, f'테스트 진행 중... {i}%'
-                )
-                time.sleep(0.5)
-
-            global_progress_tracker.complete_stage(project_id, 'Phase 1', [{'test': 'deliverable'}])
-
-        # 백그라운드에서 진행 상황 시뮬레이션
-        threading.Thread(target=simulate_progress, daemon=True).start()
+        # 여기서 실제 AI 프레임워크(CrewAI/MetaGPT) 실행 로직 호출
+        # project_executor.execute_project(project_id) 등의 실제 구현 필요
 
         return jsonify({
             'success': True,

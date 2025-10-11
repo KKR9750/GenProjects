@@ -1,0 +1,380 @@
+/* ============================================
+   탭 기반 SPA 스타일 + 최적화된 폰트 시스템
+   ============================================ */
+
+/* 폰트 크기 시스템 (기존 대비 25-30% 축소) */
+:root {
+    /* 폰트 크기 변수 */
+    --font-xl: 1.25rem;      /* 20px - 페이지 제목 (기존 1.8rem) */
+    --font-lg: 1.125rem;     /* 18px - 섹션 제목 (기존 1.5rem) */
+    --font-md: 1rem;         /* 16px - 서브 제목 (기존 1.4rem) */
+    --font-base: 0.875rem;   /* 14px - 본문 (기존 1.2rem) */
+    --font-sm: 0.75rem;      /* 12px - 작은 텍스트 (기존 1.1rem) */
+    --font-xs: 0.6875rem;    /* 11px - 캡션 */
+
+    /* 색상 변수 - 프레임워크별 */
+    --color-blue: #3B82F6;
+    --color-purple: #8B5CF6;
+    --color-green: #10B981;
+    --color-gray: #6B7280;
+    --color-dark-gray: #374151;
+
+    /* 공통 색상 */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f9fafb;
+    --border-color: #e5e7eb;
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+/* 리셋 및 기본 스타일 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+    font-size: var(--font-base);
+    color: var(--text-primary);
+    background-color: var(--bg-secondary);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* 앱 컨테이너 */
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* ============================================
+   탭 헤더 스타일
+   ============================================ */
+.tab-header {
+    display: flex;
+    align-items: center;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 1.25rem;
+    height: 3.5rem;
+    box-shadow: var(--shadow-sm);
+    z-index: 10;
+}
+
+/* 로고 */
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-right: 2rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.logo-icon {
+    font-size: 1.25rem;
+}
+
+.logo-text {
+    font-size: var(--font-md);
+    letter-spacing: -0.01em;
+}
+
+/* 탭 네비게이션 */
+.tab-nav {
+    display: flex;
+    gap: 0.25rem;
+}
+
+/* 탭 버튼 */
+.tab {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    border: none;
+    background: transparent;
+    border-bottom: 3px solid transparent;
+    color: var(--text-secondary);
+    font-size: var(--font-base);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.tab:hover {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.tab-icon {
+    font-size: 1.125rem;
+}
+
+.tab-text {
+    font-size: var(--font-base);
+}
+
+/* 활성 탭 스타일 - 색상별 */
+.tab.active {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.tab.active[data-color="blue"] {
+    border-bottom-color: var(--color-blue);
+}
+
+.tab.active[data-color="purple"] {
+    border-bottom-color: var(--color-purple);
+}
+
+.tab.active[data-color="green"] {
+    border-bottom-color: var(--color-green);
+}
+
+.tab.active[data-color="gray"] {
+    border-bottom-color: var(--color-gray);
+}
+
+/* 탭 호버 효과 - 색상별 */
+.tab[data-color="blue"]:hover {
+    color: var(--color-blue);
+}
+
+.tab[data-color="purple"]:hover {
+    color: var(--color-purple);
+}
+
+.tab[data-color="green"]:hover {
+    color: var(--color-green);
+}
+
+.tab[data-color="gray"]:hover {
+    color: var(--color-gray);
+}
+
+/* ============================================
+   사용자 정보 영역
+   ============================================ */
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-left: auto;
+    padding-left: 1rem;
+    border-left: 1px solid var(--border-color);
+}
+
+.user-name {
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.logout-btn {
+    padding: 0.375rem 0.75rem;
+    font-size: var(--font-sm);
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+
+.logout-btn:hover {
+    background: #dc2626;
+}
+
+/* ============================================
+   본문 영역
+   ============================================ */
+.content-area {
+    flex: 1;
+    overflow: auto;
+    background: transparent;
+}
+
+#root {
+    width: 100%;
+    height: 100%;
+}
+
+/* 페이드 인 애니메이션 */
+.fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ============================================
+   반응형 디자인
+   ============================================ */
+
+/* 태블릿 */
+@media (max-width: 768px) {
+    .tab-header {
+        padding: 0 1rem;
+    }
+
+    .logo-text {
+        display: none;
+    }
+
+    .tab {
+        padding: 0.5rem 0.75rem;
+    }
+
+    .tab-text {
+        font-size: var(--font-sm);
+    }
+}
+
+/* 모바일 */
+@media (max-width: 640px) {
+    .tab-header {
+        padding: 0 0.5rem;
+        height: 3rem;
+    }
+
+    .logo {
+        margin-right: 0.5rem;
+    }
+
+    .tab-nav {
+        gap: 0;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .tab-nav::-webkit-scrollbar {
+        display: none;
+    }
+
+    .tab {
+        padding: 0.5rem;
+        min-width: fit-content;
+    }
+
+    .tab-text {
+        display: none;
+    }
+
+    .tab-icon {
+        font-size: 1.25rem;
+    }
+}
+
+/* ============================================
+   로딩 상태
+   ============================================ */
+.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-secondary);
+    font-size: var(--font-base);
+}
+
+.loading::after {
+    content: '';
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-left: 0.75rem;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--color-blue);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ============================================
+   유틸리티 클래스
+   ============================================ */
+.hidden {
+    display: none !important;
+}
+
+.visible {
+    display: block !important;
+}
+
+/* 스크롤바 스타일링 */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+}
+
+/* 포커스 스타일 */
+.tab:focus-visible {
+    outline: 2px solid var(--color-blue);
+    outline-offset: -2px;
+}
+
+/* ============================================
+   프레임워크별 배경색 클래스
+   ============================================ */
+
+/* CrewAI 페이지 활성 시 보라색 그라데이션 배경 */
+body.crewai-active {
+    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%) !important;
+}
+
+/* MetaGPT 페이지 활성 시 녹색 그라데이션 배경 */
+body.metagpt-active {
+    background: linear-gradient(135deg, #059669 0%, #10B981 100%) !important;
+}
+
+/* Dashboard 페이지 활성 시 파란색 그라데이션 배경 */
+body.dashboard-active {
+    background: linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%) !important;
+}
+
+/* Admin 페이지는 기본 밝은 회색 배경 유지 */
+body.admin-active {
+    background: #f9fafb !important;
+}
+
+/* Projects 페이지 활성 시 주황색 그라데이션 배경 */
+body.projects-active {
+    background: linear-gradient(135deg, #F97316 0%, #FB923C 100%) !important;
+}

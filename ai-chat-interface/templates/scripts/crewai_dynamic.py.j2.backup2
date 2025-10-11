@@ -1,0 +1,178 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+CrewAI 동적 실행 스크립트
+프로젝트: {{ project.project_name }}
+프로젝트 ID: {{ project.project_id }}
+
+최종 요구사항:
+{{ project.final_requirement }}
+
+이 스크립트는 DB에서 자동 생성되었습니다.
+"""
+
+import os
+import sys
+from crewai import Agent, Task, Crew, Process, LLM
+
+# 사용된 LLM 모델 파악
+{% set llm_models = agents | map(attribute='llm_model') | list %}
+{% set uses_openai = namespace(value=False) %}
+{% set uses_google = namespace(value=False) %}
+{% set uses_anthropic = namespace(value=False) %}
+{% for model in llm_models %}
+  {% if model.startswith('gpt') or model.startswith('deepseek') %}
+    {% set uses_openai.value = True %}
+  {% elif model.startswith('gemini') %}
+    {% set uses_google.value = True %}
+  {% elif model.startswith('claude') %}
+    {% set uses_anthropic.value = True %}
+  {% endif %}
+{% endfor %}
+
+# 환경 변수 검증
+required_env_vars = {
+    "GOOGLE_API_KEY": "Gemini API Key",
+    "GEMINI_API_KEY": "Gemini API Key (alternative)"
+}
+
+# API 키 확인 (둘 중 하나라도 있으면 됨)
+google_api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+
+if not google_api_key:
+    print("=" * 70)
+    print("[ERROR] Gemini API key not found")
+    print("=" * 70)
+    print("\nPlease set one of the following environment variables:")
+    print("  - GOOGLE_API_KEY")
+    print("  - GEMINI_API_KEY")
+    print("\nSetup methods:")
+    print("  PowerShell: $env:GOOGLE_API_KEY='your-api-key'")
+    print("  CMD: set GOOGLE_API_KEY=your-api-key")
+    print("\nGet API key: https://aistudio.google.com/app/apikey")
+    print("=" * 70)
+    sys.exit(1)
+
+print(f"[OK] Gemini API key verified (length: {len(google_api_key)} chars)")
+
+# LLM 객체 생성 함수
+def get_llm(model_name: str):
+    """
+    CrewAI LLM 객체 생성 (API 키 명시적 전달)
+
+    Args:
+        model_name: 요청된 모델명 (예: gemini-2.5-flash, gpt-4, claude-3-sonnet)
+
+    Returns:
+        CrewAI LLM 객체
+    """
+    # models/ 접두사 제거
+    if model_name.startswith('models/'):
+        model_name = model_name.replace('models/', '')
+
+    # Gemini 2.5 모델 처리 (LiteLLM 지원 확인 필요)
+    # Gemini 2.5가 안정화되지 않았다면 2.0 Flash로 폴백
+    if model_name.startswith('gemini-2.5'):
+        # Gemini 2.5 시도, 실패 시 2.0으로 폴백
+        model_name = 'gemini-2.0-flash-exp'
+        print(f"[WARNING] Gemini 2.5 may not be supported in LiteLLM yet -> using {model_name}")
+
+    # LiteLLM 형식으로 변환
+    if model_name.startswith('gemini'):
+        litellm_model = f"gemini/{model_name}"
+    elif model_name.startswith('gpt'):
+        litellm_model = model_name  # OpenAI
+    elif model_name.startswith('claude'):
+        litellm_model = model_name  # Anthropic
+    elif model_name.startswith('deepseek'):
+        litellm_model = model_name  # DeepSeek
+    else:
+        litellm_model = "gemini/gemini-2.0-flash-exp"  # 기본값
+
+    # CrewAI LLM 객체 생성 (API 키 명시적 전달)
+    return LLM(
+        model=litellm_model,
+        api_key=google_api_key
+    )
+
+# ============================================
+# Agents 정의 (DB에서 자동 생성)
+# ============================================
+
+{% for agent in agents %}
+# Agent {{ agent.agent_order }}: {{ agent.role }}
+{{ agent.role|lower|replace(' ', '_') }}_agent = Agent(
+    role="{{ agent.role }}",
+    goal="""{{ agent.goal }}""",
+    backstory="""{{ agent.backstory }}""",
+    verbose={{ "True" if agent.is_verbose else "False" }},
+    allow_delegation={{ "True" if agent.allow_delegation else "False" }},
+    llm=get_llm("{{ agent.llm_model }}")
+)
+
+{% endfor %}
+
+# ============================================
+# Tasks 정의 (DB에서 자동 생성)
+# ============================================
+
+{% for task in tasks %}
+# Task {{ task.task_order }}: {{ task.task_type or 'General' }}
+task_{{ task.task_order }} = Task(
+    description="""{{ task.description }}""",
+    expected_output="""{{ task.expected_output }}""",
+    agent={{ task.agent_role|lower|replace(' ', '_') }}_agent
+)
+
+{% endfor %}
+
+# ============================================
+# Crew 구성 및 실행
+# ============================================
+
+def main():
+    """CrewAI 실행 메인 함수"""
+
+    # Crew 구성
+    crew = Crew(
+        agents=[
+            {%- for agent in agents %}
+            {{ agent.role|lower|replace(' ', '_') }}_agent{{ "," if not loop.last else "" }}
+            {%- endfor %}
+        ],
+        tasks=[
+            {%- for task in tasks %}
+            task_{{ task.task_order }}{{ "," if not loop.last else "" }}
+            {%- endfor %}
+        ],
+        process=Process.sequential,  # 순차 실행
+        verbose=True
+    )
+
+    # 실행
+    print("=" * 50)
+    print(f"프로젝트: {{ project.project_name }}")
+    print(f"프로젝트 ID: {{ project.project_id }}")
+    print("요구사항:")
+    print("""{{ project.final_requirement }}""")
+    print("=" * 50)
+
+    result = crew.kickoff()
+
+    print("\n" + "=" * 50)
+    print("실행 결과:")
+    print("=" * 50)
+    print(result)
+
+    return result
+
+
+if __name__ == '__main__':
+    try:
+        result = main()
+        sys.exit(0)
+    except Exception as e:
+        print(f"오류 발생: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)

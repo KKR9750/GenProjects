@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent 관리 - AI Chat Interface</title>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Agent 관리</h1>
+            <div class="project-info">
+                <span id="projectIdDisplay">Project ID: </span>
+                <span id="frameworkDisplay">Framework: </span>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('agents')">Agents</button>
+            <button class="tab" onclick="location.href='task_manager.html' + location.search">Tasks</button>
+        </div>
+
+        <div class="content-area">
+            <div class="requirement-box" id="requirementBox" style="display:none;">
+                <h3 class="requirement-title">📌 프로젝트 요구사항</h3>
+                <p class="requirement-text" id="requirementText"></p>
+            </div>
+            <div class="section-header">
+                <h2>Agent 목록</h2>
+                <button class="add-btn" onclick="openAddAgentModal()">+ Agent 추가</button>
+            </div>
+
+            <div class="agents-grid" id="agentsGrid">
+                <!-- Agent 카드가 여기에 추가됩니다 -->
+            </div>
+
+            <div class="execute-section">
+                <h3 style="margin-bottom: 15px;">🚀 스크립트 생성 및 실행</h3>
+                <button class="execute-btn" onclick="generateAndExecute()">
+                    스크립트 생성 및 실행하기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Agent 추가/수정 모달 -->
+    <div class="modal" id="agentModal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Agent 추가</h2>
+            <form id="agentForm">
+                <div class="form-group">
+                    <label>Agent Order *</label>
+                    <input type="number" id="agentOrder" required min="1">
+                </div>
+                <div class="form-group">
+                    <label>Role *</label>
+                    <input type="text" id="agentRole" required>
+                </div>
+                <div class="form-group">
+                    <label>Goal *</label>
+                    <textarea id="agentGoal" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Backstory *</label>
+                    <textarea id="agentBackstory" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>LLM Model</label>
+                    <select id="agentLlm">
+                        <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash</option>
+                        <option value="gpt-4">GPT-4</option>
+                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                        <option value="claude-3-sonnet">Claude 3 Sonnet</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="agentVerbose" checked>
+                        Verbose
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="agentDelegation">
+                        Allow Delegation
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeAgentModal()">취소</button>
+                    <button type="submit" class="btn btn-primary">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        var projectId = '';
+        var framework = '';
+        var agents = [];
+        var editingAgentOrder = null;
+        var sharedRequirement = '';
+
+        function extractRequirementFromGoal(goal) {
+            if (!goal) return '';
+            const idx = goal.indexOf(':');
+            if (idx === -1) return '';
+            return goal.slice(idx + 1).trim();
+        }
+
+        function splitGoal(goal) {
+            if (!goal) {
+                return { summary: '', detail: '' };
+            }
+            const idx = goal.indexOf(':');
+            if (idx === -1) {
+                return { summary: goal.trim(), detail: '' };
+            }
+            return {
+                summary: goal.slice(0, idx).trim(),
+                detail: goal.slice(idx + 1).trim()
+            };
+        }
+
+        function splitBackstory(backstory) {
+            if (!backstory) {
+                return { lead: '', detail: '' };
+            }
+            const trimmed = backstory.trim();
+            const idx = trimmed.indexOf('.');
+            if (idx === -1) {
+                return { lead: trimmed, detail: '' };
+            }
+            return {
+                lead: trimmed.slice(0, idx + 1).trim(),
+                detail: trimmed.slice(idx + 1).trim()
+            };
+        }
+
+        function updateRequirementBox() {
+            const box = document.getElementById('requirementBox');
+            const textEl = document.getElementById('requirementText');
+            if (!box || !textEl) return;
+            if (sharedRequirement) {
+                box.style.display = 'block';
+                textEl.innerHTML = sharedRequirement.replace(/\n/g, '<br>');
+            } else {
+                box.style.display = 'none';
+                textEl.innerHTML = '';
+            }
+        }
+        // URL 파라미터 파싱
+        var urlParams = new URLSearchParams(window.location.search);
+        projectId = urlParams.get('project_id');
+        framework = urlParams.get('framework') || 'crewai';
+
+        // sessionStorage에서 전달된 값 복원
+        (function restoreFromSession() {
+            const stored = sessionStorage.getItem('agent_manager_params');
+            if (!stored) return;
+            try {
+                const parsed = JSON.parse(stored);
+                if (!projectId && parsed.project_id) {
+                    projectId = parsed.project_id;
+                }
+                if (parsed.framework) {
+                    framework = parsed.framework;
+                }
+                if (parsed.requirement) {
+                    sharedRequirement = parsed.requirement;
+                    updateRequirementBox();
+                }
+            } catch (error) {
+                console.warn('Failed to parse agent_manager_params:', error);
+            } finally {
+                try {
+                    sessionStorage.removeItem('agent_manager_params');
+                } catch (e) {
+                    console.warn('sessionStorage remove failed:', e);
+                }
+            }
+        })();
+
+        // 페이지 로드
+        async function initializeAgentManager() {
+            if (!projectId) {
+                alert('프로젝트 ID가 없습니다.');
+                window.location.href = '/pre_analysis.html';
+                return;
+            }
+
+            document.getElementById('projectIdDisplay').textContent = `Project ID: ${projectId}`;
+            document.getElementById('frameworkDisplay').textContent = `Framework: ${framework}`;
+            updateRequirementBox();
+
+            await loadAgents();
+        }
+
+        initializeAgentManager();
+
+        // Agent 목록 로드
+        async function loadAgents() {
+            try {
+                const response = await fetch(`/api/v2/projects/${projectId}/agents?framework=${framework}`);
+                const data = await response.json();
+                agents = data.agents || [];
+                sharedRequirement = "";
+                for (const agent of agents) {
+                    const requirementText = extractRequirementFromGoal(agent.goal);
+                    if (requirementText) {
+                        sharedRequirement = requirementText;
+                        break;
+                    }
+                }
+                sharedRequirement = sharedRequirement ? sharedRequirement.trim() : '';
+                updateRequirementBox();
+                renderAgents();
+            } catch (error) {
+                console.error('Error loading agents:', error);
+            }
+        }
+
+        // Agent 렌더링
+        function renderAgents() {
+            const grid = document.getElementById('agentsGrid');
+            grid.innerHTML = '';
+
+            if (!agents.length) {
+                grid.innerHTML = '<p class="empty-placeholder">등록된 Agent가 없습니다.</p>';
+                return;
+            }
+
+            agents.forEach(agent => {
+                const card = document.createElement('div');
+                card.className = 'agent-card';
+                const goalInfo = splitGoal(agent.goal);
+                const backstoryInfo = splitBackstory(agent.backstory);
+                const requirementDetail = (goalInfo.detail && sharedRequirement && goalInfo.detail.trim() === sharedRequirement.trim()) ? '' : goalInfo.detail;
+                const verboseLabel = agent.is_verbose ? 'Verbose' : 'Concise';
+                const verboseClass = agent.is_verbose ? 'flag-verbose' : 'flag-quiet';
+                const delegationFlag = agent.allow_delegation ? '<span class="flag flag-delegation">Delegation</span>' : '';
+                card.innerHTML = `
+                    <div class="agent-header">
+                        <div class="agent-order">${agent.agent_order ?? '-'}</div>
+                        <div class="agent-role">
+                            <h3>${agent.role || '-'}</h3>
+                            <span class="agent-llm">${agent.llm_model || '-'}</span>
+                            <div class="agent-flags">
+                                <span class="flag ${verboseClass}">${verboseLabel}</span>
+                                ${delegationFlag}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="agent-details">
+                        <div class="agent-detail">
+                            <label>Goal</label>
+                            <p class="goal-summary">${goalInfo.summary || '-'}</p>
+                            ${requirementDetail ? `<p class="goal-detail">${requirementDetail}</p>` : ''}
+                        </div>
+                        <div class="agent-detail">
+                            <label>Backstory</label>
+                            <p class="backstory-lead">${backstoryInfo.lead || '-'}</p>
+                            ${backstoryInfo.detail ? `<p class="backstory-detail">${backstoryInfo.detail}</p>` : ''}
+                        </div>
+                    </div>
+                    <div class="agent-actions">
+                        <button class="action-btn edit" onclick="editAgent(${agent.agent_order})">수정</button>
+                        <button class="action-btn delete" onclick="deleteAgent(${agent.agent_order})">삭제</button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Agent 추가 모달 열기
+        function openAddAgentModal() {
+            editingAgentOrder = null;
+            document.getElementById('modalTitle').textContent = 'Agent 추가';
+            document.getElementById('agentForm').reset();
+            document.getElementById('agentModal').classList.add('show');
+        }
+
+        // Agent 수정
+        function editAgent(agentOrder) {
+            const agent = agents.find(a => a.agent_order === agentOrder);
+            if (!agent) return;
+
+            editingAgentOrder = agentOrder;
+            document.getElementById('modalTitle').textContent = 'Agent 수정';
+            document.getElementById('agentOrder').value = agent.agent_order;
+            document.getElementById('agentRole').value = agent.role;
+            document.getElementById('agentGoal').value = agent.goal;
+            document.getElementById('agentBackstory').value = agent.backstory;
+            document.getElementById('agentLlm').value = agent.llm_model;
+            document.getElementById('agentVerbose').checked = agent.is_verbose;
+            document.getElementById('agentDelegation').checked = agent.allow_delegation;
+
+            document.getElementById('agentModal').classList.add('show');
+        }
+
+        // 모달 닫기
+        function closeAgentModal() {
+            document.getElementById('agentModal').classList.remove('show');
+        }
+
+        // Agent 저장
+        document.getElementById('agentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const agentData = {
+                framework: framework,
+                agentOrder: parseInt(document.getElementById('agentOrder').value),
+                role: document.getElementById('agentRole').value,
+                goal: document.getElementById('agentGoal').value,
+                backstory: document.getElementById('agentBackstory').value,
+                llmModel: document.getElementById('agentLlm').value,
+                isVerbose: document.getElementById('agentVerbose').checked,
+                allowDelegation: document.getElementById('agentDelegation').checked
+            };
+
+            try {
+                let url, method;
+                if (editingAgentOrder !== null) {
+                    // 수정
+                    url = `/api/v2/projects/${projectId}/agents/${editingAgentOrder}`;
+                    method = 'PUT';
+                } else {
+                    // 추가
+                    url = `/api/v2/projects/${projectId}/agents`;
+                    method = 'POST';
+                }
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(agentData)
+                });
+
+                if (response.ok) {
+                    closeAgentModal();
+                    await loadAgents();
+                } else {
+                    alert('Agent 저장 중 오류가 발생했습니다.');
+                }
+            } catch (error) {
+                console.error('Error saving agent:', error);
+                alert('Agent 저장 중 오류가 발생했습니다.');
+            }
+        });
+
+        // Agent 삭제
+        async function deleteAgent(agentOrder) {
+            if (!confirm('정말 이 Agent를 삭제하시겠습니까?')) return;
+
+            try {
+                const response = await fetch(`/api/v2/projects/${projectId}/agents/${agentOrder}?framework=${framework}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    await loadAgents();
+                } else {
+                    alert('Agent 삭제 중 오류가 발생했습니다.');
+                }
+            } catch (error) {
+                console.error('Error deleting agent:', error);
+                alert('Agent 삭제 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 스크립트 생성 및 실행
+        async function generateAndExecute() {
+            if (!confirm('스크립트를 생성하고 실행하시겠습니까?')) return;
+
+            try {
+                // 동적 스크립트 생성 API 호출
+                const response = await fetch('/api/generate-script', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        projectId: projectId,
+                        framework: framework
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    alert(`✅ 스크립트 생성 완료!\n경로: ${data.script_path}\n\n실행을 시작합니다...`);
+                    // 실행 페이지로 이동
+                    window.location.href = `/?tab=crewai&project_id=${projectId}`;
+                } else {
+                    alert('스크립트 생성 중 오류가 발생했습니다.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('스크립트 생성 중 오류가 발생했습니다.');
+            }
+        }
+
+        function showTab(tab) {
+            // 탭 전환 로직 (필요시 구현)
+        }
+    </script>
+</body>
+</html>

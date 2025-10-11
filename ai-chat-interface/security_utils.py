@@ -7,6 +7,9 @@ Input validation, sanitization, and security checks
 import re
 import html
 from typing import Dict, Any, List, Optional
+from functools import wraps
+from flask import request, jsonify
+from database import db
 
 class InputValidator:
     """입력 데이터 검증 및 정화 클래스"""
@@ -27,9 +30,12 @@ class InputValidator:
         'ai_frameworks': ['crew-ai', 'meta-gpt'],
         'user_roles': ['user', 'admin', 'developer'],
         'llm_models': [
-            'gpt-4', 'gpt-4o', 'claude-3', 'claude-3-haiku',
-            'gemini-pro', 'gemini-ultra', 'gemini-flash', 'llama-3', 'llama-3-8b',
-            'mistral-large', 'mistral-7b', 'deepseek-coder', 'codellama'
+            # Cloud Models
+            'gpt-4', 'gpt-4o', 'claude-3', 'claude-3-haiku', 'claude-3-sonnet',
+            'gemini-pro', 'gemini-ultra', 'gemini-flash', 'gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-2.5-pro',
+            'llama-3', 'llama-3-8b', 'mistral-large', 'mistral-7b', 'deepseek-coder', 'codellama',
+            # Ollama Local Models (sync with model_config.json)
+            'ollama-gemma2-2b', 'ollama-deepseek-coder-6.7b', 'ollama-llama3.1', 'ollama-qwen3-coder-30b'
         ],
         'role_names': [
             'Researcher', 'Writer', 'Planner',
@@ -107,6 +113,22 @@ class InputValidator:
             else:
                 errors.append(f"selected_ai: {result['error']}")
 
+        if 'review_iterations' in data:
+            try:
+                review_iterations = int(data['review_iterations'])
+                if review_iterations < 0 or review_iterations > 5:
+                    raise ValueError
+                validated_data['review_iterations'] = review_iterations
+            except (TypeError, ValueError):
+                errors.append('review_iterations: 0~5 사이의 정수여야 합니다')
+
+        if 'tools' in data:
+            tools_result = cls.validate_project_tools(data['tools'])
+            if tools_result['valid']:
+                validated_data['tools'] = tools_result['tools']
+            else:
+                errors.extend([f"tools: {err}" for err in tools_result['errors']])
+
         return {
             'valid': len(errors) == 0,
             'errors': errors,
@@ -152,6 +174,47 @@ class InputValidator:
             'valid': len(errors) == 0,
             'errors': errors,
             'mappings': validated_mappings
+        }
+
+    @classmethod
+    def validate_project_tools(cls, tools: Any) -> Dict[str, Any]:
+        """프로젝트 도구 설정 검증"""
+        errors = []
+        sanitized_tools: List[Dict[str, Any]] = []
+
+        if tools is None:
+            return {'valid': True, 'errors': [], 'tools': []}
+
+        if not isinstance(tools, list):
+            return {'valid': False, 'errors': ['도구 목록은 리스트여야 합니다'], 'tools': []}
+
+        for idx, tool in enumerate(tools):
+            if not isinstance(tool, dict):
+                errors.append(f'#{idx}: 도구 정보는 객체여야 합니다')
+                continue
+
+            tool_key = tool.get('tool_key')
+            if not isinstance(tool_key, str) or not tool_key.strip():
+                errors.append(f'#{idx}: tool_key가 유효하지 않습니다')
+                continue
+
+            tool_config = tool.get('tool_config', {})
+            if tool_config is None:
+                tool_config = {}
+            if tool_config and not isinstance(tool_config, dict):
+                errors.append(f'#{idx}: tool_config는 객체여야 합니다')
+                continue
+
+            sanitized_tools.append({
+                'tool_key': html.escape(tool_key.strip()),
+                'tool_config': tool_config,
+                'is_active': bool(tool.get('is_active', True))
+            })
+
+        return {
+            'valid': len(errors) == 0,
+            'errors': errors,
+            'tools': sanitized_tools
         }
 
     @classmethod
@@ -236,6 +299,8 @@ def validate_request_data(data: Dict[str, Any], data_type: str) -> Dict[str, Any
         return InputValidator.validate_llm_mapping(mappings)
     elif data_type == 'auth':
         return InputValidator.validate_auth_data(data)
+    elif data_type == 'project_tools':
+        return InputValidator.validate_project_tools(data.get('tools'))
     else:
         return {'valid': False, 'errors': ['Unknown data type']}
 
@@ -256,3 +321,53 @@ def check_request_security(data: Dict[str, Any]) -> List[str]:
 
     check_recursive(data)
     return issues
+
+# ==================== AUTHENTICATION DECORATORS ====================
+
+def token_required(f):
+    """JWT token required decorator"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        auth_header = request.headers.get('Authorization')
+
+        if auth_header:
+            try:
+                token = auth_header.split(' ')[1]  # Bearer <token>
+            except IndexError:
+                return jsonify({'error': 'Invalid token format'}), 401
+
+        if not token:
+            return jsonify({'error': 'Token is missing'}), 401
+
+        token_result = db.verify_jwt_token(token)
+        if not token_result['success']:
+            return jsonify({'error': token_result['error']}), 401
+
+        request.current_user = token_result['payload']
+        return f(*args, **kwargs)
+
+    return decorated
+
+def optional_auth(f):
+    """Optional authentication decorator"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        auth_header = request.headers.get('Authorization')
+
+        if auth_header:
+            try:
+                token = auth_header.split(' ')[1]
+                token_result = db.verify_jwt_token(token)
+                if token_result['success']:
+                    request.current_user = token_result['payload']
+            except:
+                pass
+
+        if not hasattr(request, 'current_user'):
+            request.current_user = None
+
+        return f(*args, **kwargs)
+
+    return decorated

@@ -24,8 +24,15 @@ class ExecutionPhase(Enum):
     INITIALIZATION = "initialization"
     VALIDATION = "validation"
     PREPARATION = "preparation"
+    DIRECTORY_CREATION = "directory_creation"
+    FILE_GENERATION = "file_generation"
+    ENVIRONMENT_SETUP = "environment_setup"
+    API_REQUEST = "api_request"
+    SUBPROCESS_LAUNCH = "subprocess_launch"
     EXECUTION = "execution"
     MONITORING = "monitoring"
+    OUTPUT_PROCESSING = "output_processing"
+    RESULT_VALIDATION = "result_validation"
     COMPLETION = "completion"
     ERROR_HANDLING = "error_handling"
 
@@ -51,6 +58,8 @@ class CrewAILogger:
         self.setup_logger()
         self.execution_logs: Dict[str, List[LogEntry]] = {}
         self.phase_timers: Dict[str, Dict[ExecutionPhase, float]] = {}
+        self.step_counters: Dict[str, int] = {}  # 실행별 단계 카운터
+        self.current_steps: Dict[str, str] = {}  # 현재 진행 중인 단계
         self.websocket_manager = None
 
     def setup_logger(self):
@@ -73,10 +82,18 @@ class CrewAILogger:
         file_handler.setFormatter(formatter)
         file_handler.setLevel(logging.DEBUG)
 
-        # 콘솔 핸들러
-        console_handler = logging.StreamHandler()
+        # 콘솔 핸들러 (UTF-8 인코딩 명시적 설정)
+        import sys
+        console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setFormatter(formatter)
         console_handler.setLevel(logging.INFO)
+
+        # Windows 환경에서 UTF-8 출력 보장
+        if hasattr(sys.stdout, 'reconfigure'):
+            try:
+                sys.stdout.reconfigure(encoding='utf-8')
+            except:
+                pass
 
         # 로거 설정
         self.logger = logging.getLogger('CrewAI')
@@ -279,6 +296,236 @@ class CrewAILogger:
             details=log_details
         )
 
+    def log_directory_operation(self, execution_id: str, crew_id: str, operation: str, path: str, success: bool, details: Dict[str, Any] = None):
+        """디렉토리 작업 상세 로깅"""
+        level = LogLevel.INFO if success else LogLevel.ERROR
+        status = "성공" if success else "실패"
+
+        log_details = {
+            "operation": operation,
+            "directory_path": path,
+            "absolute_path": os.path.abspath(path) if path else None,
+            "exists_before": os.path.exists(path) if path else False,
+            "exists_after": os.path.exists(path) if path and success else False,
+            "parent_directory": os.path.dirname(path) if path else None
+        }
+
+        if details:
+            log_details.update(details)
+
+        self.log(
+            execution_id=execution_id,
+            crew_id=crew_id,
+            phase=ExecutionPhase.DIRECTORY_CREATION,
+            level=level,
+            message=f"📁 디렉토리 작업 {status}: {operation} - {path}",
+            details=log_details
+        )
+
+    def log_api_request(self, execution_id: str, crew_id: str, api_name: str, endpoint: str, method: str, success: bool, details: Dict[str, Any] = None):
+        """API 요청 상세 로깅"""
+        level = LogLevel.INFO if success else LogLevel.ERROR
+        status = "성공" if success else "실패"
+
+        log_details = {
+            "api_name": api_name,
+            "endpoint": endpoint,
+            "http_method": method,
+            "request_time": datetime.now().isoformat()
+        }
+
+        if details:
+            log_details.update(details)
+
+        self.log(
+            execution_id=execution_id,
+            crew_id=crew_id,
+            phase=ExecutionPhase.API_REQUEST,
+            level=level,
+            message=f"🌐 API 요청 {status}: {api_name} {method} {endpoint}",
+            details=log_details
+        )
+
+    def log_environment_setup(self, execution_id: str, crew_id: str, env_vars: Dict[str, str], success: bool, details: Dict[str, Any] = None):
+        """환경 변수 설정 로깅"""
+        level = LogLevel.INFO if success else LogLevel.ERROR
+        status = "성공" if success else "실패"
+
+        # 민감한 정보 마스킹
+        safe_env_vars = {}
+        for key, value in env_vars.items():
+            if 'KEY' in key.upper() or 'TOKEN' in key.upper() or 'PASSWORD' in key.upper():
+                safe_env_vars[key] = '***MASKED***'
+            else:
+                safe_env_vars[key] = value
+
+        log_details = {
+            "environment_variables": safe_env_vars,
+            "variable_count": len(env_vars),
+            "setup_time": datetime.now().isoformat()
+        }
+
+        if details:
+            log_details.update(details)
+
+        self.log(
+            execution_id=execution_id,
+            crew_id=crew_id,
+            phase=ExecutionPhase.ENVIRONMENT_SETUP,
+            level=level,
+            message=f"⚙️ 환경 설정 {status}: {len(env_vars)}개 변수 설정",
+            details=log_details
+        )
+
+    def log_project_initialization(self, execution_id: str, crew_id: str, project_name: str, project_path: str, template_type: str, success: bool, details: Dict[str, Any] = None):
+        """프로젝트 초기화 상세 로깅"""
+        level = LogLevel.INFO if success else LogLevel.ERROR
+        status = "성공" if success else "실패"
+
+        log_details = {
+            "project_name": project_name,
+            "project_path": project_path,
+            "template_type": template_type,
+            "absolute_path": os.path.abspath(project_path) if project_path else None,
+            "directory_created": os.path.exists(project_path) if project_path else False,
+            "initialization_time": datetime.now().isoformat()
+        }
+
+        if details:
+            log_details.update(details)
+
+        self.log(
+            execution_id=execution_id,
+            crew_id=crew_id,
+            phase=ExecutionPhase.INITIALIZATION,
+            level=level,
+            message=f"🚀 프로젝트 초기화 {status}: {project_name} ({template_type})",
+            details=log_details
+        )
+
+    def log_file_generation(self, execution_id: str, crew_id: str, file_path: str, file_type: str, content_length: int, success: bool, details: Dict[str, Any] = None):
+        """파일 생성 상세 로깅"""
+        level = LogLevel.INFO if success else LogLevel.ERROR
+        status = "성공" if success else "실패"
+
+        log_details = {
+            "file_path": file_path,
+            "file_type": file_type,
+            "content_length": content_length,
+            "file_exists": os.path.exists(file_path) if file_path else False,
+            "file_size_bytes": os.path.getsize(file_path) if file_path and os.path.exists(file_path) else 0,
+            "generation_time": datetime.now().isoformat()
+        }
+
+        if details:
+            log_details.update(details)
+
+        self.log(
+            execution_id=execution_id,
+            crew_id=crew_id,
+            phase=ExecutionPhase.FILE_GENERATION,
+            level=level,
+            message=f"📄 파일 생성 {status}: {os.path.basename(file_path) if file_path else 'Unknown'} ({content_length} chars)",
+            details=log_details
+        )
+
+    def log_subprocess_execution(self, execution_id: str, crew_id: str, command: str, working_dir: str, success: bool, exit_code: int = None, details: Dict[str, Any] = None):
+        """서브프로세스 실행 상세 로깅"""
+        level = LogLevel.INFO if success else LogLevel.ERROR
+        status = "성공" if success else "실패"
+
+        log_details = {
+            "command": command,
+            "working_directory": working_dir,
+            "exit_code": exit_code,
+            "execution_time": datetime.now().isoformat()
+        }
+
+        if details:
+            log_details.update(details)
+
+        self.log(
+            execution_id=execution_id,
+            crew_id=crew_id,
+            phase=ExecutionPhase.SUBPROCESS_LAUNCH,
+            level=level,
+            message=f"⚡ 서브프로세스 실행 {status}: {command[:50]}... (exit: {exit_code})",
+            details=log_details
+        )
+
+    def log_output_processing(self, execution_id: str, crew_id: str, output_type: str, content: str, processed_lines: int, success: bool, details: Dict[str, Any] = None):
+        """출력 처리 상세 로깅"""
+        level = LogLevel.INFO if success else LogLevel.WARNING
+        status = "완료" if success else "실패"
+
+        log_details = {
+            "output_type": output_type,
+            "content_preview": content[:200] + "..." if len(content) > 200 else content,
+            "total_content_length": len(content),
+            "processed_lines": processed_lines,
+            "processing_time": datetime.now().isoformat()
+        }
+
+        if details:
+            log_details.update(details)
+
+        self.log(
+            execution_id=execution_id,
+            crew_id=crew_id,
+            phase=ExecutionPhase.OUTPUT_PROCESSING,
+            level=level,
+            message=f"📥 출력 처리 {status}: {output_type} ({processed_lines} lines, {len(content)} chars)",
+            details=log_details
+        )
+
+    def log_detailed_step(self, execution_id: str, crew_id: str, step_name: str, step_description: str, phase: ExecutionPhase, success: bool = True, details: Dict[str, Any] = None):
+        """세부 단계 로깅 (일반적인 진행 상황 추적용)"""
+        level = LogLevel.INFO if success else LogLevel.WARNING
+        status = "진행중" if success else "문제발생"
+
+        log_details = {
+            "step_name": step_name,
+            "step_description": step_description,
+            "step_time": datetime.now().isoformat()
+        }
+
+        if details:
+            log_details.update(details)
+
+        self.log(
+            execution_id=execution_id,
+            crew_id=crew_id,
+            phase=phase,
+            level=level,
+            message=f"🔄 단계 {status}: {step_name} - {step_description}",
+            details=log_details
+        )
+
+    def log_korean_encoding_test(self, execution_id: str, crew_id: str, test_string: str, encoding_type: str, success: bool, details: Dict[str, Any] = None):
+        """한글 인코딩 테스트 로깅"""
+        level = LogLevel.INFO if success else LogLevel.ERROR
+        status = "성공" if success else "실패"
+
+        log_details = {
+            "test_string": test_string,
+            "encoding_type": encoding_type,
+            "string_length": len(test_string),
+            "byte_length": len(test_string.encode('utf-8')),
+            "test_time": datetime.now().isoformat()
+        }
+
+        if details:
+            log_details.update(details)
+
+        self.log(
+            execution_id=execution_id,
+            crew_id=crew_id,
+            phase=ExecutionPhase.VALIDATION,
+            level=level,
+            message=f"🔤 한글 인코딩 테스트 {status}: {encoding_type} - '{test_string[:30]}...'",
+            details=log_details
+        )
+
     def log_completion(self, execution_id: str, crew_id: str, success: bool, total_duration: int, final_details: Dict[str, Any] = None):
         """실행 완료 로깅"""
         level = LogLevel.INFO if success else LogLevel.ERROR
@@ -306,10 +553,13 @@ class CrewAILogger:
             crew_id=crew_id,
             phase=ExecutionPhase.COMPLETION,
             level=level,
-            message=f"CrewAI 실행 {status} - 총 소요시간: {total_duration}ms",
+            message=f"🏁 CrewAI 실행 {status} - 총 소요시간: {total_duration}ms (단계: {self.step_counters.get(execution_id, 0)}개 완료)",
             details=log_details,
             duration_ms=total_duration
         )
+
+        # 실행 완료 후 추적 데이터 정리
+        self.cleanup_execution_tracking(execution_id)
 
     def log(self, execution_id: str, crew_id: str, phase: ExecutionPhase, level: LogLevel,
             message: str, details: Dict[str, Any] = None, duration_ms: Optional[int] = None):
@@ -405,6 +655,132 @@ class CrewAILogger:
                 del self.execution_logs[execution_id]
                 if execution_id in self.phase_timers:
                     del self.phase_timers[execution_id]
+
+    def start_step_tracking(self, execution_id: str, crew_id: str, total_steps: int = None):
+        """단계별 추적 시작"""
+        self.step_counters[execution_id] = 0
+        self.current_steps[execution_id] = "시작"
+
+        self.log(
+            execution_id=execution_id,
+            crew_id=crew_id,
+            phase=ExecutionPhase.INITIALIZATION,
+            level=LogLevel.INFO,
+            message=f"📊 단계별 추적 시작 - 총 {total_steps or '미정'} 단계 예정",
+            details={
+                "total_estimated_steps": total_steps,
+                "tracking_start_time": datetime.now().isoformat()
+            }
+        )
+
+    def advance_step(self, execution_id: str, crew_id: str, step_name: str, step_description: str = "", phase: ExecutionPhase = ExecutionPhase.EXECUTION):
+        """다음 단계로 진행"""
+        if execution_id not in self.step_counters:
+            self.step_counters[execution_id] = 0
+
+        self.step_counters[execution_id] += 1
+        self.current_steps[execution_id] = step_name
+
+        step_number = self.step_counters[execution_id]
+
+        self.log(
+            execution_id=execution_id,
+            crew_id=crew_id,
+            phase=phase,
+            level=LogLevel.INFO,
+            message=f"➡️ 단계 {step_number}: {step_name} {step_description}",
+            details={
+                "step_number": step_number,
+                "step_name": step_name,
+                "step_description": step_description,
+                "previous_step": self.current_steps.get(execution_id, "없음"),
+                "step_time": datetime.now().isoformat()
+            }
+        )
+
+    def log_system_check(self, execution_id: str, crew_id: str, check_name: str, result: bool, details: Dict[str, Any] = None):
+        """시스템 상태 체크 로깅"""
+        level = LogLevel.INFO if result else LogLevel.WARNING
+        status = "정상" if result else "문제"
+        icon = "✅" if result else "⚠️"
+
+        log_details = {
+            "check_name": check_name,
+            "check_result": result,
+            "check_time": datetime.now().isoformat()
+        }
+
+        if details:
+            log_details.update(details)
+
+        self.log(
+            execution_id=execution_id,
+            crew_id=crew_id,
+            phase=ExecutionPhase.VALIDATION,
+            level=level,
+            message=f"{icon} 시스템 체크 {status}: {check_name}",
+            details=log_details
+        )
+
+    def log_realtime_status(self, execution_id: str, crew_id: str, status_message: str, progress_percent: int = None, details: Dict[str, Any] = None):
+        """실시간 상태 업데이트 로깅 (WebSocket 우선)"""
+        current_step = self.current_steps.get(execution_id, "알 수 없음")
+        step_number = self.step_counters.get(execution_id, 0)
+
+        log_details = {
+            "status_message": status_message,
+            "progress_percent": progress_percent,
+            "current_step": current_step,
+            "step_number": step_number,
+            "realtime_update": True,
+            "update_time": datetime.now().isoformat()
+        }
+
+        if details:
+            log_details.update(details)
+
+        # 진행률 표시 포맷
+        progress_display = f" ({progress_percent}%)" if progress_percent is not None else ""
+
+        self.log(
+            execution_id=execution_id,
+            crew_id=crew_id,
+            phase=ExecutionPhase.MONITORING,
+            level=LogLevel.INFO,
+            message=f"🔄 실시간 상태: {status_message}{progress_display} [단계 {step_number}: {current_step}]",
+            details=log_details
+        )
+
+    def log_websocket_status(self, execution_id: str, crew_id: str, connected: bool, room_name: str = None, details: Dict[str, Any] = None):
+        """WebSocket 연결 상태 로깅"""
+        level = LogLevel.INFO if connected else LogLevel.WARNING
+        status = "연결됨" if connected else "연결 끊김"
+        icon = "🔗" if connected else "🔌"
+
+        log_details = {
+            "websocket_connected": connected,
+            "room_name": room_name or f"execution_{execution_id}",
+            "connection_time": datetime.now().isoformat()
+        }
+
+        if details:
+            log_details.update(details)
+
+        self.log(
+            execution_id=execution_id,
+            crew_id=crew_id,
+            phase=ExecutionPhase.MONITORING,
+            level=level,
+            message=f"{icon} WebSocket {status}: {room_name or f'execution_{execution_id}'}",
+            details=log_details
+        )
+
+    def cleanup_execution_tracking(self, execution_id: str):
+        """실행 완료 후 추적 데이터 정리"""
+        if execution_id in self.step_counters:
+            del self.step_counters[execution_id]
+        if execution_id in self.current_steps:
+            del self.current_steps[execution_id]
 
 # 글로벌 로거 인스턴스
 crewai_logger = CrewAILogger()

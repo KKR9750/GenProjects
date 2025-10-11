@@ -3,14 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 프로그램 생성 대화창</title>
+    <title>AI 개발 플랫폼 - 통합 인터페이스</title>
+    <link rel="stylesheet" href="app-tabs.css?v=11">
+    <!-- React CDN (Production) -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <link rel="stylesheet" href="styles.css">
+    <!-- Socket.IO for real-time notifications -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.min.js"></script>
+    <!-- Babel for JSX support -->
+    <script src="babel.min.js"></script>
 </head>
 <body>
-    <div id="root"></div>
-    <script src="babel.min.js"></script>
-    <script type="text/babel" src="app_simple.js"></script>
+    <!-- 탭 기반 SPA 컨테이너 -->
+    <div class="app-container">
+        <!-- 탭 헤더 -->
+        <header class="tab-header">
+            <div class="logo">
+                <span class="logo-icon">🏠</span>
+                <span class="logo-text">AI Platform</span>
+            </div>
+            <nav class="tab-nav">
+                <button class="tab active" data-page="pre_analysis" data-color="blue">
+                    <span class="tab-icon">📝</span>
+                    <span class="tab-text">요구사항 분석</span>
+                </button>
+                <button class="tab" data-page="crewai" data-color="purple" style="display:none">
+                    <span class="tab-icon">👥</span>
+                    <span class="tab-text">CrewAI</span>
+                </button>
+                <button class="tab" data-page="metagpt" data-color="green">
+                    <span class="tab-icon">🤖</span>
+                    <span class="tab-text">MetaGPT</span>
+                </button>
+                <button class="tab" data-page="admin" data-color="gray">
+                    <span class="tab-icon">⚙️</span>
+                    <span class="tab-text">관리자</span>
+                </button>
+                <button class="tab" data-page="agent_manager" data-color="teal" style="display: none;">
+                    <span class="tab-icon">🧑‍💻</span>
+                    <span class="tab-text">Agent 관리</span>
+                </button>
+                <button class="tab" data-page="projects" data-color="orange">
+                    <span class="tab-icon">📁</span>
+                    <span class="tab-text">프로젝트</span>
+                </button>
+            </nav>
+            <!-- 사용자 정보 영역 -->
+            <div class="user-info" id="user-info">
+                <span class="user-name" id="user-name">Guest</span>
+                <button class="logout-btn" id="logout-btn">로그아웃</button>
+            </div>
+        </header>
+
+        <!-- 동적 본문 영역 -->
+        <main id="content-area" class="content-area">
+            <div id="root"></div>
+        </main>
+    </div>
+
+    <!-- API Utilities -->
+    <script src="api-utils.js?v=11"></script>
+    <!-- Component Loader -->
+    <script src="component-loader.js?v=11"></script>
+    <!-- Tab Logic -->
+    <script src="app-tabs.js?v=11"></script>
 </body>
 </html>

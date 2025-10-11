@@ -521,13 +521,13 @@ const MetaGPTInterface = () => {
                                         if (!showProjects) loadProjects();
                                     }}
                                 >
-                                    프로젝트
+                                    프로젝트 목록
                                 </button>
                                 <button
                                     className="control-btn new-project-btn"
                                     onClick={openNewProjectModal}
                                 >
-                                    신규
+                                    신규 프로젝트
                                 </button>
                             </div>
                         </div>

@@ -32,9 +32,8 @@ class ProjectInitializer:
         if not template:
             raise ValueError(f"템플릿을 찾을 수 없습니다: {template_id}")
 
-        # 프로젝트 ID 생성 (새 형식 사용)
-        # database.py에서 자동 생성되므로 여기서는 임시 ID 사용
-        project_id = f"temp_{str(uuid.uuid4())[:8]}"
+        # 프로젝트 ID 생성
+        project_id = f"proj_{str(uuid.uuid4())[:8]}"
 
         # 프로젝트 기본 구조
         project_data = {

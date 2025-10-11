@@ -121,6 +121,9 @@ class ProjectExecutor:
             execution_result.status = ExecutionStatus.COMPLETED
             execution_result.end_time = datetime.now()
 
+            # 프로젝트 완성 WebSocket 알림 전송
+            self._send_completion_notification(project_id, project_status)
+
         except Exception as e:
             execution_result.status = ExecutionStatus.FAILED
             execution_result.error = str(e)
@@ -135,70 +138,42 @@ class ProjectExecutor:
         execution_result = self.executions[project_id]
         execution_result.status = ExecutionStatus.RUNNING
 
-        # CrewAI 실행 시뮬레이션 (실제 구현에서는 CrewAI API 호출)
-        stages = ['Research', 'Planning', 'Writing']
+        # 실제 CrewAI 실행
+        try:
+            # 실제 CrewAI 실행 로직이 구현되어야 함
+            self._log_output(project_id, "CrewAI 실행을 시작합니다")
 
-        for i, stage in enumerate(stages):
-            self._log_output(project_id, f"=== {stage} 단계 시작 ===")
+            # TODO: 실제 CrewAI 실행 구현 필요
+            # crew_result = crewai_service.execute(project_data)
 
-            # 단계별 진행 상황 업데이트
-            for progress in range(0, 101, 20):
-                global_progress_tracker.update_progress(
-                    project_id, stage, 'AI Agent', progress,
-                    f"{stage} 작업 진행 중... {progress}%"
-                )
-                time.sleep(0.5)  # 실제로는 AI 작업 시간
+            raise NotImplementedError("CrewAI 실제 실행 로직이 구현되지 않았습니다")
 
-            # 단계 완료 및 산출물 생성
-            deliverable = {
-                'stage': stage,
-                'type': stage.lower().replace(' ', '_'),
-                'title': f"{stage} 결과물",
-                'content': f"{stage} 단계에서 생성된 결과물입니다.",
-                'created_at': datetime.now().isoformat()
-            }
-
-            execution_result.deliverables.append(deliverable)
-            global_progress_tracker.complete_stage(project_id, stage, [deliverable])
-
-            self._log_output(project_id, f"=== {stage} 단계 완료 ===")
+        except Exception as e:
+            self._log_output(project_id, f"CrewAI 실행 실패: {str(e)}")
+            execution_result.status = ExecutionStatus.FAILED
+            execution_result.error = str(e)
+            return execution_result
 
     def _execute_metagpt_project(self, project_id: str, project_status: Dict[str, Any]):
         """MetaGPT 프로젝트 실행"""
         execution_result = self.executions[project_id]
         execution_result.status = ExecutionStatus.RUNNING
 
-        # MetaGPT 실행 시뮬레이션
-        stages = ['Product Manager', 'Architect', 'Engineer', 'QA Engineer', 'Review']
+        # 실제 MetaGPT 실행
+        try:
+            # 실제 MetaGPT 실행 로직이 구현되어야 함
+            self._log_output(project_id, "MetaGPT 실행을 시작합니다")
 
-        for i, stage in enumerate(stages):
-            self._log_output(project_id, f"=== {stage} 역할 시작 ===")
+            # TODO: 실제 MetaGPT 실행 구현 필요
+            # metagpt_result = metagpt_service.execute(project_data)
 
-            # LLM 매핑 정보 가져오기
-            llm_model = self._get_llm_for_role(project_status, stage)
+            raise NotImplementedError("MetaGPT 실제 실행 로직이 구현되지 않았습니다")
 
-            # 단계별 진행 상황 업데이트
-            for progress in range(0, 101, 25):
-                global_progress_tracker.update_progress(
-                    project_id, stage, llm_model, progress,
-                    f"{stage}가 {llm_model}로 작업 중... {progress}%"
-                )
-                time.sleep(0.8)  # 실제로는 LLM 처리 시간
-
-            # 단계 완료 및 산출물 생성
-            deliverable = {
-                'stage': stage,
-                'type': self._get_deliverable_type(stage),
-                'title': f"{stage} 산출물",
-                'content': f"{stage}가 {llm_model}를 사용하여 생성한 결과물입니다.",
-                'llm_model': llm_model,
-                'created_at': datetime.now().isoformat()
-            }
-
-            execution_result.deliverables.append(deliverable)
-            global_progress_tracker.complete_stage(project_id, stage, [deliverable])
-
-            self._log_output(project_id, f"=== {stage} 역할 완료 ===")
+        except Exception as e:
+            self._log_output(project_id, f"MetaGPT 실행 실패: {str(e)}")
+            execution_result.status = ExecutionStatus.FAILED
+            execution_result.error = str(e)
+            return execution_result
 
     def _get_llm_for_role(self, project_status: Dict[str, Any], role: str) -> str:
         """역할별 LLM 모델 조회"""
@@ -333,6 +308,33 @@ class ProjectExecutor:
                 del self.execution_threads[project_id]
 
         return len(to_remove)
+
+    def _send_completion_notification(self, project_id: str, project_status: Dict[str, Any]):
+        """프로젝트 완성 WebSocket 알림 전송"""
+        try:
+            websocket_manager = get_websocket_manager()
+
+            project_name = project_status.get('project_name', project_id)
+            result_path = project_status.get('project_path', f"D:\\GenProjects\\Projects\\{project_id}")
+
+            # WebSocket 완성 알림 전송
+            websocket_manager.emit_project_completion(
+                project_id=project_id,
+                project_name=project_name,
+                result_path=result_path
+            )
+
+            # 로그도 함께 전송
+            websocket_manager.emit_log_update(
+                project_id=project_id,
+                message=f"🎉 프로젝트 '{project_name}'가 성공적으로 완성되었습니다!",
+                level="success"
+            )
+
+            print(f"✅ 프로젝트 완성 알림 전송 완료: {project_name}")
+
+        except Exception as e:
+            print(f"❌ 프로젝트 완성 알림 전송 실패: {e}")
 
 # 글로벌 인스턴스
 project_executor = ProjectExecutor()

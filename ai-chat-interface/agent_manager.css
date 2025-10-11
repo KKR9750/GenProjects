@@ -1,0 +1,372 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f5f7fa;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.header {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.header h1 {
+    color: #333;
+    margin-bottom: 10px;
+    font-size: 1.25rem;
+}
+
+.project-info {
+    display: flex;
+    gap: 20px;
+    color: #666;
+}
+
+.project-info span {
+    padding: 8px 16px;
+    background: #f0f0f0;
+    border-radius: 20px;
+    font-size: 0.75rem;
+}
+
+.tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.tab {
+    padding: 12px 24px;
+    background: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s;
+    font-size: 0.8rem;
+}
+
+.tab.active {
+    background: #667eea;
+    color: white;
+}
+
+.content-area {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.add-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.agents-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 20px;
+}
+
+.agent-card {
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s;
+}
+
+.agent-card:hover {
+    border-color: #667eea;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.agent-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 15px;
+}
+
+.agent-order {
+    background: #667eea;
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+}
+
+.agent-role {
+    flex: 1;
+    margin-left: 12px;
+}
+
+.agent-role h3 {
+    color: #333;
+    margin-bottom: 4px;
+    font-size: 0.9rem;
+}
+
+.agent-llm {
+    font-size: 0.7rem;
+    color: #666;
+    background: #f0f0f0;
+    padding: 4px 12px;
+    border-radius: 12px;
+    display: inline-block;
+}
+
+.agent-details {
+    margin: 15px 0;
+}
+
+.agent-detail {
+    margin-bottom: 10px;
+}
+
+.agent-detail label {
+    font-size: 0.7rem;
+    color: #666;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.agent-detail p {
+    color: #333;
+    line-height: 1.5;
+    font-size: 0.75rem;
+}
+
+.agent-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 15px;
+}
+
+.action-btn {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: opacity 0.3s;
+    font-size: 0.75rem;
+}
+
+.action-btn:hover {
+    opacity: 0.8;
+}
+
+.action-btn.edit {
+    background: #ffc107;
+    color: #333;
+}
+
+.action-btn.delete {
+    background: #dc3545;
+    color: white;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.show {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #333;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-family: inherit;
+}
+
+.form-group textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn-primary {
+    background: #667eea;
+    color: white;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.execute-section {
+    margin-top: 30px;
+    padding: 20px;
+    background: #f0f7ff;
+    border-radius: 12px;
+    border: 2px solid #667eea;
+}
+
+.execute-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 15px 40px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    width: 100%;
+}
+.requirement-box {
+    background: #eef2ff;
+    border: 2px solid #667eea;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+}
+
+.requirement-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #364152;
+    margin-bottom: 8px;
+}
+
+.requirement-text {
+    font-size: 0.8rem;
+    color: #4a5568;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+.goal-summary {
+    font-weight: 600;
+    color: #2d3748;
+    font-size: 0.8rem;
+    margin-bottom: 6px;
+}
+
+.goal-detail {
+    background: #f7fafc;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.72rem;
+    color: #4a5568;
+}
+
+.backstory-lead {
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.76rem;
+    margin-bottom: 4px;
+}
+
+.backstory-detail {
+    font-size: 0.72rem;
+    color: #4a5568;
+    line-height: 1.5;
+}
+
+.agent-flags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.flag {
+    font-size: 0.65rem;
+    padding: 3px 10px;
+    border-radius: 12px;
+    background: #edf2f7;
+    color: #4a5568;
+}
+
+.flag-verbose { background: #ebf8ff; color: #2b6cb0; }
+.flag-quiet { background: #fefcbf; color: #b7791f; }
+.flag-delegation { background: #f0fff4; color: #2f855a; }
+
+.empty-placeholder {
+    text-align: center;
+    color: #718096;
+    font-size: 0.8rem;
+    padding: 40px 0;
+}

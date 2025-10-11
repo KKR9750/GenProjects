@@ -49,13 +49,29 @@ AI 프로그램 생성을 위한 대화형 인터페이스 개발
   - 반응형 디자인: 모바일/태블릿/데스크톱 완벽 지원
   - 일관된 UI/UX: 모든 탭에서 동일한 디자인 언어 적용
 
-- **프로젝트 관리 탭** ⭐ **신규 추가 (2025-10-03)**
+- **프로젝트 관리 탭** ⭐ **UI/UX 대폭 개선 (2025-10-11)**
   - 프로젝트 대시보드: 전체/진행중/완료/실패 통계 카드
   - 프로젝트 그리드 뷰: 카드 기반 프로젝트 목록 with 실시간 상태 업데이트
   - 필터링 시스템: 상태별/프레임워크별/검색어 기반 필터링
   - CRUD 작업: 프로젝트 실행/중지/삭제/결과 보기
   - 자동 새로고침: 5초 간격 실행 상태 자동 업데이트
   - 진행률 시각화: 실시간 프로그레스 바 with 그라데이션 효과
+  - **프로젝트 상세 화면 개선** ⭐ **완료 (2025-10-11)**
+    - **완전한 데이터 표시**: final_requirement에서 설명 추출, 품질검토 횟수 표시
+    - **Agent 정보 섹션**: 모든 Agent 표시 (역할, LLM 모델, 도구 목록)
+      - LLM 배지 (파란색): 각 Agent의 할당된 모델 표시
+      - 도구 배지 (회색): 각 Agent가 사용하는 도구 목록 표시
+    - **산출물 섹션**: 생성된 파일 목록 with 크기/수정일
+      - 파일 아이콘, 이름, 크기(KB), 수정일시 표시
+      - 최신 파일순 정렬
+    - **폰트 및 간격 개선**:
+      - 헤더 H1: 1.25rem (기존 0.95rem에서 증가)
+      - 사이드바 H2: 0.9rem (기존 0.74rem에서 증가)
+      - 카드 부제목: 0.75rem (기존 0.56rem에서 증가)
+      - 패널 패딩: 16px (기존 8px에서 증가)
+      - 전체적으로 짜임새 있고 알찬 레이아웃으로 개선
+    - **새 API 엔드포인트**: `/api/v2/projects/{id}/deliverables` (산출물 조회)
+    - **향상된 데이터 로딩**: `loadFullProjectData()` 함수로 프로젝트/Agent/산출물 통합 조회
 
 - **관리자 탭** ⭐ **인증 시스템 개선 (2025-10-04)**
   - **JWT 인증 완전 통합**: 모든 API 요청에 Authorization 헤더 자동 추가
@@ -66,6 +82,64 @@ AI 프로그램 생성을 위한 대화형 인터페이스 개발
     - `/api/llm-models` 404 에러 수정 (올바른 URL: `/api/admin/llm-models`)
   - **캐시 버스팅**: 버전 v15 → v16으로 업데이트
   - 시스템 상태, 프로젝트 통계, 사용자 통계 정상 로드
+
+#### 7. **DB 기반 동적 Agent/Task 관리 시스템** ⭐ **혁신 완성 (2025-10-04)**
+- **하드코딩 완전 제거**: Agent/Task 정의를 DB로 이전하여 동적 관리 실현
+- **복합 Primary Key 구조**: `(project_id, framework, agent_order)` 직관적 식별
+- **템플릿 재사용 시스템**: `{requirement}` 플레이스홀더 기반 무한 재사용
+- **사전분석 분리**: UI 대화 → 요구사항 확정 → DB 생성 (R&R 명확화)
+
+**Phase 1: 데이터베이스 스키마**
+- `project_agents`: 프로젝트별 Agent 정의 (role, goal, backstory, llm_model)
+- `project_tasks`: Task 정의 with 복합 FK (agent 연결, 의존성 관리)
+- `agent_templates`: 재사용 가능한 Agent 템플릿 (`{requirement}` 플레이스홀더)
+- `task_templates`: 재사용 가능한 Task 템플릿
+- CrewAI 3개 + MetaGPT 5개 템플릿 사전 삽입
+
+**Phase 2: Backend 시스템**
+- **동적 스크립트 생성 엔진** ([dynamic_script_generator.py](dynamic_script_generator.py))
+  - DB 조회 → Jinja2 렌더링 → 실행 스크립트 자동 생성
+  - CrewAI/MetaGPT 통합 지원
+- **Jinja2 템플릿**
+  - [crewai_dynamic.py.j2](templates/scripts/crewai_dynamic.py.j2): CrewAI 스크립트 템플릿
+  - [metagpt_dynamic.py.j2](templates/scripts/metagpt_dynamic.py.j2): MetaGPT 스크립트 템플릿
+- **REST API 구현**
+  - 프로젝트 초기화: `POST /api/v2/projects/{id}/initialize`
+  - Agent CRUD: `POST/PUT/DELETE /api/v2/projects/{id}/agents`
+  - Task CRUD: `POST/PUT/DELETE /api/v2/projects/{id}/tasks`
+  - Pre-analysis Chat: `POST /api/pre-analysis/chat`, `POST /api/pre-analysis/initial`
+  - 스크립트 생성: `POST /api/generate-script`
+- **PostgreSQL 직접 연결**: `get_db_connection()` 함수 (psycopg2 + Supabase)
+
+**Phase 3: Frontend UI**
+- **사전분석 대화 UI** ([pre_analysis.html](pre_analysis.html))
+  - LLM 기반 요구사항 명확화 대화 시스템
+  - CrewAI/MetaGPT 프레임워크 선택
+  - 요구사항 확정 후 자동 프로젝트 생성 연동
+- **Agent 관리 UI** ([agent_manager.html](agent_manager.html))
+  - Agent 목록 카드 뷰 (조회/추가/수정/삭제)
+  - LLM 모델 선택 및 설정 변경
+  - 스크립트 생성 및 실행 버튼 통합
+
+**워크플로우**:
+```
+1. 사전분석 대화 (pre_analysis.html)
+   ↓ LLM과 대화하며 요구사항 명확화
+2. 프로젝트 초기화 (POST /api/v2/projects/{id}/initialize)
+   ↓ 템플릿 → DB 복사, {requirement} 치환
+3. Agent 관리 (agent_manager.html)
+   ↓ DB Agent/Task 조회 및 수정
+4. 동적 스크립트 생성 (POST /api/generate-script)
+   ↓ DB → Jinja2 → crewai_script.py
+5. 실행 (기존 실행 시스템 연동)
+```
+
+**기술 스택**:
+- Backend: Flask Blueprint, PostgreSQL (psycopg2), Jinja2, LangChain
+- Frontend: Vanilla JS, Responsive CSS, Fetch API
+- Database: 복합 PK/FK, JSONB, Trigger 함수
+
+**참고 문서**: [DYNAMIC_SYSTEM_GUIDE.md](DYNAMIC_SYSTEM_GUIDE.md)
 
 #### 8. **개별 AI 프레임워크 전용 인터페이스** ⭐ **신규 완성 (2025-09-17)**
 - **CrewAI 전용 페이지** (`crewai.html`, `crewai.js`, `crewai.css`)
@@ -940,6 +1014,14 @@ ai-chat-interface/
    - 📋 사용자 관리 시스템 (향후 구현 예정)
    - ⚙️ 고급 시스템 설정 (향후 구현 예정)
 
+4. **CrewAI 신규 프로젝트 후속 구성 단계 정비** ⏳
+   - 프리 분석 완료 후 전용 설정 모달 도입: LLM 매핑·품질 반복·도구 선택을 확정하고 Agent Manager로 이동
+   - `project_role_llm_mapping` API를 활용해 프로젝트 완료 이후에도 역할별 LLM 변경 가능하도록 UI/플로우 개선
+   - DB 확장 계획
+     - `projects.review_iterations` 컬럼 추가로 품질 검토 반복 횟수 영구 저장
+     - (신규) `project_tools` 테이블 또는 JSONB 컬럼으로 도구/API 키 선택 내역 보존
+   - Agent/Task 실행 파이프라인에서 저장된 설정을 재사용하도록 프로젝트 초기화·실행 로직 업데이트 예정
+
 #### 🎯 **최신 개선사항 요약 (2025-10-02)**
 
 ✅ **MCP (Model Context Protocol) 도구 선택 시스템 구현** ⭐ **신규 완성 (2025-10-02)**
@@ -1376,21 +1458,15 @@ dashboard-pure.js          // 실제 로그인 시스템, 순수 JavaScript
 
 #### **현재 유효한 Supabase 설정 (2025-09-21 현재)**
 ```bash
-# 유효한 Supabase 설정 (database.py에서 강제 설정됨)
-SUPABASE_URL=https://vpbkitxgisxbqtxrwjvo.supabase.co
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwYmtpdHhnaXN4YnF0eHJ3anZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgxNzM5NzUsImV4cCI6MjA3Mzc0OTk3NX0._db0ajX3GQVBUdxl7OJ0ykt14Jb7FSRbUNsEnnqDtp8
+# ⚠️ 보안상 실제 값은 .env 파일 또는 database.py 참조
+SUPABASE_URL=https://[YOUR_PROJECT_REF].supabase.co
+SUPABASE_ANON_KEY=[YOUR_ANON_KEY]
 ```
 
 #### **DNS 검증 완료**
-- **URL**: `https://vpbkitxgisxbqtxrwjvo.supabase.co`
-- **DNS 해결**: ✅ 성공 (IP: 104.18.38.10, 172.64.149.246)
+- **URL**: ✅ 현재 설정된 Supabase 프로젝트 URL 정상 작동
+- **DNS 해결**: ✅ 성공
 - **연결 상태**: ✅ 정상 작동 확인 (2025-09-21)
-
-#### **금지된 URL (사용 금지)**
-```bash
-# ❌ 더 이상 사용하지 않는 URL (DNS 해결 불가)
-SUPABASE_URL=https://ihnfqjkmrrmgjkacccaz.supabase.co
-```
 
 #### **URL 변경 시 필수 확인 사항**
 1. **DNS 조회 테스트**: `nslookup [hostname].supabase.co`
@@ -1407,15 +1483,20 @@ SUPABASE_URL=https://ihnfqjkmrrmgjkacccaz.supabase.co
 
 #### **강제 환경변수 설정 위치**
 ```python
-# database.py 22-23번째 줄
-os.environ['SUPABASE_URL'] = 'https://vpbkitxgisxbqtxrwjvo.supabase.co'
-os.environ['SUPABASE_ANON_KEY'] = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+# database.py 22-23번째 줄 (실제 값은 코드 참조)
+os.environ['SUPABASE_URL'] = '[REDACTED - See .env or database.py]'
+os.environ['SUPABASE_ANON_KEY'] = '[REDACTED - See .env or database.py]'
 ```
 
 #### **URL 변경 시 필수 업데이트 파일**
 1. **database.py**: 강제 환경변수 설정 (22-23번째 줄)
 2. **.env**: 기본 환경변수 파일
 3. **이 정책 문서**: PROJECT_STATUS.md 업데이트
+
+#### **보안 정책**
+- ⚠️ **절대 공개 문서에 실제 API 키를 포함하지 마세요**
+- ⚠️ **Git에 커밋하기 전 민감한 정보 제거 필수**
+- ⚠️ **.env 파일은 반드시 .gitignore에 포함**
 
 #### **정기 점검 사항**
 - **월 1회**: DNS 조회 테스트 및 연결 상태 확인
@@ -1432,6 +1513,26 @@ os.environ['SUPABASE_ANON_KEY'] = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
 
 ## 📅 최근 업데이트 (2025년 10월)
 
+- **2025-10-11**: 프로젝트 관리 탭 상세 화면 UI/UX 대폭 개선
+  - **완전한 데이터 표시**: `final_requirement`에서 설명 추출, "알 수 없음"/"설명 없음" 제거
+  - **Agent 정보 섹션 추가**: 모든 Agent 표시 (역할, LLM 모델, 도구 목록)
+    - LLM 배지 (파란색): 각 Agent의 할당된 모델 명시
+    - 도구 배지 (회색): 각 Agent가 사용하는 도구 목록 명시
+  - **산출물 섹션 추가**: 생성된 파일 목록 with 파일 크기/수정일
+    - 새 API 엔드포인트: `/api/v2/projects/{id}/deliverables`
+    - 파일 아이콘, 이름, 크기(KB), 수정일시 표시
+  - **폰트 및 간격 개선**: 헤더/제목/본문 폰트 크기 증가, 패딩 확대
+    - 헤더 H1: 0.95rem → 1.25rem
+    - 사이드바 H2: 0.74rem → 0.9rem
+    - 패널 패딩: 8px → 16px
+  - **향상된 데이터 로딩**: `loadFullProjectData()` 함수로 프로젝트/Agent/산출물 통합 조회
+
+- **2025-10-05**: 요구사항 분석/Agent 관리 통합 화면 구축 및 프런트 스크립트 모듈화 완료
+  - 좌측 요구사항 대화 + 우측 Agent 관리 투-패널 레이아웃 적용 (`pre_analysis.html`, `pre_analysis.css`)
+  - 프런트 로직을 `pre_analysis.js`로 분리해 component-loader 재로딩 오류와 함수 미등록 문제 해결
+  - 요구사항 입력창에 LLM 모델 선택 콤보박스 추가 (선택 모델이 `sendMessage` 호출에 반영)
+  - 프로젝트 생성 후 바로 Agent 패널이 활성화되고 CRUD/스크립트 실행까지 한 화면에서 이어지도록 UX 재정비
+
 - **2025-10-04**: Admin 탭 JWT 인증 시스템 완전 통합 (apiRequest 헬퍼 함수, 401/404 에러 수정)
 - **2025-10-03**: 탭 기반 SPA 인터페이스 전환 완료 (4개 탭 통합, 동적 컴포넌트 로딩)
 - **2025-10-02**: MCP 도구 선택 시스템 구축 (10개 도구 레지스트리, 동적 통합)
@@ -1444,4 +1545,4 @@ os.environ['SUPABASE_ANON_KEY'] = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
 
 *본 문서는 AI 프로그램 생성 채팅 인터페이스 프로젝트의 현재 상태를 정리한 것으로, CrewAI 데이터베이스 통합 계획을 포함하여 지속적으로 업데이트될 예정입니다.*
 
-**최종 업데이트**: 2025-09-29
+**최종 업데이트**: 2025-10-11

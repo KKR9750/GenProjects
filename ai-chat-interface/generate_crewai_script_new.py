@@ -206,13 +206,13 @@ def get_model(model_name: str):
 
 # 4개 전문 에이전트 정의 (사전 분석 결과 기반)
 print("\\n👥 전문 에이전트 구성 중...")
-
 # Pre-Analyzer: 사전 분석 처리
 pre_analyzer = Agent(
     role="Pre-Analysis Specialist",
     goal="{pre_analyzer_goal}",
     backstory="{pre_analyzer_backstory}",
     verbose=True,
+    tools=[],
     allow_delegation=False,
     llm=get_model("{pre_analyzer_model}")
 )
@@ -223,6 +223,7 @@ planner = Agent(
     goal="{planner_goal}",
     backstory="{planner_backstory}",
     verbose=True,
+    tools=[],
     allow_delegation=False,
     llm=get_model("{planner_model}")
 )
@@ -235,7 +236,7 @@ researcher = Agent(
     verbose=True,
     allow_delegation=False,
     llm=get_model("{researcher_model}"),
-    {researcher_tools}
+    tools={researcher_tools}
 )
 
 # Writer: 구현 및 문서 작성 + Planner 피드백 반영
@@ -244,6 +245,7 @@ writer = Agent(
     goal="{writer_goal}",
     backstory="{writer_backstory}",
     verbose=True,
+    tools=[],
     allow_delegation=False,
     llm=get_model("{writer_model}")
 )
@@ -290,14 +292,20 @@ print("\\n🚀 CrewAI 전문 에이전트 협업 시작...")
 
 all_tasks = [task1, task2, task3, task4] + review_tasks + revision_tasks
 
-crew = Crew(
-    agents=[pre_analyzer, planner, researcher, writer],
-    tasks=all_tasks,
-    verbose=True
-)
-
 # 실행 및 결과 저장
 start_time = datetime.now()
+
+# 단계별 승인 시스템을 위한 실행
+from crewai_with_approval import execute_crewai_with_approval
+
+result = execute_crewai_with_approval(
+    requirement="{original_requirement}",
+    project_path="{project_path}",
+    execution_id="{execution_id}",
+    agents={{'pre_analyzer': pre_analyzer, 'planner': planner, 'researcher': researcher, 'writer': writer}},
+    tasks={{'task1': task1, 'task2': task2, 'task3': task3, 'task4': task4, 'review_tasks': review_tasks, 'revision_tasks': revision_tasks}}
+)
+
 try:
     result = crew.kickoff()
     end_time = datetime.now()
@@ -537,14 +545,6 @@ Writer의 2차 고도화 결과에 대한 최종 검토를 수행하세요:
         'final_revision_task_description': '''
 Planner의 최종 검토를 바탕으로 완벽한 최종 버전을 완성하세요:
 
-**최종 완성 작업**:
-1. 모든 검토 지적사항의 완벽한 해결
-2. 최고 수준의 코드 품질 달성
-3. 완전한 기능 구현 및 검증
-4. 완벽한 문서화 및 사용 가이드
-5. 프로덕션 배포 준비 완료
-6. 최종 품질 보증
-
 업계 최고 수준의 완성된 프로젝트를 제작하세요.
         ''',
         'final_revision_expected_output': "최종 완성된 프로젝트 (업계 최고 수준, 즉시 배포 가능)"
@@ -553,6 +553,9 @@ Planner의 최종 검토를 바탕으로 완벽한 최종 버전을 완성하세
     # 동적 검토-재작성 태스크 생성 (review_iterations에 따라 0~3회)
     review_revision_code_parts = []
 
+
+    # 동적 검토-재작성 태스크 생성 로직을 template_vars 안으로 이동
+    review_revision_code_parts = []
     for i in range(review_iterations):
         iteration_num = i + 1
         is_final = (i == review_iterations - 1)
@@ -647,12 +650,9 @@ Planner의 {iteration_num}차 검토 피드백을 바탕으로 프로젝트를 {
 )
 ''')
 
-    # 생성된 태스크 코드 결합
     review_revision_tasks_code = ''.join(review_revision_code_parts)
 
-    # 동적으로 생성된 태스크 리스트 빌드
     if review_iterations > 0:
-        review_task_list = ', '.join([f'task{4+i+1}' for i in range(review_iterations * 2)])
         dynamic_tasks_append = f'''
 review_tasks = [{', '.join([f'task{4+i*2+1}' for i in range(review_iterations)])}]
 revision_tasks = [{', '.join([f'task{4+i*2+2}' for i in range(review_iterations)])}]
@@ -662,8 +662,6 @@ revision_tasks = [{', '.join([f'task{4+i*2+2}' for i in range(review_iterations)
 review_tasks = []
 revision_tasks = []
 '''
-
-    # 템플릿 변수에 동적 코드 추가
     template_vars['review_revision_tasks'] = review_revision_tasks_code + dynamic_tasks_append
 
     # 새로운 순수 CrewAI 스크립트 생성

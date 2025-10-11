@@ -1,0 +1,240 @@
+{
+  "version": "2.0",
+  "last_updated": "2025-01-28",
+  "description": "CrewAI LLM 모델 할당 설정 (litellm 호환 + Gemini 2.5 지원)",
+  "model_pool": {
+    "gpt-4": {
+      "litellm_name": "openai/gpt-4",
+      "cost_level": "high",
+      "speed_level": "medium",
+      "strengths": ["advanced_reasoning", "complex_analysis", "problem_solving"],
+      "api_provider": "openai",
+      "env_key": "OPENAI_API_KEY",
+      "enabled": true,
+      "backup_model": "gpt-3.5-turbo"
+    },
+    "gpt-3.5-turbo": {
+      "litellm_name": "openai/gpt-3.5-turbo",
+      "cost_level": "medium",
+      "speed_level": "fast",
+      "strengths": ["general_purpose", "quick_response", "cost_effective"],
+      "api_provider": "openai",
+      "env_key": "OPENAI_API_KEY",
+      "enabled": true,
+      "backup_model": "gemini-2.5-flash"
+    },
+    "gemini-2.5-flash": {
+      "litellm_name": "gemini/gemini-2.0-flash-exp",
+      "cost_level": "low",
+      "speed_level": "very_fast",
+      "strengths": ["speed", "cost_efficiency", "latest_features", "multimodal"],
+      "api_provider": "google",
+      "env_key": "GOOGLE_API_KEY",
+      "enabled": true,
+      "backup_model": "gemini-2.5-flash"
+    },
+    "gemini-2.5-pro": {
+      "litellm_name": "gemini/gemini-2.0-flash-thinking-exp",
+      "cost_level": "medium",
+      "speed_level": "fast",
+      "strengths": ["advanced_reasoning", "complex_analysis", "multimodal", "latest_features"],
+      "api_provider": "google",
+      "env_key": "GOOGLE_API_KEY",
+      "enabled": true,
+      "backup_model": "gemini-2.5-flash"
+    },
+    "claude-3": {
+      "litellm_name": "anthropic/claude-3-sonnet-20240229",
+      "cost_level": "medium",
+      "speed_level": "medium",
+      "strengths": ["creative_writing", "document_analysis", "structured_output"],
+      "api_provider": "anthropic",
+      "env_key": "ANTHROPIC_API_KEY",
+      "enabled": true,
+      "backup_model": "gpt-3.5-turbo"
+    },
+    "claude-3-opus": {
+      "litellm_name": "anthropic/claude-3-opus-20240229",
+      "cost_level": "high",
+      "speed_level": "slow",
+      "strengths": ["highest_quality", "complex_reasoning", "creative_tasks"],
+      "api_provider": "anthropic",
+      "env_key": "ANTHROPIC_API_KEY",
+      "enabled": true,
+      "backup_model": "claude-3"
+    },
+    "deepseek-coder": {
+      "litellm_name": "deepseek/deepseek-coder",
+      "cost_level": "low",
+      "speed_level": "fast",
+      "strengths": ["coding", "technical_documentation", "debugging"],
+      "api_provider": "deepseek",
+      "env_key": "DEEPSEEK_API_KEY",
+      "enabled": true,
+      "backup_model": "gpt-3.5-turbo"
+    },
+    "ollama-gemma2-2b": {
+      "litellm_name": "ollama/gemma2:2b",
+      "cost_level": "free",
+      "speed_level": "very_fast",
+      "strengths": ["local_execution", "privacy", "no_api_cost", "fast_response"],
+      "api_provider": "ollama",
+      "env_key": "OLLAMA_BASE_URL",
+      "enabled": true,
+      "backup_model": "gemini-2.5-flash"
+    },
+    "ollama-deepseek-coder-6.7b": {
+      "litellm_name": "ollama/deepseek-coder:6.7b",
+      "cost_level": "free",
+      "speed_level": "fast",
+      "strengths": ["coding", "local_execution", "privacy", "technical_writing"],
+      "api_provider": "ollama",
+      "env_key": "OLLAMA_BASE_URL",
+      "enabled": true,
+      "backup_model": "deepseek-coder"
+    },
+    "ollama-llama3.1": {
+      "litellm_name": "ollama/llama3.1:latest",
+      "cost_level": "free",
+      "speed_level": "fast",
+      "strengths": ["general_purpose", "local_execution", "privacy", "conversation"],
+      "api_provider": "ollama",
+      "env_key": "OLLAMA_BASE_URL",
+      "enabled": true,
+      "backup_model": "gpt-3.5-turbo"
+    },
+    "ollama-qwen3-coder-30b": {
+      "litellm_name": "ollama/qwen3-coder:30b",
+      "cost_level": "free",
+      "speed_level": "medium",
+      "strengths": ["advanced_coding", "local_execution", "privacy", "multilingual"],
+      "api_provider": "ollama",
+      "env_key": "OLLAMA_BASE_URL",
+      "enabled": true,
+      "backup_model": "gpt-4"
+    }
+  },
+  "agent_preferences": {
+    "requirements_analyst": {
+      "preferred_models": ["gpt-4", "gemini-2.5-pro", "claude-3", "gemini-2.5-flash"],
+      "reasoning": "복잡한 요구사항 분석에는 고급 추론 능력 필요"
+    },
+    "technology_researcher": {
+      "preferred_models": ["gemini-2.5-pro", "gpt-4", "gemini-2.5-flash", "gpt-3.5-turbo"],
+      "reasoning": "최신 기술 정보와 추론 능력 필요"
+    },
+    "solution_architect": {
+      "preferred_models": ["gpt-4", "gemini-2.5-pro", "claude-3"],
+      "reasoning": "시스템 설계에는 높은 수준의 분석력 필요"
+    },
+    "implementation_engineer": {
+      "preferred_models": ["ollama-deepseek-coder-6.7b", "ollama-qwen3-coder-30b", "deepseek-coder", "gpt-4", "gemini-2.5-flash"],
+      "reasoning": "코딩 특화 모델 또는 고급 프로그래밍 능력 필요 (로컬 모델 우선)"
+    },
+    "frontend_developer": {
+      "preferred_models": ["ollama-deepseek-coder-6.7b", "ollama-gemma2-2b", "deepseek-coder", "gemini-2.5-flash", "gpt-3.5-turbo"],
+      "reasoning": "프론트엔드 개발에는 빠른 응답과 코딩 능력 필요 (로컬 모델 우선)"
+    },
+    "backend_developer": {
+      "preferred_models": ["ollama-deepseek-coder-6.7b", "ollama-qwen3-coder-30b", "deepseek-coder", "gpt-4", "gemini-2.5-flash"],
+      "reasoning": "백엔드 개발에는 복잡한 로직 처리 능력 필요 (로컬 모델 우선)"
+    },
+    "data_scientist": {
+      "preferred_models": ["gpt-4", "gemini-2.5-pro", "gemini-2.5-pro", "claude-3"],
+      "reasoning": "데이터 분석과 통계적 추론 능력 필요"
+    },
+    "data_engineer": {
+      "preferred_models": ["deepseek-coder", "gpt-4", "gemini-2.5-flash", "gemini-2.5-pro"],
+      "reasoning": "데이터 파이프라인 구축에는 코딩과 아키텍처 능력 필요"
+    },
+    "content_strategist": {
+      "preferred_models": ["claude-3", "gemini-2.5-pro", "gpt-4", "gemini-2.5-pro"],
+      "reasoning": "콘텐츠 전략에는 창의성과 분석력 필요"
+    },
+    "content_creator": {
+      "preferred_models": ["ollama-deepseek-coder-6.7b", "ollama-llama3.1", "claude-3", "gemini-2.5-pro", "gpt-4"],
+      "reasoning": "창의적 글쓰기에는 언어 생성 능력 필요 (로컬 모델 우선)"
+    },
+    "seo_specialist": {
+      "preferred_models": ["gemini-2.5-flash", "gpt-3.5-turbo", "gemini-2.5-flash", "claude-3"],
+      "reasoning": "SEO 최적화에는 빠른 분석과 마케팅 지식 필요"
+    },
+    "automation_specialist": {
+      "preferred_models": ["deepseek-coder", "gemini-2.5-flash", "gpt-3.5-turbo", "gemini-2.5-flash"],
+      "reasoning": "자동화 스크립트에는 코딩과 효율성 필요"
+    },
+    "web_scraper": {
+      "preferred_models": ["deepseek-coder", "gemini-2.5-flash", "gpt-3.5-turbo", "gemini-2.5-flash"],
+      "reasoning": "웹 스크래핑에는 코딩과 빠른 처리 필요"
+    },
+    "document_parser": {
+      "preferred_models": ["claude-3", "gpt-4", "gemini-2.5-pro", "gemini-2.5-pro"],
+      "reasoning": "문서 처리에는 구조 분석과 텍스트 이해 능력 필요"
+    },
+    "information_extractor": {
+      "preferred_models": ["gpt-4", "gemini-2.5-pro", "claude-3", "gemini-2.5-pro"],
+      "reasoning": "정보 추출에는 고급 자연어 처리 능력 필요"
+    },
+    "quality_assurance": {
+      "preferred_models": ["gpt-4", "claude-3", "gemini-2.5-pro", "gpt-3.5-turbo"],
+      "reasoning": "품질 검증에는 꼼꼼한 분석 능력 필요"
+    },
+    "visualization_specialist": {
+      "preferred_models": ["gemini-2.5-flash", "gpt-4", "claude-3", "gemini-2.5-flash"],
+      "reasoning": "데이터 시각화에는 멀티모달 능력과 창의성 필요"
+    }
+  },
+  "budget_constraints": {
+    "default_budget": "medium",
+    "cost_limits": {
+      "low": 100,
+      "medium": 500,
+      "high": 1000,
+      "unlimited": 999999
+    },
+    "cost_weights": {
+      "low": 1.0,
+      "medium": 3.0,
+      "high": 8.0
+    }
+  },
+  "allocation_strategies": {
+    "default": "balanced",
+    "available_strategies": {
+      "cost_optimized": "비용 최적화 우선",
+      "performance_optimized": "성능 최적화 우선",
+      "balanced": "비용과 성능 균형",
+      "single_model": "단일 모델 사용"
+    }
+  },
+  "fallback_settings": {
+    "enable_fallback": true,
+    "fallback_model": "gemini-2.5-flash",
+    "max_retries": 3,
+    "fallback_chain": ["gemini-2.5-flash", "gemini-2.5-flash", "gpt-3.5-turbo"]
+  },
+  "environment_settings": {
+    "required_env_keys": [
+      "GOOGLE_API_KEY",
+      "OPENAI_API_KEY",
+      "ANTHROPIC_API_KEY",
+      "DEEPSEEK_API_KEY"
+    ],
+    "optional_env_keys": [],
+    "env_key_validation": {
+      "check_on_startup": true,
+      "warn_on_missing": true,
+      "fail_on_missing_primary": false
+    }
+  },
+  "litellm_compatibility": {
+    "auto_convert_model_names": true,
+    "fallback_to_simple_name": true,
+    "supported_providers": ["openai", "google", "anthropic", "deepseek"],
+    "provider_aliases": {
+      "gemini": "google",
+      "claude": "anthropic",
+      "chatgpt": "openai"
+    }
+  }
+}

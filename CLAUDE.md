@@ -19,6 +19,13 @@
 3. **MetaGPT**: 5단계 소프트웨어 개발 프로세스 (PM → Architect → PM → Engineer → QA)
 
 ### 🎯 핵심 특징
+- **DB 기반 동적 Agent/Task 관리** ⭐ **NEW (2025-10-04)**
+  - 하드코딩 완전 제거: Agent/Task 정의를 DB로 이전
+  - 복합 Primary Key: (project_id, framework, agent_order) 직관적 식별
+  - 템플릿 재사용: {requirement} 플레이스홀더 기반
+  - 사전분석 분리: UI 대화 → 확정 → DB 생성
+  - 동적 스크립트 생성: DB → Jinja2 → 실행 스크립트
+  - **상세 가이드**: [DYNAMIC_SYSTEM_GUIDE.md](ai-chat-interface/DYNAMIC_SYSTEM_GUIDE.md)
 - **프로젝트 템플릿 시스템**: 5개 사전 정의 템플릿 (웹앱, 모바일앱, API 서버, 데이터 분석, ML)
 - **자동 실행 연동**: 템플릿 선택 → 프로젝트 생성 → AI 실행 자동 시작
 - **실시간 모니터링**: WebSocket 기반 실시간 진행 상황 추적
@@ -38,11 +45,16 @@ python start.py                    # 포트 3000
 
 ### 접근 지점
 ```bash
+# 기존 시스템
 http://localhost:3000/                # 통합 대시보드
 http://localhost:3000/crewai          # CrewAI 전용 인터페이스 (보라색 테마)
 http://localhost:3000/metagpt         # MetaGPT 전용 인터페이스 (녹색 테마)
 http://localhost:3000/templates       # 프로젝트 템플릿 선택
 http://localhost:3000/projects        # 프로젝트 관리 대시보드
+
+# DB 기반 동적 시스템 ⭐ NEW
+http://localhost:3000/pre_analysis.html                      # 사전분석 대화 UI
+http://localhost:3000/agent_manager.html?project_id=xxx&framework=crewai   # Agent 관리 UI
 ```
 
 ### 상태 확인

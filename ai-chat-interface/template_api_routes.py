@@ -12,6 +12,11 @@ from error_handler import error_handler, handle_api_error
 import uuid
 from datetime import datetime
 
+# app.py에서 token_required 데코레이터를 가져오기 위한 임시 조치
+# 이상적으로는 별도의 auth 모듈로 분리해야 합니다.
+from security_utils import token_required
+from database import db
+
 # Blueprint 생성
 template_routes = Blueprint('template_routes', __name__, url_prefix='/api/templates')
 
@@ -226,14 +231,52 @@ def _get_framework_display_name(framework: str) -> str:
 def get_created_projects():
     """생성된 프로젝트 목록 조회"""
     try:
-        projects = project_initializer.list_projects()
-        return jsonify({
-            'success': True,
-            'projects': projects,
-            'count': len(projects)
-        })
+        # 데이터베이스에서 프로젝트 목록 조회
+        from database import db
+        
+        # 모든 프로젝트 조회 (관리자 권한으로)
+        result = db.get_projects(user_id=None, limit=100)
+        
+        if result['success']:
+            # 프로젝트 데이터를 프론트엔드 형식에 맞게 변환
+            projects = []
+            for project in result['projects']:
+                formatted_project = {
+                    'id': project.get('project_id'),
+                    'project_id': project.get('project_id'),
+                    'name': project.get('name', '이름 없는 프로젝트'),
+                    'description': project.get('description', ''),
+                    'framework': project.get('selected_ai', 'unknown'),
+                    'project_type': project.get('project_type', '기타'),
+                    'status': project.get('status', 'pending'),
+                    'created_at': project.get('created_at'),
+                    'updated_at': project.get('updated_at'),
+                    'progress_percentage': project.get('progress_percentage', 0),
+                    'current_stage': project.get('current_stage', ''),
+                    'review_iterations': project.get('review_iterations', 0)
+                }
+                projects.append(formatted_project)
+            
+            return jsonify({
+                'success': True,
+                'projects': projects,
+                'count': len(projects)
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', '프로젝트 조회 실패'),
+                'projects': [],
+                'count': 0
+            })
+            
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({
+            'success': False, 
+            'error': f'프로젝트 목록 조회 중 오류: {str(e)}',
+            'projects': [],
+            'count': 0
+        }), 500
 
 @template_routes.route('/projects/<project_id>', methods=['GET'])
 def get_project_status(project_id):
@@ -250,6 +293,17 @@ def get_project_status(project_id):
                 'success': False,
                 'message': '프로젝트를 찾을 수 없습니다'
             }), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@template_routes.route('/projects/<project_id>', methods=['DELETE'])
+@token_required
+def delete_project(project_id):
+    """프로젝트 삭제"""
+    try:
+        result = db.delete_project(project_id)
+        status_code = 200 if result.get('success') else 400
+        return jsonify(result), status_code
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -297,11 +351,45 @@ def cancel_execution(project_id):
 def list_executions():
     """모든 프로젝트 실행 상태 목록"""
     try:
-        executions = project_executor.list_executions()
-        return jsonify({
-            'success': True,
-            'executions': executions,
-            'count': len(executions)
-        })
+        # 데이터베이스에서 프로젝트 실행 상태 조회
+        from database import db
+        
+        result = db.get_projects(user_id=None, limit=100)
+        
+        if result['success']:
+            # 프로젝트 데이터를 실행 상태 형식으로 변환
+            executions = []
+            for project in result['projects']:
+                execution = {
+                    'project_id': project.get('project_id'),
+                    'status': project.get('status', 'pending'),
+                    'progress_percentage': project.get('progress_percentage', 0),
+                    'current_stage': project.get('current_stage', ''),
+                    'created_at': project.get('created_at'),
+                    'updated_at': project.get('updated_at'),
+                    'deliverables_count': 0,  # 기본값
+                    'start_time': project.get('created_at'),
+                    'end_time': project.get('updated_at') if project.get('status') in ['completed', 'failed'] else None
+                }
+                executions.append(execution)
+            
+            return jsonify({
+                'success': True,
+                'executions': executions,
+                'count': len(executions)
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', '실행 상태 조회 실패'),
+                'executions': [],
+                'count': 0
+            })
+            
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({
+            'success': False, 
+            'error': f'실행 상태 조회 중 오류: {str(e)}',
+            'executions': [],
+            'count': 0
+        }), 500

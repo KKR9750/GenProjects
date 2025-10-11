@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>프로젝트 승인 시스템 - GenProjects</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .approval-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .approval-card.active {
+            display: block;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .card-header h2 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+
+        .project-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .info-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .info-label {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .content-section {
+            padding: 30px;
+        }
+
+        .section-title {
+            font-size: 1.4rem;
+            color: #333;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+
+        .content-box {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .original-requirements {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+        }
+
+        .plan-content {
+            background: #f0f8f0;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .actions {
+            background: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .feedback-section {
+            margin-bottom: 20px;
+        }
+
+        .feedback-textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-family: inherit;
+            resize: vertical;
+        }
+
+        .feedback-textarea:focus {
+            outline: none;
+            border-color: #4CAF50;
+            box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+
+        .btn-approve {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+        }
+
+        .btn-approve:hover {
+            background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .btn-reject {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+            color: white;
+        }
+
+        .btn-reject:hover {
+            background: linear-gradient(135deg, #d32f2f 0%, #c62828 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(244, 67, 54, 0.4);
+        }
+
+        .btn-modify {
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+            color: white;
+        }
+
+        .btn-modify:hover {
+            background: linear-gradient(135deg, #f57c00 0%, #ef6c00 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 152, 0, 0.4);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-approved {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-rejected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: white;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .no-projects {
+            background: white;
+            border-radius: 15px;
+            padding: 50px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .no-projects h3 {
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .no-projects p {
+            color: #999;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 알림 애니메이션 */
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOutRight {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        /* 카드 닫기 애니메이션 개선 */
+        .approval-card.closing {
+            transform: scale(0.9);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 프로젝트 승인 시스템</h1>
+            <p>AI 에이전트의 계획을 검토하고 승인/거부를 결정하세요</p>
+        </div>
+
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <h3>승인 대기 중인 프로젝트를 로드하는 중...</h3>
+        </div>
+
+        <div id="no-projects" class="no-projects" style="display: none;">
+            <h3>📭 승인 대기 중인 프로젝트가 없습니다</h3>
+            <p>현재 승인을 기다리는 프로젝트가 없습니다.</p>
+            <p>새로운 프로젝트가 계획 단계를 완료하면 여기에 표시됩니다.</p>
+        </div>
+
+        <!-- 동적으로 생성되는 승인 카드들이 여기에 추가됩니다 -->
+    </div>
+
+    <script>
+        class ApprovalManager {
+            constructor() {
+                this.approvals = [];
+                this.currentApproval = null;
+                this.init();
+            }
+
+            async init() {
+                await this.loadPendingApprovals();
+                this.renderApprovals();
+            }
+
+            async loadPendingApprovals() {
+                try {
+                    const response = await fetch('/api/approval/pending');
+                    if (response.ok) {
+                        this.approvals = await response.json();
+                    } else {
+                        console.error('승인 대기 요청 로드 실패');
+                        // 개발/테스트용 더미 데이터
+                        this.loadDummyData();
+                    }
+                } catch (error) {
+                    console.error('API 호출 오류:', error);
+                    // 개발/테스트용 더미 데이터
+                    this.loadDummyData();
+                }
+
+                document.getElementById('loading').style.display = 'none';
+            }
+
+            loadDummyData() {
+                this.approvals = [
+                    {
+                        approval_id: 'test-approval-1',
+                        project_id: 'project-123',
+                        status: 'pending',
+                        created_at: new Date().toISOString(),
+                        analysis_result: {
+                            framework: 'crewai',
+                            original_request: '온라인 쇼핑몰을 만들어주세요',
+                            analysis: {
+                                project_summary: '사용자 친화적인 온라인 쇼핑몰 개발',
+                                objectives: [
+                                    '직관적인 상품 카탈로그 시스템 구축',
+                                    '안전한 결제 시스템 통합',
+                                    '효율적인 주문 관리 시스템 개발'
+                                ],
+                                agents: [
+                                    {
+                                        role: 'Researcher',
+                                        responsibilities: ['시장 조사', '경쟁사 분석', '고객 요구사항 분석'],
+                                        deliverables: ['시장 분석 보고서', '기술 스택 추천서'],
+                                        expertise: '시장 분석 및 사용자 연구'
+                                    },
+                                    {
+                                        role: 'Writer',
+                                        responsibilities: ['UI/UX 콘텐츠 작성', '상품 설명 템플릿 작성', '사용자 가이드 작성'],
+                                        deliverables: ['콘텐츠 가이드', '사용자 매뉴얼'],
+                                        expertise: '콘텐츠 작성 및 UX 라이팅'
+                                    },
+                                    {
+                                        role: 'Planner',
+                                        responsibilities: ['프로젝트 일정 계획', '리소스 관리', '품질 관리'],
+                                        deliverables: ['프로젝트 로드맵', '마일스톤 계획'],
+                                        expertise: '프로젝트 관리 및 전략 기획'
+                                    }
+                                ],
+                                workflow: [
+                                    {
+                                        step: 1,
+                                        title: '시장 조사 및 요구사항 분석',
+                                        description: '타겟 고객과 경쟁사를 분석하여 핵심 기능을 정의',
+                                        agent: 'Researcher',
+                                        estimated_time: '2시간'
+                                    },
+                                    {
+                                        step: 2,
+                                        title: 'UI/UX 콘텐츠 작성',
+                                        description: '사용자 경험을 고려한 콘텐츠와 가이드 작성',
+                                        agent: 'Writer',
+                                        estimated_time: '1시간 30분'
+                                    },
+                                    {
+                                        step: 3,
+                                        title: '프로젝트 계획 수립',
+                                        description: '개발 일정과 마일스톤 수립',
+                                        agent: 'Planner',
+                                        estimated_time: '1시간'
+                                    }
+                                ]
+                            }
+                        },
+                        metadata: {
+                            framework: 'crewai',
+                            estimated_completion_time: '4시간 30분'
+                        }
+                    }
+                ];
+            }
+
+            renderApprovals() {
+                const container = document.querySelector('.container');
+
+                if (this.approvals.length === 0) {
+                    document.getElementById('no-projects').style.display = 'block';
+                    return;
+                }
+
+                this.approvals.forEach((approval, index) => {
+                    const approvalCard = this.createApprovalCard(approval, index === 0);
+                    container.appendChild(approvalCard);
+                });
+            }
+
+            createApprovalCard(approval, isActive = false) {
+                const card = document.createElement('div');
+                card.className = `approval-card ${isActive ? 'active' : ''}`;
+                card.id = `approval-${approval.approval_id}`;
+
+                const analysis = approval.analysis_result.analysis;
+                const agents = analysis.agents || [];
+                const workflow = analysis.workflow || [];
+
+                card.innerHTML = `
+                    <div class="card-header">
+                        <h2>🎯 ${analysis.project_summary}</h2>
+                        <div class="status-badge status-pending">승인 대기</div>
+                    </div>
+
+                    <div class="project-info">
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">🆔 승인 ID</div>
+                                <div class="info-value">${approval.approval_id}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">🤖 프레임워크</div>
+                                <div class="info-value">${approval.analysis_result.framework.toUpperCase()}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">⏰ 생성 시간</div>
+                                <div class="info-value">${new Date(approval.created_at).toLocaleString('ko-KR')}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">⏱️ 예상 시간</div>
+                                <div class="info-value">${approval.metadata.estimated_completion_time}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="content-section">
+                        <div class="section-title">📋 원본 요청</div>
+                        <div class="content-box original-requirements">
+                            ${approval.analysis_result.original_request}
+                        </div>
+
+                        <div class="section-title">🎯 프로젝트 목표</div>
+                        <div class="content-box plan-content">
+                            <ul>
+                                ${analysis.objectives.map(obj => `<li>• ${obj}</li>`).join('')}
+                            </ul>
+                        </div>
+
+                        <div class="section-title">👥 AI 에이전트 역할 분담</div>
+                        <div class="content-box plan-content">
+                            ${agents.map(agent => `
+                                <div style="margin-bottom: 20px; padding: 15px; background: rgba(76, 175, 80, 0.1); border-radius: 8px;">
+                                    <h4 style="color: #4CAF50; margin-bottom: 10px;">🤖 ${agent.role}</h4>
+                                    <p style="margin-bottom: 8px;"><strong>전문 분야:</strong> ${agent.expertise}</p>
+                                    <p style="margin-bottom: 8px;"><strong>주요 책임:</strong></p>
+                                    <ul style="margin-left: 20px;">
+                                        ${agent.responsibilities.map(resp => `<li>• ${resp}</li>`).join('')}
+                                    </ul>
+                                    <p style="margin-top: 8px;"><strong>산출물:</strong> ${agent.deliverables.join(', ')}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <div class="section-title">📊 작업 계획</div>
+                        <div class="content-box plan-content">
+                            ${workflow.map((step, index) => `
+                                <div style="margin-bottom: 15px; padding: 12px; background: rgba(33, 150, 243, 0.1); border-left: 4px solid #2196F3;">
+                                    <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 8px;">
+                                        <strong style="color: #2196F3;">단계 ${step.step}: ${step.title}</strong>
+                                        <span style="color: #666; font-size: 0.9em;">⏱️ ${step.estimated_time}</span>
+                                    </div>
+                                    <p style="margin-bottom: 5px;">${step.description}</p>
+                                    <p style="color: #666; font-size: 0.9em;">담당: ${step.agent}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="actions">
+                        <div class="feedback-section">
+                            <label for="feedback-${approval.approval_id}" style="display: block; margin-bottom: 10px; font-weight: bold;">
+                                💬 피드백 (선택사항):
+                            </label>
+                            <textarea
+                                id="feedback-${approval.approval_id}"
+                                class="feedback-textarea"
+                                placeholder="승인/거부 사유나 수정 요청사항을 입력하세요..."
+                            ></textarea>
+                        </div>
+
+                        <div class="action-buttons">
+                            <button class="btn btn-approve" onclick="approvalManager.approveRequest('${approval.approval_id}')">
+                                ✅ 승인
+                            </button>
+                            <button class="btn btn-modify" onclick="approvalManager.requestModification('${approval.approval_id}')">
+                                🔄 수정 요청
+                            </button>
+                            <button class="btn btn-reject" onclick="approvalManager.rejectRequest('${approval.approval_id}')">
+                                ❌ 거부
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                return card;
+            }
+
+            async approveRequest(approvalId) {
+                const feedback = document.getElementById(`feedback-${approvalId}`).value;
+
+                if (confirm('이 계획을 승인하시겠습니까?')) {
+                    await this.submitDecision(approvalId, 'approve', feedback);
+                }
+            }
+
+            async rejectRequest(approvalId) {
+                const feedback = document.getElementById(`feedback-${approvalId}`).value;
+
+                if (!feedback.trim()) {
+                    alert('거부하는 경우 사유를 입력해주세요.');
+                    return;
+                }
+
+                if (confirm('이 계획을 거부하시겠습니까?')) {
+                    await this.submitDecision(approvalId, 'reject', feedback);
+                }
+            }
+
+            async requestModification(approvalId) {
+                const feedback = document.getElementById(`feedback-${approvalId}`).value;
+
+                if (!feedback.trim()) {
+                    alert('수정 요청 시 구체적인 수정사항을 입력해주세요.');
+                    return;
+                }
+
+                if (confirm('수정을 요청하시겠습니까?')) {
+                    await this.submitDecision(approvalId, 'request_revision', feedback);
+                }
+            }
+
+            async submitDecision(approvalId, action, feedback) {
+                try {
+                    const response = await fetch(`/api/approval/${approvalId}/respond`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            action: action,
+                            feedback: feedback,
+                            timestamp: new Date().toISOString()
+                        })
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        this.handleDecisionSuccess(approvalId, action, result);
+                    } else {
+                        alert('결정 전송에 실패했습니다.');
+                    }
+                } catch (error) {
+                    console.error('결정 전송 오류:', error);
+                    alert('네트워크 오류가 발생했습니다. 개발 모드에서는 로컬 처리합니다.');
+                    // 개발 모드에서는 로컬 처리
+                    this.handleDecisionSuccess(approvalId, action, { success: true, message: '개발 모드 처리됨' });
+                }
+            }
+
+            handleDecisionSuccess(approvalId, action, result) {
+                console.log(`[승인 처리 완료] approvalId: ${approvalId}, action: ${action}`);
+
+                const card = document.getElementById(`approval-${approvalId}`);
+                if (!card) {
+                    console.error(`승인 카드를 찾을 수 없음: approval-${approvalId}`);
+                    return;
+                }
+
+                const statusBadge = card.querySelector('.status-badge');
+                const actions = card.querySelector('.actions');
+
+                // 상태 배지 업데이트
+                const statusMap = {
+                    'approve': { class: 'approved', text: '승인됨' },
+                    'reject': { class: 'rejected', text: '거부됨' },
+                    'request_revision': { class: 'rejected', text: '수정 요청됨' }
+                };
+
+                const statusInfo = statusMap[action];
+                if (statusBadge) {
+                    statusBadge.className = `status-badge status-${statusInfo.class}`;
+                    statusBadge.textContent = statusInfo.text;
+                }
+
+                // 즉시 성공 메시지 표시
+                if (actions) {
+                    actions.innerHTML = `
+                        <div style="text-align: center; padding: 20px; background: #f0f8f0; border-radius: 8px;">
+                            <h3>✅ 승인 처리 완료!</h3>
+                            <p style="margin: 10px 0;">${result.message || 'AI 에이전트가 다음 단계를 진행합니다.'}</p>
+                            ${action === 'approve' ? '<p style="color: #4CAF50; font-weight: bold;">🚀 프로젝트 실행이 재개됩니다!</p>' : ''}
+                            <button onclick="approvalManager.closeApprovalCard('${approvalId}')" class="btn" style="margin-top: 10px; background: #4CAF50; color: white;">
+                                확인
+                            </button>
+                        </div>
+                    `;
+                }
+
+                // 승인인 경우 자동으로 2초 후 카드 닫기
+                if (action === 'approve') {
+                    setTimeout(() => {
+                        this.closeApprovalCard(approvalId);
+                    }, 2000);
+                }
+
+                // 성공 알림 표시
+                this.showSuccessNotification(action, approvalId);
+            }
+
+            closeApprovalCard(approvalId) {
+                console.log(`[카드 닫기] approvalId: ${approvalId}`);
+                const card = document.getElementById(`approval-${approvalId}`);
+                if (card) {
+                    card.style.transition = 'all 0.3s ease';
+                    card.style.transform = 'scale(0.9)';
+                    card.style.opacity = '0';
+
+                    setTimeout(() => {
+                        card.remove();
+                        this.checkRemainingApprovals();
+
+                        // 모든 승인이 완료된 경우 페이지 리다이렉트
+                        const remainingCards = document.querySelectorAll('.approval-card');
+                        if (remainingCards.length === 0) {
+                            console.log('[모든 승인 완료] 프로젝트 대시보드로 이동');
+                            setTimeout(() => {
+                                window.location.href = '/projects';
+                            }, 1000);
+                        }
+                    }, 300);
+                }
+            }
+
+            showSuccessNotification(action, approvalId) {
+                // 페이지 상단에 성공 알림 표시
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #4CAF50;
+                    color: white;
+                    padding: 15px 20px;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                    z-index: 10000;
+                    font-weight: bold;
+                    animation: slideInRight 0.3s ease;
+                `;
+
+                const actionText = action === 'approve' ? '승인되었습니다' :
+                                 action === 'reject' ? '거부되었습니다' : '수정 요청되었습니다';
+                notification.innerHTML = `✅ ${actionText}`;
+
+                document.body.appendChild(notification);
+
+                // 3초 후 알림 제거
+                setTimeout(() => {
+                    notification.style.animation = 'slideOutRight 0.3s ease';
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.parentNode.removeChild(notification);
+                        }
+                    }, 300);
+                }, 3000);
+            }
+
+            checkRemainingApprovals() {
+                const remainingCards = document.querySelectorAll('.approval-card');
+                if (remainingCards.length === 0) {
+                    document.getElementById('no-projects').style.display = 'block';
+                }
+            }
+        }
+
+        // 페이지 로드 시 초기화
+        let approvalManager;
+        document.addEventListener('DOMContentLoaded', () => {
+            approvalManager = new ApprovalManager();
+
+            // 주기적으로 새로운 승인 요청 확인 (30초마다)
+            setInterval(async () => {
+                await approvalManager.init();
+            }, 30000);
+        });
+    </script>
+</body>
+</html>

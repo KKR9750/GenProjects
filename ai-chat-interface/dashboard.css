@@ -45,7 +45,7 @@ body {
 }
 
 .header-left h1 {
-    font-size: 1.4rem;
+    font-size: 1rem;
     color: #667eea;
     margin-bottom: 4px;
     font-weight: 700;
@@ -177,7 +177,7 @@ body {
 }
 
 .system-icon {
-    font-size: 1.8rem;
+    font-size: 1.25rem;
     background: rgba(102, 126, 234, 0.1);
     padding: 8px;
     border-radius: 10px;
@@ -211,7 +211,7 @@ body {
 }
 
 .status-indicator {
-    font-size: 1.5rem;
+    font-size: 1.125rem;
 }
 
 .status-text {
@@ -456,7 +456,7 @@ body {
     }
 
     .header-left h1 {
-        font-size: 1.5rem;
+        font-size: 1.125rem;
     }
 
     .header-left p {
@@ -492,7 +492,7 @@ body {
     }
 
     .system-icon {
-        font-size: 1.8rem;
+        font-size: 1.25rem;
         padding: 8px;
     }
 
@@ -512,7 +512,7 @@ body {
     }
 
     .header-left h1 {
-        font-size: 1.3rem;
+        font-size: 0.9rem;
     }
 
     .header-left p {
@@ -520,7 +520,7 @@ body {
     }
 
     .system-icon {
-        font-size: 1.5rem;
+        font-size: 1.125rem;
         padding: 6px;
     }
 
@@ -662,13 +662,13 @@ body {
 .modal-header h2 {
     margin: 0;
     color: #2c3e50;
-    font-size: 1.1rem;
+    font-size: 0.8rem;
 }
 
 .modal-close {
     background: none;
     border: none;
-    font-size: 24px;
+    font-size: 18px;
     cursor: pointer;
     color: #999;
     padding: 0;
@@ -736,7 +736,7 @@ body {
 }
 
 .info-icon {
-    font-size: 20px;
+    font-size: 15px;
     flex-shrink: 0;
 }
 

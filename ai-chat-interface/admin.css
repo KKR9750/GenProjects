@@ -25,7 +25,7 @@ body {
 
 .loading {
     color: white;
-    font-size: 1.2rem;
+    font-size: 0.875rem;
     text-align: center;
     padding: 2rem;
     border-radius: 10px;
@@ -56,7 +56,7 @@ body {
     text-align: center;
     margin-bottom: 2rem;
     color: #1e3a8a;
-    font-size: 1.8rem;
+    font-size: 1.25rem;
 }
 
 .form-group {
@@ -145,7 +145,7 @@ body {
 
 .header-left h1 {
     color: #1e3a8a;
-    font-size: 1.5rem;
+    font-size: 1.125rem;
     margin-bottom: 0.25rem;
 }
 
@@ -209,7 +209,7 @@ body {
 
 .tab-icon {
     margin-right: 0.75rem;
-    font-size: 1.2rem;
+    font-size: 0.875rem;
 }
 
 .tab-name {
@@ -227,7 +227,7 @@ body {
 .system-status h2 {
     color: #1f2937;
     margin-bottom: 1.5rem;
-    font-size: 1.5rem;
+    font-size: 1.125rem;
 }
 
 .health-overview {
@@ -253,7 +253,7 @@ body {
 }
 
 .health-status {
-    font-size: 1.2rem;
+    font-size: 0.875rem;
     font-weight: 600;
 }
 
@@ -353,7 +353,7 @@ body {
 .project-management h2 {
     color: #1f2937;
     margin-bottom: 1.5rem;
-    font-size: 1.5rem;
+    font-size: 1.125rem;
 }
 
 .projects-overview {
@@ -478,7 +478,7 @@ tr:hover {
 .llm-management h2 {
     color: #1f2937;
     margin-bottom: 1.5rem;
-    font-size: 1.5rem;
+    font-size: 1.125rem;
 }
 
 .models-grid {
@@ -512,11 +512,11 @@ tr:hover {
 
 .model-header h3 {
     color: #1f2937;
-    font-size: 1.1rem;
+    font-size: 0.8rem;
 }
 
 .status-indicator {
-    font-size: 1.2rem;
+    font-size: 0.875rem;
 }
 
 .model-info {
@@ -540,7 +540,7 @@ tr:hover {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     text-align: center;
     color: #6b7280;
-    font-size: 1.1rem;
+    font-size: 0.8rem;
 }
 
 /* 반응형 디자인 */
@@ -576,5 +576,487 @@ tr:hover {
 
     table {
         min-width: 600px;
+    }
+}
+/* Tab-based Admin Dashboard Styles */
+.admin-container {
+    padding: 1.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.admin-header {
+    margin-bottom: 2rem;
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 1rem;
+}
+
+.admin-header h1 {
+    font-size: var(--font-xl, 1.25rem);
+    color: #1f2937;
+    margin-bottom: 0.25rem;
+}
+
+.admin-header p {
+    font-size: var(--font-sm, 0.75rem);
+    color: #6b7280;
+}
+
+.admin-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.admin-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.admin-card .card-header {
+    background: #f3f4f6;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.admin-card .card-header h2 {
+    font-size: var(--font-lg, 1.125rem);
+    color: #374151;
+    margin: 0;
+}
+
+.admin-card .card-body {
+    padding: 1rem;
+}
+
+.status-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.status-item:last-child {
+    border-bottom: none;
+}
+
+.status-item span {
+    font-size: var(--font-base, 0.875rem);
+}
+
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: var(--font-sm, 0.75rem);
+    font-weight: 500;
+}
+
+.status-running {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-connected {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.admin-btn {
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: var(--font-base, 0.875rem);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.admin-btn:hover {
+    background: #2563eb;
+}
+
+/* ============================================
+   Tab-based Admin Dashboard - Full Featured
+   ============================================ */
+
+.admin-container-tab {
+    display: flex;
+    height: 100%;
+    min-height: calc(100vh - 3.5rem);
+    background: #f9fafb;
+}
+
+/* Sidebar Styles */
+.admin-sidebar {
+    width: 260px;
+    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 4px 0 6px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-header h1 {
+    font-size: 1.125rem;
+    margin-bottom: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sidebar-header p {
+    font-size: 0.8125rem;
+    opacity: 0.9;
+    margin: 0;
+}
+
+.sidebar-menu {
+    padding: 1rem 0;
+}
+
+.menu-item {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.8);
+    padding: 0.875rem 1.5rem;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    border-left: 3px solid transparent;
+}
+
+.menu-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.menu-item.active {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    border-left-color: white;
+}
+
+.menu-item i {
+    font-style: normal;
+    font-size: 1.125rem;
+}
+
+/* Main Content Area */
+.admin-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.admin-header-tab {
+    background: white;
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.admin-header-tab h1 {
+    font-size: 1.125rem;
+    color: #111827;
+    margin-bottom: 0.25rem;
+}
+
+.admin-header-tab p {
+    font-size: 0.8125rem;
+    color: #6b7280;
+    margin: 0;
+}
+
+.admin-content-tab {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+    background: #f9fafb;
+}
+
+/* Stats Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    border-left: 4px solid;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
+
+.stat-card.stat-blue {
+    border-left-color: #3b82f6;
+}
+
+.stat-card.stat-red {
+    border-left-color: #ef4444;
+}
+
+.stat-card.stat-green {
+    border-left-color: #10b981;
+}
+
+.stat-card.stat-orange {
+    border-left-color: #f59e0b;
+}
+
+.stat-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    font-size: 0.8125rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+/* Info Grid */
+.info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.info-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.info-card h3 {
+    font-size: 1rem;
+    color: #111827;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.info-item:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-size: 0.8125rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.info-value {
+    font-size: 0.8125rem;
+    color: #111827;
+    font-weight: 600;
+}
+
+.info-value.status-healthy {
+    color: #10b981;
+}
+
+.info-value.status-error {
+    color: #ef4444;
+}
+
+/* Quick Access */
+.quick-access {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.quick-link {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+}
+
+.quick-link:hover {
+    transform: translateX(4px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.quick-link-purple {
+    background: linear-gradient(135deg, #ddd6fe 0%, #c7d2fe 100%);
+}
+
+.quick-link-green {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+}
+
+.quick-link-orange {
+    background: linear-gradient(135deg, #fed7aa 0%, #fbbf24 100%);
+}
+
+.quick-link-red {
+    background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
+}
+
+.quick-icon {
+    font-size: 1.5rem;
+}
+
+.quick-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.quick-subtitle {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+/* Management Cards */
+.management-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.management-card h3 {
+    font-size: 1.25rem;
+    color: #111827;
+    margin-bottom: 1rem;
+}
+
+.management-card p {
+    font-size: 0.9375rem;
+    color: #6b7280;
+    margin-bottom: 1.5rem;
+}
+
+.admin-btn {
+    padding: 0.75rem 1.5rem;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.admin-btn:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
+}
+
+/* Responsive Design for Tab Version */
+@media (max-width: 1024px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .admin-container-tab {
+        flex-direction: column;
+    }
+
+    .admin-sidebar {
+        width: 100%;
+        height: auto;
+    }
+
+    .sidebar-header {
+        padding: 1rem;
+    }
+
+    .sidebar-menu {
+        display: flex;
+        flex-wrap: wrap;
+        padding: 0.5rem;
+    }
+
+    .menu-item {
+        flex: 1;
+        min-width: 120px;
+        padding: 0.75rem 1rem;
+        border-left: none;
+        border-bottom: 3px solid transparent;
+    }
+
+    .menu-item.active {
+        border-left: none;
+        border-bottom-color: white;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-content-tab {
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .admin-header-tab {
+        padding: 1rem;
+    }
+
+    .stat-number {
+        font-size: 1.5rem;
+    }
+
+    .quick-link {
+        padding: 0.75rem;
+    }
+
+    .quick-icon {
+        font-size: 1.25rem;
     }
 }

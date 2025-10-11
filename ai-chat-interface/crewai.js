@@ -188,6 +188,13 @@ const CrewAIInterface = () => {
     // WebSocket functionality removed
 
     // 새 프로젝트 생성
+    const openRequirementAnalysis = () => {
+        const preAnalysisUrl = '/pre_analysis.html';
+        if (typeof window !== 'undefined' && window.location) {
+            window.location.href = preAnalysisUrl;
+        }
+    };
+
     const createProject = async () => {
         if (!newProjectData.name.trim()) {
             window.UIHelpers.showNotification('프로젝트 이름을 입력하세요', 'warning');
@@ -902,7 +909,7 @@ const CrewAIInterface = () => {
                                 </button>
                                 <button
                                     className="control-btn new-project-btn"
-                                    onClick={() => setShowNewProjectModal(true)}
+                                    onClick={openRequirementAnalysis}
                                     title="새 프로젝트 생성"
                                 >
                                     신규 프로젝트
@@ -1550,3 +1557,5 @@ const CrewAIInterface = () => {
 // React 18 createRoot API 사용
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<CrewAIInterface />);
+
+

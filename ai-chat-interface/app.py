@@ -179,6 +179,28 @@ try:
 except ImportError as e:
     print(f"⚠️ 관리자 API 라우트 등록 실패: {e}")
 
+# Import and register dynamic project management routes
+try:
+    from project_initialization_api import project_init_bp
+    app.register_blueprint(project_init_bp)
+    print("✅ 프로젝트 초기화 API 라우트 등록 완료")
+except ImportError as e:
+    print(f"⚠️ 프로젝트 초기화 API 라우트 등록 실패: {e}")
+
+try:
+    from agent_task_crud_api import agent_task_bp
+    app.register_blueprint(agent_task_bp)
+    print("✅ Agent/Task CRUD API 라우트 등록 완료")
+except ImportError as e:
+    print(f"⚠️ Agent/Task CRUD API 라우트 등록 실패: {e}")
+
+try:
+    from pre_analysis_chat_api import pre_analysis_bp
+    app.register_blueprint(pre_analysis_bp)
+    print("✅ Pre-analysis Chat API 라우트 등록 완료")
+except ImportError as e:
+    print(f"⚠️ Pre-analysis Chat API 라우트 등록 실패: {e}")
+
 # Supabase 클라이언트 설정
 supabase_url = os.getenv("SUPABASE_URL")
 supabase_key = os.getenv("SUPABASE_ANON_KEY")
@@ -200,14 +222,15 @@ execution_status = {}  # 전역 변수로 실행 상태 관리
 def set_security_headers(response):
     # XSS 보호
     response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['X-Frame-Options'] = 'DENY'
+    # iframe 허용 - 같은 도메인(SAMEORIGIN)에서만 허용
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
     response.headers['X-XSS-Protection'] = '1; mode=block'
 
     # HSTS (HTTPS 강제)
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
 
-    # CSP (Content Security Policy)
-    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://localhost:* https://unpkg.com https://cdnjs.cloudflare.com"
+    # CSP (Content Security Policy) - frame-ancestors 추가
+    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://localhost:* https://unpkg.com https://cdnjs.cloudflare.com; frame-ancestors 'self'"
 
     return response
 
@@ -285,91 +308,23 @@ def validate_json_input(required_fields=None):
         return decorated
     return decorator
 
-# ==================== AUTHENTICATION DECORATORS ====================
-
-def token_required(f):
-    """JWT token required decorator"""
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        token = None
-        auth_header = request.headers.get('Authorization')
-
-        if auth_header:
-            try:
-                token = auth_header.split(' ')[1]  # Bearer <token>
-            except IndexError:
-                return jsonify({'error': 'Invalid token format'}), 401
-
-        if not token:
-            return jsonify({'error': 'Token is missing'}), 401
-
-        token_result = db.verify_jwt_token(token)
-        if not token_result['success']:
-            return jsonify({'error': token_result['error']}), 401
-
-        request.current_user = token_result['payload']
-        return f(*args, **kwargs)
-
-    return decorated
-
-def optional_auth(f):
-    """Optional authentication decorator"""
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        token = None
-        auth_header = request.headers.get('Authorization')
-
-        if auth_header:
-            try:
-                token = auth_header.split(' ')[1]
-                token_result = db.verify_jwt_token(token)
-                if token_result['success']:
-                    request.current_user = token_result['payload']
-            except:
-                pass
-
-        if not hasattr(request, 'current_user'):
-            request.current_user = None
-
-        return f(*args, **kwargs)
-
-    return decorated
+from security_utils import token_required, optional_auth
 
 
 @app.route('/')
 def index():
-    """통합 대시보드 메인 페이지"""
-    return send_from_directory('.', 'dashboard.html')
+    """탭 기반 통합 인터페이스 (SPA)"""
+    return send_from_directory('.', 'index.html')
 
-@app.route('/crewai')
-def crewai_interface():
-    """CrewAI 인터페이스"""
-    return send_from_directory('.', 'crewai.html')
-
-@app.route('/crewai/logs')
-def crewai_logs():
-    """CrewAI 로깅 대시보드"""
-    return send_from_directory('.', 'crewai_logs.html')
-
-@app.route('/metagpt')
-def metagpt_interface():
-    """MetaGPT 인터페이스"""
-    return send_from_directory('.', 'metagpt.html')
+@app.route('/login.html')
+def login_page():
+    """로그인 페이지"""
+    return send_from_directory('.', 'login.html')
 
 @app.route('/templates')
 def templates_interface():
-    """프로젝트 템플릿 인터페이스"""
+    """프로젝트 템플릿 선택 인터페이스 (독립 페이지)"""
     return send_from_directory('.', 'templates.html')
-
-@app.route('/projects')
-def projects_interface():
-    """프로젝트 관리 대시보드"""
-    return send_from_directory('.', 'projects.html')
-
-@app.route('/admin')
-def admin_interface():
-    """관리자 대시보드"""
-    return send_from_directory('.', 'admin.html')
 
 
 @app.route('/<path:filename>')
@@ -398,28 +353,68 @@ def health_check():
     })
 
 
+
+
 @app.route('/api/mcps/available', methods=['GET'])
 def get_available_mcps():
-    """사용 가능한 MCP/도구 목록 반환"""
+    """사용 가능한 MCP 도구 목록 조회"""
     try:
-        from mcp_manager import MCPManager
+        mcp_registry_path = os.path.join(os.path.dirname(__file__), 'mcp_registry.json')
 
-        category = request.args.get('category')  # 카테고리 필터 (선택사항)
+        if not os.path.exists(mcp_registry_path):
+            return jsonify({
+                'status': 'error',
+                'error': 'MCP registry file not found'
+            }), 404
 
-        mcp_manager = MCPManager()
-        mcps = mcp_manager.get_available_mcps(category)
+        with open(mcp_registry_path, 'r', encoding='utf-8') as f:
+            registry = json.load(f)
+
+        # Convert registry dict to list format with key included
+        mcps_list = []
+        for key, value in registry.items():
+            mcp_item = {
+                'key': key,
+                'name': value.get('name', key),
+                'description': value.get('description', ''),
+                'category': value.get('category', 'other'),
+                'icon': value.get('icon', '🔧'),
+                'type': value.get('type', 'builtin_tool'),
+                'config': value.get('config', {})
+            }
+            mcps_list.append(mcp_item)
 
         return jsonify({
             'status': 'success',
-            'mcps': mcps,
-            'count': len(mcps)
+            'mcps': mcps_list,
+            'count': len(mcps_list)
         })
 
     except Exception as e:
+        print(f"Error loading MCP registry: {e}")
         return jsonify({
             'status': 'error',
-            'message': f'MCP 목록 조회 실패: {str(e)}'
+            'error': str(e)
         }), 500
+@app.route('/api/generate-script', methods=['POST'])
+def generate_dynamic_script():
+    """동적 스크립트 생성 API"""
+    try:
+        from dynamic_script_generator import generate_script
+
+        data = request.get_json()
+        project_id = data.get('projectId')
+
+        if not project_id:
+            return jsonify({'error': 'Project ID is required'}), 400
+
+        result = generate_script(project_id)
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 
 def check_crewai_service():
@@ -776,7 +771,7 @@ def handle_crewai_request():
                 execution_id=execution_id,
                 review_iterations=review_iterations,
                 selected_tools=selected_tools,
-                api_keys=api_keys
+                api_keys=api_keys,
             )
 
         script_path = os.path.join(project_path, "execute_crewai.py")
@@ -1898,8 +1893,19 @@ def create_project_v2():
             'details': validation_result['errors']
         }), 400
 
+    validated_data = validation_result['data']
+    tools_payload = validated_data.pop('tools', None)
+
     # 검증된 데이터로 프로젝트 생성
-    result = db.create_project(validation_result['data'])
+    result = db.create_project(validated_data)
+
+    if result.get('success') and tools_payload is not None:
+        tools_result = db.set_project_tools(result['project']['project_id'], tools_payload)
+        if tools_result.get('success'):
+            result['project']['tools'] = tools_result.get('tools', [])
+        else:
+            result.setdefault('warnings', []).append(tools_result.get('error'))
+
     status_code = 201 if result.get('success') else 400
 
     return jsonify(result), status_code
@@ -1913,6 +1919,52 @@ def get_project_v2(project_id):
 
     return jsonify(result), status_code
 
+
+@app.route('/api/v2/projects/<project_id>/deliverables', methods=['GET'])
+@optional_auth
+def get_project_deliverables(project_id):
+    """Get project deliverables (generated files)"""
+    try:
+        import os
+        from datetime import datetime
+        
+        projects_dir = os.path.join(os.path.dirname(__file__), '..', 'Projects')
+        project_path = os.path.join(projects_dir, project_id)
+        
+        if not os.path.exists(project_path):
+            return jsonify({
+                'success': True,
+                'deliverables': [],
+                'count': 0
+            })
+        
+        deliverables = []
+        for filename in os.listdir(project_path):
+            file_path = os.path.join(project_path, filename)
+            if os.path.isfile(file_path):
+                stat = os.stat(file_path)
+                deliverables.append({
+                    'name': filename,
+                    'size': stat.st_size,
+                    'modified': datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                    'type': 'file'
+                })
+        
+        # Sort by modification time (newest first)
+        deliverables.sort(key=lambda x: x['modified'], reverse=True)
+        
+        return jsonify({
+            'success': True,
+            'deliverables': deliverables,
+            'count': len(deliverables)
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/api/v2/projects/<project_id>', methods=['PUT'])
 @optional_auth
 def update_project_v2(project_id):
@@ -1925,7 +1977,40 @@ def update_project_v2(project_id):
             'error': '업데이트할 데이터가 필요합니다'
         }), 400
 
-    result = db.update_project(project_id, data)
+    update_payload = dict(data)
+
+    # Validate review iterations if provided
+    if 'review_iterations' in update_payload:
+        review_validation = validate_request_data({'review_iterations': update_payload['review_iterations']}, 'project')
+        if not review_validation['valid']:
+            return jsonify({
+                'success': False,
+                'error': 'Input validation failed',
+                'details': review_validation['errors']
+            }), 400
+        update_payload['review_iterations'] = review_validation['data']['review_iterations']
+
+    tools_payload = None
+    if 'tools' in update_payload:
+        tools_validation = validate_request_data({'tools': update_payload['tools']}, 'project')
+        if not tools_validation['valid']:
+            return jsonify({
+                'success': False,
+                'error': 'Input validation failed',
+                'details': tools_validation['errors']
+            }), 400
+        tools_payload = tools_validation['data'].get('tools', [])
+        update_payload.pop('tools', None)
+
+    result = db.update_project(project_id, update_payload)
+
+    if result.get('success') and tools_payload is not None:
+        tools_result = db.set_project_tools(project_id, tools_payload)
+        if tools_result.get('success'):
+            result['project_tools'] = tools_result.get('tools', [])
+        else:
+            result.setdefault('warnings', []).append(tools_result.get('error'))
+
     status_code = 200 if result.get('success') else 400
 
     return jsonify(result), status_code
@@ -1935,6 +2020,46 @@ def update_project_v2(project_id):
 def delete_project_v2(project_id):
     """Delete project from database"""
     result = db.delete_project(project_id)
+    status_code = 200 if result.get('success') else 400
+
+    return jsonify(result), status_code
+
+
+@app.route('/api/v2/projects/<project_id>/tools', methods=['GET'])
+@optional_auth
+def get_project_tools(project_id):
+    """Get tool configuration for a project"""
+    result = db.get_project_tools(project_id)
+    status_code = 200 if result.get('success') else 404
+
+    return jsonify(result), status_code
+
+
+@app.route('/api/v2/projects/<project_id>/tools', methods=['POST'])
+@rate_limit(max_requests=20, window_seconds=60)
+@validate_json_input(['tools'])
+@optional_auth
+def set_project_tools(project_id):
+    """Set tool configuration for a project"""
+    data = request.get_json()
+
+    security_issues = check_request_security(data)
+    if security_issues:
+        return jsonify({
+            'success': False,
+            'error': 'Security validation failed',
+            'details': security_issues
+        }), 400
+
+    validation_result = validate_request_data(data, 'project_tools')
+    if not validation_result['valid']:
+        return jsonify({
+            'success': False,
+            'error': 'Input validation failed',
+            'details': validation_result['errors']
+        }), 400
+
+    result = db.set_project_tools(project_id, validation_result.get('tools', []))
     status_code = 200 if result.get('success') else 400
 
     return jsonify(result), status_code

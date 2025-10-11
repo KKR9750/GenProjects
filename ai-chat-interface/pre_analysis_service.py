@@ -23,27 +23,27 @@ class PreAnalysisService:
         """초기화 - LLM API 설정"""
         self.supported_models = {
             'gemini-pro': {
-                'api_key_env': 'GEMINI_API_KEY',
+                'api_key_env': 'GOOGLE_API_KEY',
                 'endpoint': 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent',
                 'max_tokens': 8192
             },
             'gemini-flash': {
-                'api_key_env': 'GEMINI_API_KEY',
+                'api_key_env': 'GOOGLE_API_KEY',
                 'endpoint': 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
                 'max_tokens': 8192
             },
             'gemini-2.0-flash': {
-                'api_key_env': 'GEMINI_API_KEY',
+                'api_key_env': 'GOOGLE_API_KEY',
                 'endpoint': 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
                 'max_tokens': 8192
             },
             'gemini-2.5-flash': {
-                'api_key_env': 'GEMINI_API_KEY',
+                'api_key_env': 'GOOGLE_API_KEY',
                 'endpoint': 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
                 'max_tokens': 8192
             },
             'gemini-2.5-pro': {
-                'api_key_env': 'GEMINI_API_KEY',
+                'api_key_env': 'GOOGLE_API_KEY',
                 'endpoint': 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent',
                 'max_tokens': 8192
             },
@@ -51,6 +51,31 @@ class PreAnalysisService:
                 'api_key_env': 'OPENAI_API_KEY',
                 'endpoint': 'https://api.openai.com/v1/chat/completions',
                 'max_tokens': 4096
+            },
+            # Ollama Local Models (no API key required)
+            'ollama-gemma2-2b': {
+                'api_key_env': 'OLLAMA_BASE_URL',
+                'endpoint': 'http://localhost:11434/api/generate',
+                'max_tokens': 2048,
+                'is_local': True
+            },
+            'ollama-deepseek-coder-6.7b': {
+                'api_key_env': 'OLLAMA_BASE_URL',
+                'endpoint': 'http://localhost:11434/api/generate',
+                'max_tokens': 4096,
+                'is_local': True
+            },
+            'ollama-llama3.1': {
+                'api_key_env': 'OLLAMA_BASE_URL',
+                'endpoint': 'http://localhost:11434/api/generate',
+                'max_tokens': 4096,
+                'is_local': True
+            },
+            'ollama-qwen3-coder-30b': {
+                'api_key_env': 'OLLAMA_BASE_URL',
+                'endpoint': 'http://localhost:11434/api/generate',
+                'max_tokens': 8192,
+                'is_local': True
             }
         }
 
@@ -68,6 +93,11 @@ class PreAnalysisService:
             'gpt-4o': 'gpt-4',                       # GPT-4o는 gpt-4로 매핑
             'claude-3-sonnet': 'gemini-2.5-flash',   # 지원하지 않는 모델은 최신 flash로
             'claude-3-haiku': 'gemini-2.5-flash',    # 지원하지 않는 모델은 최신 flash로
+            # Ollama Local Models - use fallback for pre-analysis
+            'ollama-gemma2-2b': 'gemini-2.5-flash',
+            'ollama-deepseek-coder-6.7b': 'gemini-2.5-flash',
+            'ollama-llama3.1': 'gemini-2.5-flash',
+            'ollama-qwen3-coder-30b': 'gemini-2.5-flash'
         }
 
     def analyze_user_request(self,
@@ -98,10 +128,10 @@ class PreAnalysisService:
             system_prompt = self._create_analysis_prompt(framework)
 
             # API 키 확인
-            has_api_key = bool(os.getenv('GEMINI_API_KEY')) or bool(os.getenv('OPENAI_API_KEY'))
+            has_api_key = bool(os.getenv('GOOGLE_API_KEY')) or bool(os.getenv('OPENAI_API_KEY'))
 
             if not has_api_key:
-                error_msg = "LLM API 키가 설정되지 않았습니다. GEMINI_API_KEY 또는 OPENAI_API_KEY 환경변수를 설정하세요."
+                error_msg = "LLM API 키가 설정되지 않았습니다. GOOGLE_API_KEY 또는 OPENAI_API_KEY 환경변수를 설정하세요."
                 logger.error(error_msg)
                 raise ValueError(error_msg)
 

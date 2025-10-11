@@ -6,7 +6,7 @@
 class APIClient {
     constructor() {
         this.baseURL = '';
-        this.token = localStorage.getItem('auth_token');
+        this.token = localStorage.getItem('admin_token') || localStorage.getItem('auth_token');
     }
 
     // ==================== AUTHENTICATION ====================
@@ -47,6 +47,14 @@ class APIClient {
 
         try {
             const response = await fetch(url, config);
+
+            if (response.status === 401) {
+                this.removeToken();
+                alert('세션이 만료되었거나 유효하지 않습니다. 다시 로그인해주세요.');
+                window.location.href = '/login.html';
+                throw new Error('세션 만료로 인해 작업이 중단되었습니다.');
+            }
+
             const result = await response.json();
 
             if (!response.ok) {
@@ -56,7 +64,7 @@ class APIClient {
             return result;
         } catch (error) {
             console.error(`API ${method} ${url}:`, error);
-            throw error;
+            throw error; // 에러를 다시 던져서 호출한 쪽에서 알 수 있도록 함
         }
     }
 
@@ -127,6 +135,14 @@ class APIClient {
 
     async deleteProject(projectId) {
         return this.delete(`/api/v2/projects/${projectId}`);
+    }
+
+    async getProjectTools(projectId) {
+        return this.get(`/api/v2/projects/${projectId}/tools`);
+    }
+
+    async setProjectTools(projectId, tools) {
+        return this.post(`/api/v2/projects/${projectId}/tools`, { tools });
     }
 
     // ==================== ROLE-LLM MAPPING API ====================

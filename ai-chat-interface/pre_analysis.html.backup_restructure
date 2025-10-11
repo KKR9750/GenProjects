@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>프로젝트 요구사항 분석 & Agent 관리 - AI Chat Interface</title>
+</head>
+<body>
+    <div class="pre-analysis-page">
+        <div class="analysis-layout">
+            <section class="analysis-pane">
+                <div class="analysis-toolbar">
+                    <div class="analysis-heading">
+                        <h2>요구사항 분석</h2>
+                    </div>
+                    <div class="analysis-controls">
+                        <div class="framework-selector">
+                            <button class="framework-btn active" data-framework="crewai">CrewAI</button>
+                            <button class="framework-btn" data-framework="metagpt">MetaGPT</button>
+                        </div>
+                        <div class="conversation-controls">
+                            <button class="control-btn" id="newConversationBtn">새 대화</button>
+                            <button class="control-btn" id="clearConversationBtn">대화 기록 삭제</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-container">
+                    <div class="messages-area" id="messagesArea"></div>
+
+                    <div class="loading" id="loading">
+                        <span>AI가 분석 중입니다...</span>
+                    </div>
+
+                    <div class="finalize-section" id="finalizeSection">
+                        <div class="finalize-content">
+                            <h4>✅ 최종 요구사항</h4>
+                            <p id="finalRequirementText"></p>
+                        </div>
+                        <div class="finalize-actions">
+                            <button class="finalize-btn confirm" id="confirmRequirementBtn">프로젝트 생성</button>
+                            <button class="finalize-btn edit" id="editRequirementBtn">수정하기</button>
+                        </div>
+                    </div>
+
+                    <div class="input-area">
+                        <select id="modelSelect" class="model-select">
+                            <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash</option>
+                            <option value="gemini-2.0-pro-exp">Gemini 2.0 Pro</option>
+                            <option value="gpt-4o-mini">GPT-4o mini</option>
+                            <option value="gpt-4">GPT-4</option>
+                            <option value="claude-3-sonnet">Claude 3 Sonnet</option>
+                            <option value="claude-3-5-haiku">Claude 3.5 Haiku</option>
+                            <option value="deepseek-coder">DeepSeek Coder</option>
+                        </select>
+                        <input
+                            type="text"
+                            id="userInput"
+                            placeholder="프로젝트에 대해 어떤 도움이 필요하신가요?"
+                        >
+                        <button class="send-btn" id="sendBtn">전송</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="agent-pane disabled" id="agentPane">
+                <div class="agent-pane-overlay" id="agentPaneOverlay">
+                    <h3>아직 프로젝트가 생성되지 않았어요</h3>
+                    <p>왼쪽에서 요구사항을 확정하고 프로젝트를 생성하면 Agent 구성을 이어갈 수 있습니다.</p>
+                </div>
+
+                <div class="agent-pane-body">
+                    <header class="agent-pane-header">
+                        <div>
+                            <h2>Agent 관리</h2>
+                            <p>확정된 요구사항을 기반으로 팀 구성을 조정하세요.</p>
+                        </div>
+                        <div class="agent-project-meta">
+                            <span id="projectIdDisplay" class="agent-chip">Project ID: -</span>
+                            <span id="frameworkDisplay" class="agent-chip">Framework: crewai</span>
+                        </div>
+                    </header>
+
+                    <div class="agent-requirement-card" id="requirementCard" style="display:none;">
+                        <h3>📌 최종 요구사항</h3>
+                        <p id="requirementText"></p>
+                    </div>
+                    <!-- 품질검토 및 도구 선택 -->
+                    <div class="agent-config-section" id="agentConfigSection" style="display:none;">
+                        <div class="config-row">
+                            <!-- 품질검토 반복 횟수 -->
+                            <div class="review-iterations-control">
+                                <label class="iterations-label">
+                                    <span class="label-text">품질검토반복횟수:</span>
+                                    <input
+                                        type="number"
+                                        id="reviewIterationsInput"
+                                        class="iterations-input"
+                                        min="0"
+                                        max="3"
+                                        value="1"
+                                    />
+                                    <span class="label-suffix">회</span>
+                                </label>
+                            </div>
+
+                            <!-- 도구 선택 -->
+                            <div class="tools-selection-control">
+                                <button class="select-tools-btn" id="selectToolsBtn" disabled>
+                                    🛠️ 도구 선택
+                                </button>
+                                <span class="selected-tools-count" id="selectedToolsCount">0개 선택됨</span>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="agent-toolbar">
+                        <button class="add-agent-btn" id="addAgentButton" disabled>+ Agent 추가</button>
+                    </div>
+
+                    <div class="agents-grid" id="agentsGrid">
+                        <p class="empty-placeholder">프로젝트가 생성되면 에이전트 목록이 표시됩니다.</p>
+                    </div>
+
+                    <div class="execute-section">
+                        <h3>🚀 프로젝트 실행 준비</h3>
+                        <p>Agent 구성을 마쳤다면 실행 스크립트를 생성하고 즉시 실행할 수 있습니다.</p>
+                        <button class="execute-btn" id="executeProjectButton" disabled>스크립트 생성 및 실행</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <div class="modal" id="agentModal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Agent 추가</h2>
+            <form id="agentForm">
+                <div class="form-group">
+                    <label>Agent Order *</label>
+                    <input type="number" id="agentOrder" required min="1">
+                </div>
+                <div class="form-group">
+                    <label>Role *</label>
+                    <input type="text" id="agentRole" required>
+                </div>
+                <div class="form-group">
+                    <label>Goal *</label>
+                    <textarea id="agentGoal" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Backstory *</label>
+                    <textarea id="agentBackstory" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>LLM Model</label>
+                    <select id="agentLlm">
+                        <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                        <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                        <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash Exp</option>
+                        <option value="gemini-2.0-pro-exp">Gemini 2.0 Pro Exp</option>
+                        <option value="gpt-4o">GPT-4o</option>
+                        <option value="gpt-4">GPT-4</option>
+                        <option value="gpt-4o-mini">GPT-4o Mini</option>
+                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                        <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+                        <option value="claude-3-sonnet">Claude 3 Sonnet</option>
+                        <option value="claude-3-5-haiku">Claude 3.5 Haiku</option>
+                        <option value="deepseek-coder">DeepSeek Coder</option>
+                    </select>
+                </div>
+                <div class="form-group checkbox-group">
+                    <label>
+                        <input type="checkbox" id="agentVerbose" checked>
+                        Verbose
+                    </label>
+                    <label>
+                        <input type="checkbox" id="agentDelegation">
+                        Allow Delegation
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelAgentModalBtn">취소</button>
+                    <button type="submit" class="btn btn-primary">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+</div>
+    </div>
+
+    
+
+    <!-- 도구 선택 모달 (body 직속 자식) -->
+    <div class="tools-modal" id="toolsModal" style="display:none;">
+        <div class="tools-modal-overlay" id="toolsModalOverlay"></div>
+        <div class="tools-modal-content">
+            <div class="tools-modal-header">
+                <h3>🛠️ 도구 선택</h3>
+                <button class="close-btn" id="closeToolsModalBtn">×</button>
+            </div>
+
+            <div class="tools-category-tabs">
+                <button class="category-tab active" data-category="all">전체</button>
+                <button class="category-tab" data-category="file">파일</button>
+                <button class="category-tab" data-category="search">검색</button>
+                <button class="category-tab" data-category="knowledge">지식</button>
+                <button class="category-tab" data-category="media">미디어</button>
+            </div>
+
+            <div class="tools-grid" id="toolsGrid">
+                <!-- 도구 카드가 동적으로 생성됨 -->
+            </div>
+
+            <div class="tools-modal-footer">
+                <div class="selected-summary" id="selectedSummary">0개 선택됨</div>
+                <div class="tools-modal-actions">
+                    <button class="btn btn-secondary" id="cancelToolsBtn">취소</button>
+                    <button class="btn btn-primary" id="saveToolsBtn">저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="pre_analysis.js" data-component="pre_analysis"></script>
+</body>
+</html>

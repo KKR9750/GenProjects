@@ -19,6 +19,50 @@ CREATE TABLE IF NOT EXISTS system_settings (
 -- Projects 시퀀스 생성 (project_id 자동 생성용)
 CREATE SEQUENCE IF NOT EXISTS projects_seq START 1;
 
+-- ==================== APPROVAL SYSTEM TABLES ====================
+
+-- Approval Requests table
+CREATE TABLE IF NOT EXISTS approval_requests (
+    approval_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    project_id VARCHAR(13) REFERENCES projects(project_id) ON DELETE SET NULL,
+
+    -- Analysis Information
+    analysis_result JSONB NOT NULL,
+    framework VARCHAR(20) DEFAULT 'crewai' CHECK (framework IN ('crewai', 'metagpt')),
+
+    -- Approval Status
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'revision_requested', 'expired')),
+    requester VARCHAR(50) DEFAULT 'system',
+
+    -- Response Information
+    response JSONB DEFAULT '{}',
+
+    -- Metadata
+    metadata JSONB DEFAULT '{}',
+
+    -- Timestamps
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Approval History table
+CREATE TABLE IF NOT EXISTS approval_history (
+    history_id SERIAL PRIMARY KEY,
+    approval_id UUID REFERENCES approval_requests(approval_id) ON DELETE CASCADE,
+
+    -- Action Information
+    action VARCHAR(20) NOT NULL CHECK (action IN ('created', 'approve', 'reject', 'request_revision', 'expired')),
+    feedback TEXT,
+    revisions JSONB DEFAULT '{}',
+
+    -- Actor Information
+    actor VARCHAR(50) DEFAULT 'system',
+    actor_role VARCHAR(50),
+
+    -- Timestamp
+    timestamp TIMESTAMP DEFAULT NOW()
+);
+
 -- 1. Users table
 CREATE TABLE IF NOT EXISTS users (
     user_id VARCHAR(50) PRIMARY KEY,
@@ -56,6 +100,7 @@ CREATE TABLE IF NOT EXISTS projects (
     status VARCHAR(20) DEFAULT 'planning' CHECK (status IN ('planning', 'in_progress', 'review', 'completed', 'paused')),
     current_stage VARCHAR(20) DEFAULT 'requirement' CHECK (current_stage IN ('requirement', 'design', 'architecture', 'development', 'testing', 'deployment')),
     progress_percentage INTEGER DEFAULT 0 CHECK (progress_percentage >= 0 AND progress_percentage <= 100),
+    review_iterations INTEGER DEFAULT 1 CHECK (review_iterations >= 0 AND review_iterations <= 5),
 
     -- Project Configuration
     project_type VARCHAR(20) DEFAULT 'web_app' CHECK (project_type IN ('web_app', 'mobile_app', 'api', 'desktop', 'data_analysis')),
@@ -70,6 +115,17 @@ CREATE TABLE IF NOT EXISTS projects (
 
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Project Tools table
+CREATE TABLE IF NOT EXISTS project_tools (
+    id SERIAL PRIMARY KEY,
+    projects_project_id VARCHAR(13) REFERENCES projects(project_id) ON DELETE CASCADE,
+    tool_key VARCHAR(100) NOT NULL,
+    tool_config JSONB DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(projects_project_id, tool_key)
 );
 
 -- 2. Project Stages table (project_id SERIAL PK)
@@ -102,8 +158,8 @@ CREATE TABLE IF NOT EXISTS project_role_llm_mapping (
     )),
     llm_model VARCHAR(50) NOT NULL CHECK (llm_model IN (
         'gpt-4', 'gpt-4o', 'claude-3', 'claude-3-haiku', 'claude-3-sonnet',
-        'gemini-pro', 'gemini-ultra', 'gemini-flash', 'llama-3', 'llama-3-8b',
-        'mistral-large', 'mistral-7b', 'deepseek-coder', 'codellama'
+        'gemini-pro', 'gemini-ultra', 'gemini-flash', 'gemini-2.5-flash', 'gemini-2.5-pro',
+        'llama-3', 'llama-3-8b', 'mistral-large', 'mistral-7b', 'deepseek-coder', 'codellama'
     )),
     llm_config JSONB DEFAULT '{}',
     is_active BOOLEAN DEFAULT true,
@@ -166,6 +222,17 @@ CREATE TABLE IF NOT EXISTS deliverable_access_log (
 
 -- ==================== INDEXES ====================
 
+-- Approval System indexes
+CREATE INDEX IF NOT EXISTS idx_approval_requests_approval_id ON approval_requests(approval_id);
+CREATE INDEX IF NOT EXISTS idx_approval_requests_status ON approval_requests(status);
+CREATE INDEX IF NOT EXISTS idx_approval_requests_project_id ON approval_requests(project_id);
+CREATE INDEX IF NOT EXISTS idx_approval_requests_framework ON approval_requests(framework);
+CREATE INDEX IF NOT EXISTS idx_approval_requests_created_at ON approval_requests(created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_approval_history_approval_id ON approval_history(approval_id);
+CREATE INDEX IF NOT EXISTS idx_approval_history_action ON approval_history(action);
+CREATE INDEX IF NOT EXISTS idx_approval_history_timestamp ON approval_history(timestamp DESC);
+
 -- Users indexes
 CREATE INDEX IF NOT EXISTS idx_users_user_id ON users(user_id);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
@@ -211,12 +278,14 @@ END;
 $$ language 'plpgsql';
 
 -- Apply triggers to tables (safe creation)
+DROP TRIGGER IF EXISTS update_approval_requests_updated_at ON approval_requests;
 DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 DROP TRIGGER IF EXISTS update_projects_updated_at ON projects;
 DROP TRIGGER IF EXISTS update_project_stages_updated_at ON project_stages;
 DROP TRIGGER IF EXISTS update_role_mapping_updated_at ON project_role_llm_mapping;
 DROP TRIGGER IF EXISTS update_deliverables_updated_at ON project_deliverables;
 
+CREATE TRIGGER update_approval_requests_updated_at BEFORE UPDATE ON approval_requests FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_projects_updated_at BEFORE UPDATE ON projects FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_project_stages_updated_at BEFORE UPDATE ON project_stages FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

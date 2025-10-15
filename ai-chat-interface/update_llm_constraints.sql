@@ -10,7 +10,7 @@ ALTER TABLE project_role_llm_mapping
 ADD CONSTRAINT project_role_llm_mapping_llm_model_check
 CHECK (llm_model IN (
     'gpt-4', 'gpt-4o', 'claude-3', 'claude-3-haiku', 'claude-3-sonnet',
-    'gemini-pro', 'gemini-ultra', 'gemini-flash', 'gemini-2.5-flash', 'gemini-2.5-pro',
+    'gemini-pro', 'gemini-ultra', 'gemini-flash', 'gemini-2.5-flash', 'gemini-2.5-flash', 'gemini-2.5-pro',
     'llama-3', 'llama-3-8b', 'mistral-large', 'mistral-7b', 'deepseek-coder', 'codellama'
 ));
 

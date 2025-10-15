@@ -6,7 +6,13 @@
       "description": "React/Vue.js + Node.js/Python 풀스택 웹 애플리케이션",
       "icon": "🌐",
       "category": "Frontend",
-      "tags": ["react", "vue", "nodejs", "python", "fullstack"],
+      "tags": [
+        "react",
+        "vue",
+        "nodejs",
+        "python",
+        "fullstack"
+      ],
       "estimated_duration": "2-4주",
       "complexity": "medium",
       "recommended_ai": "meta-gpt",
@@ -17,17 +23,28 @@
           "Planner": "gpt-4o"
         },
         "metagpt": {
-          "Product Manager": "gpt-4",
-          "Architect": "claude-3",
-          "Project Manager": "gpt-4o",
-          "Engineer": "deepseek-coder",
-          "QA Engineer": "claude-3-haiku"
+          "Product Manager": "gemini-2.5-flash",
+          "Architect": "gemini-2.5-flash",
+          "Engineer": "gemini-2.5-flash",
+          "QA Engineer": "gemini-2.5-flash"
         }
       },
       "project_structure": {
-        "frontend": ["src/", "public/", "package.json"],
-        "backend": ["app/", "requirements.txt", "config/"],
-        "docs": ["README.md", "API.md", "DEPLOYMENT.md"]
+        "frontend": [
+          "src/",
+          "public/",
+          "package.json"
+        ],
+        "backend": [
+          "app/",
+          "requirements.txt",
+          "config/"
+        ],
+        "docs": [
+          "README.md",
+          "API.md",
+          "DEPLOYMENT.md"
+        ]
       },
       "default_requirements": [
         "사용자 인증 시스템",
@@ -37,10 +54,28 @@
         "관리자 패널"
       ],
       "tech_stack_suggestions": {
-        "frontend": ["React.js", "Vue.js", "Next.js", "Nuxt.js"],
-        "backend": ["Node.js + Express", "Python + Flask", "Python + Django"],
-        "database": ["PostgreSQL", "MySQL", "MongoDB"],
-        "deployment": ["Vercel", "Netlify", "AWS", "Docker"]
+        "frontend": [
+          "React.js",
+          "Vue.js",
+          "Next.js",
+          "Nuxt.js"
+        ],
+        "backend": [
+          "Node.js + Express",
+          "Python + Flask",
+          "Python + Django"
+        ],
+        "database": [
+          "PostgreSQL",
+          "MySQL",
+          "MongoDB"
+        ],
+        "deployment": [
+          "Vercel",
+          "Netlify",
+          "AWS",
+          "Docker"
+        ]
       }
     },
     "mobile_app": {
@@ -49,7 +84,13 @@
       "description": "React Native/Flutter 크로스 플랫폼 모바일 앱",
       "icon": "📱",
       "category": "Mobile",
-      "tags": ["react-native", "flutter", "ios", "android", "mobile"],
+      "tags": [
+        "react-native",
+        "flutter",
+        "ios",
+        "android",
+        "mobile"
+      ],
       "estimated_duration": "3-6주",
       "complexity": "high",
       "recommended_ai": "crew-ai",
@@ -60,17 +101,29 @@
           "Planner": "claude-3"
         },
         "metagpt": {
-          "Product Manager": "gpt-4",
-          "Architect": "claude-3",
-          "Project Manager": "gpt-4o",
-          "Engineer": "deepseek-coder",
-          "QA Engineer": "llama-3"
+          "Product Manager": "gemini-2.5-flash",
+          "Architect": "gemini-2.5-flash",
+          "Engineer": "gemini-2.5-flash",
+          "QA Engineer": "gemini-2.5-flash"
         }
       },
       "project_structure": {
-        "mobile": ["src/", "assets/", "package.json", "app.json"],
-        "backend": ["api/", "models/", "config/"],
-        "docs": ["README.md", "SETUP.md", "STORE_DEPLOYMENT.md"]
+        "mobile": [
+          "src/",
+          "assets/",
+          "package.json",
+          "app.json"
+        ],
+        "backend": [
+          "api/",
+          "models/",
+          "config/"
+        ],
+        "docs": [
+          "README.md",
+          "SETUP.md",
+          "STORE_DEPLOYMENT.md"
+        ]
       },
       "default_requirements": [
         "크로스 플랫폼 호환성",
@@ -80,10 +133,26 @@
         "앱스토어 배포 준비"
       ],
       "tech_stack_suggestions": {
-        "framework": ["React Native", "Flutter", "Expo"],
-        "backend": ["Node.js + Express", "Python + FastAPI", "Firebase"],
-        "database": ["Firebase Firestore", "PostgreSQL", "MongoDB"],
-        "deployment": ["App Store", "Google Play", "TestFlight"]
+        "framework": [
+          "React Native",
+          "Flutter",
+          "Expo"
+        ],
+        "backend": [
+          "Node.js + Express",
+          "Python + FastAPI",
+          "Firebase"
+        ],
+        "database": [
+          "Firebase Firestore",
+          "PostgreSQL",
+          "MongoDB"
+        ],
+        "deployment": [
+          "App Store",
+          "Google Play",
+          "TestFlight"
+        ]
       }
     },
     "api_server": {
@@ -92,7 +161,13 @@
       "description": "RESTful/GraphQL API 백엔드 서버",
       "icon": "⚡",
       "category": "Backend",
-      "tags": ["api", "rest", "graphql", "microservices", "backend"],
+      "tags": [
+        "api",
+        "rest",
+        "graphql",
+        "microservices",
+        "backend"
+      ],
       "estimated_duration": "1-3주",
       "complexity": "medium",
       "recommended_ai": "meta-gpt",
@@ -103,18 +178,34 @@
           "Planner": "gpt-4o"
         },
         "metagpt": {
-          "Product Manager": "gpt-4",
-          "Architect": "claude-3",
-          "Project Manager": "gpt-4o",
-          "Engineer": "deepseek-coder",
-          "QA Engineer": "claude-3-haiku"
+          "Product Manager": "gemini-2.5-flash",
+          "Architect": "gemini-2.5-flash",
+          "Engineer": "gemini-2.5-flash",
+          "QA Engineer": "gemini-2.5-flash"
         }
       },
       "project_structure": {
-        "api": ["routes/", "controllers/", "models/", "middleware/"],
-        "config": ["database.js", "auth.js", "cors.js"],
-        "docs": ["README.md", "API_DOCS.md", "DEPLOYMENT.md"],
-        "tests": ["unit/", "integration/", "load/"]
+        "api": [
+          "routes/",
+          "controllers/",
+          "models/",
+          "middleware/"
+        ],
+        "config": [
+          "database.js",
+          "auth.js",
+          "cors.js"
+        ],
+        "docs": [
+          "README.md",
+          "API_DOCS.md",
+          "DEPLOYMENT.md"
+        ],
+        "tests": [
+          "unit/",
+          "integration/",
+          "load/"
+        ]
       },
       "default_requirements": [
         "RESTful API 설계",
@@ -124,10 +215,27 @@
         "성능 모니터링"
       ],
       "tech_stack_suggestions": {
-        "framework": ["Express.js", "FastAPI", "Django REST", "Spring Boot"],
-        "database": ["PostgreSQL", "MongoDB", "Redis"],
-        "auth": ["JWT", "OAuth2", "Auth0"],
-        "deployment": ["Docker", "AWS Lambda", "Google Cloud Run"]
+        "framework": [
+          "Express.js",
+          "FastAPI",
+          "Django REST",
+          "Spring Boot"
+        ],
+        "database": [
+          "PostgreSQL",
+          "MongoDB",
+          "Redis"
+        ],
+        "auth": [
+          "JWT",
+          "OAuth2",
+          "Auth0"
+        ],
+        "deployment": [
+          "Docker",
+          "AWS Lambda",
+          "Google Cloud Run"
+        ]
       }
     },
     "desktop_app": {
@@ -136,7 +244,12 @@
       "description": "Electron/Tauri 크로스 플랫폼 데스크톱 앱",
       "icon": "🖥️",
       "category": "Desktop",
-      "tags": ["electron", "tauri", "desktop", "cross-platform"],
+      "tags": [
+        "electron",
+        "tauri",
+        "desktop",
+        "cross-platform"
+      ],
       "estimated_duration": "2-5주",
       "complexity": "high",
       "recommended_ai": "crew-ai",
@@ -147,18 +260,33 @@
           "Planner": "gemini-pro"
         },
         "metagpt": {
-          "Product Manager": "gpt-4",
-          "Architect": "claude-3",
-          "Project Manager": "gpt-4o",
-          "Engineer": "deepseek-coder",
-          "QA Engineer": "llama-3"
+          "Product Manager": "gemini-2.5-flash",
+          "Architect": "gemini-2.5-flash",
+          "Engineer": "gemini-2.5-flash",
+          "QA Engineer": "gemini-2.5-flash"
         }
       },
       "project_structure": {
-        "frontend": ["src/", "assets/", "public/"],
-        "electron": ["main.js", "preload.js", "package.json"],
-        "backend": ["api/", "database/", "services/"],
-        "docs": ["README.md", "BUILD.md", "DISTRIBUTION.md"]
+        "frontend": [
+          "src/",
+          "assets/",
+          "public/"
+        ],
+        "electron": [
+          "main.js",
+          "preload.js",
+          "package.json"
+        ],
+        "backend": [
+          "api/",
+          "database/",
+          "services/"
+        ],
+        "docs": [
+          "README.md",
+          "BUILD.md",
+          "DISTRIBUTION.md"
+        ]
       },
       "default_requirements": [
         "크로스 플랫폼 호환성",
@@ -168,10 +296,25 @@
         "패키징 및 배포"
       ],
       "tech_stack_suggestions": {
-        "framework": ["Electron", "Tauri", "Flutter Desktop"],
-        "frontend": ["React", "Vue", "Svelte"],
-        "backend": ["Node.js", "Rust", "Python"],
-        "packaging": ["electron-builder", "electron-forge"]
+        "framework": [
+          "Electron",
+          "Tauri",
+          "Flutter Desktop"
+        ],
+        "frontend": [
+          "React",
+          "Vue",
+          "Svelte"
+        ],
+        "backend": [
+          "Node.js",
+          "Rust",
+          "Python"
+        ],
+        "packaging": [
+          "electron-builder",
+          "electron-forge"
+        ]
       }
     },
     "data_analysis": {
@@ -180,7 +323,13 @@
       "description": "Python 기반 데이터 분석 및 시각화 프로젝트",
       "icon": "📊",
       "category": "Data Science",
-      "tags": ["python", "pandas", "jupyter", "visualization", "ml"],
+      "tags": [
+        "python",
+        "pandas",
+        "jupyter",
+        "visualization",
+        "ml"
+      ],
       "estimated_duration": "1-4주",
       "complexity": "medium",
       "recommended_ai": "crew-ai",
@@ -191,18 +340,32 @@
           "Planner": "gemini-pro"
         },
         "metagpt": {
-          "Product Manager": "gpt-4",
-          "Architect": "claude-3",
-          "Project Manager": "gpt-4o",
-          "Engineer": "deepseek-coder",
-          "QA Engineer": "claude-3-haiku"
+          "Product Manager": "gemini-2.5-flash",
+          "Architect": "gemini-2.5-flash",
+          "Engineer": "gemini-2.5-flash",
+          "QA Engineer": "gemini-2.5-flash"
         }
       },
       "project_structure": {
-        "notebooks": ["analysis.ipynb", "visualization.ipynb"],
-        "data": ["raw/", "processed/", "external/"],
-        "src": ["data_processing.py", "models.py", "visualization.py"],
-        "docs": ["README.md", "DATA_SOURCES.md", "METHODOLOGY.md"]
+        "notebooks": [
+          "analysis.ipynb",
+          "visualization.ipynb"
+        ],
+        "data": [
+          "raw/",
+          "processed/",
+          "external/"
+        ],
+        "src": [
+          "data_processing.py",
+          "models.py",
+          "visualization.py"
+        ],
+        "docs": [
+          "README.md",
+          "DATA_SOURCES.md",
+          "METHODOLOGY.md"
+        ]
       },
       "default_requirements": [
         "데이터 수집 및 전처리",
@@ -212,10 +375,26 @@
         "결과 보고서 작성"
       ],
       "tech_stack_suggestions": {
-        "analysis": ["Pandas", "NumPy", "Scikit-learn"],
-        "visualization": ["Matplotlib", "Seaborn", "Plotly", "Streamlit"],
-        "notebook": ["Jupyter", "Google Colab"],
-        "deployment": ["Streamlit Cloud", "Heroku", "AWS"]
+        "analysis": [
+          "Pandas",
+          "NumPy",
+          "Scikit-learn"
+        ],
+        "visualization": [
+          "Matplotlib",
+          "Seaborn",
+          "Plotly",
+          "Streamlit"
+        ],
+        "notebook": [
+          "Jupyter",
+          "Google Colab"
+        ],
+        "deployment": [
+          "Streamlit Cloud",
+          "Heroku",
+          "AWS"
+        ]
       }
     },
     "e_commerce": {
@@ -224,7 +403,12 @@
       "description": "온라인 쇼핑몰 및 결제 시스템 통합 플랫폼",
       "icon": "🛒",
       "category": "E-commerce",
-      "tags": ["ecommerce", "payment", "inventory", "shopping"],
+      "tags": [
+        "ecommerce",
+        "payment",
+        "inventory",
+        "shopping"
+      ],
       "estimated_duration": "4-8주",
       "complexity": "high",
       "recommended_ai": "meta-gpt",
@@ -235,18 +419,37 @@
           "Planner": "gpt-4o"
         },
         "metagpt": {
-          "Product Manager": "gpt-4",
-          "Architect": "claude-3",
-          "Project Manager": "gpt-4o",
-          "Engineer": "deepseek-coder",
-          "QA Engineer": "claude-3-haiku"
+          "Product Manager": "gemini-2.5-flash",
+          "Architect": "gemini-2.5-flash",
+          "Engineer": "gemini-2.5-flash",
+          "QA Engineer": "gemini-2.5-flash"
         }
       },
       "project_structure": {
-        "frontend": ["components/", "pages/", "styles/", "utils/"],
-        "backend": ["api/", "models/", "services/", "middleware/"],
-        "admin": ["dashboard/", "inventory/", "orders/", "users/"],
-        "docs": ["README.md", "API.md", "SETUP.md", "SECURITY.md"]
+        "frontend": [
+          "components/",
+          "pages/",
+          "styles/",
+          "utils/"
+        ],
+        "backend": [
+          "api/",
+          "models/",
+          "services/",
+          "middleware/"
+        ],
+        "admin": [
+          "dashboard/",
+          "inventory/",
+          "orders/",
+          "users/"
+        ],
+        "docs": [
+          "README.md",
+          "API.md",
+          "SETUP.md",
+          "SECURITY.md"
+        ]
       },
       "default_requirements": [
         "상품 카탈로그 관리",
@@ -256,11 +459,30 @@
         "관리자 대시보드"
       ],
       "tech_stack_suggestions": {
-        "frontend": ["Next.js", "React", "Vue.js"],
-        "backend": ["Node.js", "Python Django", "PHP Laravel"],
-        "payment": ["Stripe", "PayPal", "토스페이먼츠"],
-        "database": ["PostgreSQL", "MongoDB"],
-        "deployment": ["Vercel", "AWS", "Digital Ocean"]
+        "frontend": [
+          "Next.js",
+          "React",
+          "Vue.js"
+        ],
+        "backend": [
+          "Node.js",
+          "Python Django",
+          "PHP Laravel"
+        ],
+        "payment": [
+          "Stripe",
+          "PayPal",
+          "토스페이먼츠"
+        ],
+        "database": [
+          "PostgreSQL",
+          "MongoDB"
+        ],
+        "deployment": [
+          "Vercel",
+          "AWS",
+          "Digital Ocean"
+        ]
       }
     }
   },

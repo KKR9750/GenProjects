@@ -44,7 +44,7 @@ class TabManager {
             logoutBtn.addEventListener('click', () => this.handleLogout());
         }
 
-        // 초기 페이지 로드: crewai로 변경
+        // 초기 페이지 로드: pre_analysis 기본 유지
         const initialPage = this.getPageFromHash() || 'pre_analysis';
         this.switchToTab(initialPage);
     }
@@ -182,22 +182,21 @@ class TabManager {
      */
     getPageFromHash() {
         const hash = window.location.hash.slice(1); // # 제거
-        const validPages = ['dashboard', 'pre_analysis', 'crewai', 'metagpt', 'admin', 'agent_manager', 'projects'];
+        const validPages = ['dashboard', 'pre_analysis', 'admin', 'agent_manager', 'projects'];
         return validPages.includes(hash) ? hash : null;
     }
 
     /**
      * 키보드 단축키 처리
-     * Ctrl+1: 홈, Ctrl+2: CrewAI, Ctrl+3: MetaGPT, Ctrl+4: 관리자
+     * Ctrl+1: Home, Ctrl+2: Admin, Ctrl+3: Projects, Ctrl+4: Dashboard
      */
     handleKeyboardShortcut(event) {
         if (event.ctrlKey || event.metaKey) {
             const keyMap = {
                 '1': 'pre_analysis',
-                '2': 'crewai',
-                '3': 'metagpt',
-                '4': 'admin',
-                '5': 'dashboard'
+                '2': 'admin',
+                '3': 'projects',
+                '4': 'dashboard'
             };
 
             const pageName = keyMap[event.key];
@@ -239,15 +238,11 @@ class TabManager {
      */
     updateBackgroundClass(pageName) {
         // 기존 배경 클래스 모두 제거
-        document.body.classList.remove('pre-analysis-active', 'crewai-active', 'metagpt-active', 'dashboard-active', 'admin-active', 'projects-active', 'agent-active');
+        document.body.classList.remove('pre-analysis-active', 'dashboard-active', 'admin-active', 'projects-active', 'agent-active');
 
         // 페이지별 배경 클래스 추가
         if (pageName === 'pre_analysis') {
             document.body.classList.add('pre-analysis-active');
-        } else if (pageName === 'crewai') {
-            document.body.classList.add('crewai-active');
-        } else if (pageName === 'metagpt') {
-            document.body.classList.add('metagpt-active');
         } else if (pageName === 'dashboard') {
             document.body.classList.add('dashboard-active');
         } else if (pageName === 'admin') {
@@ -280,3 +275,4 @@ document.addEventListener('DOMContentLoaded', () => {
         window.tabManager.navigateTo(pageName);
     };
 });
+

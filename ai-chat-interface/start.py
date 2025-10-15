@@ -4,9 +4,15 @@
 AI Chat Interface 시작 스크립트
 Flask 기반 통합 서버 실행
 """
-
 import os
 import sys
+
+# --- 경로 문제 해결을 위한 프로젝트 루트 경로 추가 ---
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+# ----------------------------------------------------
+
 import io
 import subprocess
 import time
@@ -183,14 +189,6 @@ def main():
     try:
         from app import app, socketio # 메인 앱과 socketio 인스턴스 가져오기
         from flask_socketio import join_room, leave_room
-
-        # CrewAI 블루프린트 등록
-        # 경로 문제를 피하기 위해 CrewAI 플랫폼 폴더를 sys.path에 추가
-        crewai_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'CrewAi', 'crewai_platform'))
-        if crewai_path not in sys.path:
-            sys.path.insert(0, crewai_path)
-        from server import crewai_bp
-        app.register_blueprint(crewai_bp)
 
         # CrewAI 실행을 위한 WebSocket 네임스페이스 핸들러 추가
         @socketio.on('join', namespace='/execution')

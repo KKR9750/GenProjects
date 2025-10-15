@@ -65,15 +65,14 @@ class ComponentLoader {
             root.innerHTML = '';
         }
 
+        if (pageName === 'metagpt' || pageName === 'crewai') {
+            console.warn(`[ComponentLoader] ${pageName} page is disabled. Loading pre_analysis instead.`);
+            pageName = 'pre_analysis';
+        }
+
         switch (pageName) {
             case 'dashboard':
                 await this.loadScript('dashboard-pure.js', 'dashboard');
-                break;
-            case 'crewai':
-                await this.loadBabelScript('crewai.js?v=7', 'crewai');
-                break;
-            case 'metagpt':
-                await this.loadBabelScript('metagpt.js?v=4', 'metagpt');
                 break;
             case 'admin':
                 await this.loadAdmin();
@@ -186,8 +185,6 @@ class ComponentLoader {
     getCSSFileName(pageName) {
         const map = {
             dashboard: 'dashboard.css',
-            crewai: 'crewai.css?v=7',
-            metagpt: 'metagpt.css?v=4',
             admin: 'admin.css?v=11',
             projects: 'projects.css?v=22',
             pre_analysis: 'pre_analysis.css',

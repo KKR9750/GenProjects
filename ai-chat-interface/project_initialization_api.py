@@ -15,7 +15,9 @@ from project_name_generator import generate_project_name_from_requirement
 
 project_init_bp = Blueprint('project_init', __name__)
 
-def get_llm(model_name="gemini-2.0-flash-exp"):
+DEFAULT_METAGPT_LLM = 'gemini-2.5-flash'
+
+def get_llm(model_name="gemini-2.5-flash"):
     """LLM 인스턴스를 생성하는 헬퍼 함수"""
     if not os.getenv("GOOGLE_API_KEY"):
         raise ValueError("GOOGLE_API_KEY 환경변수가 설정되지 않았습니다.")
@@ -582,6 +584,8 @@ class ProjectInitializer:
             if not goal_text or not backstory_text:
                 raise ValueError(f"Agent role definition incomplete for role '{role}'")
 
+            llm_to_use = DEFAULT_METAGPT_LLM if framework == 'metagpt' else default_llm_model
+
             cursor.execute("""
                 INSERT INTO project_agents (
                     project_id,
@@ -602,7 +606,7 @@ class ProjectInitializer:
                 role,
                 goal_text,
                 backstory_text,
-                default_llm_model,
+                llm_to_use,
                 is_verbose,
                 allow_delegation
             ))
@@ -731,7 +735,7 @@ class ProjectInitializer:
                 'role': role,
                 'goal': goal_text,
                 'backstory': backstory_text,
-                'llm_model': template.get('default_llm_model'),
+                'llm_model': DEFAULT_METAGPT_LLM if framework == 'metagpt' else template.get('default_llm_model'),
                 'is_verbose': template.get('is_verbose', False),
                 'allow_delegation': template.get('allow_delegation', False)
             }
@@ -873,6 +877,7 @@ def create_project():
 
         base_project_data = {
             'name': name,
+            'description': data.get('requirement', '') or data.get('description', ''),
             'selected_ai': 'crew-ai' if framework == 'crewai' else 'meta-gpt',
             'status': 'planning',
             'created_at': datetime.now().isoformat(),

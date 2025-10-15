@@ -166,6 +166,40 @@
     padding: 8px;
 }
 
+.form-control-inline {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.form-control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-control-group label {
+    font-size: 0.48rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.form-control-group select,
+.form-control-group input {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 6px 8px;
+    font-size: 0.54rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-control-group select:focus,
+.form-control-group input:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    outline: none;
+}
+
 .toggle {
     display: flex;
     align-items: center;
@@ -313,6 +347,26 @@
 
 .summary-grid__full {
     grid-column: 1 / -1;
+}
+
+.summary-compact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    font-size: 0.8rem;
+}
+
+.summary-compact span {
+    white-space: nowrap;
+}
+
+.summary-compact strong {
+    color: #64748b;
+    font-weight: 600;
+    margin-right: 4px;
 }
 
 .error-text {
@@ -498,31 +552,81 @@
     color: #111827;
 }
 
-.agent-list {
+.agents-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
 }
 
 .agent-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.agent-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 12px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
+    margin-bottom: 10px;
+}
+
+.agent-header h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.agent-order {
+    font-size: 0.75rem;
+    color: #64748b;
+    background: #e2e8f0;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.agent-details {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.agent-detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.agent-detail-item strong {
+    font-size: 0.75rem;
+    color: #64748b;
+    text-transform: uppercase;
+}
+
+.agent-detail-item p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #1e293b;
+    line-height: 1.4;
+}
+
+.agent-detail-item span {
+    font-size: 0.85rem;
+    color: #1e293b;
+}
+
+.agent-detail-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
 }
 
 .agent-role {
     font-weight: 600;
     font-size: 0.9rem;
     color: #1e293b;
-}
-
-.agent-details {
-    display: flex;
-    gap: 8px;
 }
 
 .llm-badge {

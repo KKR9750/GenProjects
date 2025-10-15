@@ -4,7 +4,7 @@
 // 전역 변수 (중복 선언 방지)
 if (typeof window.adminAuthToken === 'undefined') {
     window.adminAuthToken = localStorage.getItem('admin_token') || localStorage.getItem('auth_token');
-    window.adminCurrentSection = 'dashboard';
+    window.adminCurrentSection = 'users';
 }
 
 // 전역 스코프 재선언 문제 방지 - window 객체에 직접 할당
@@ -40,8 +40,8 @@ async function verifyTokenAndInit() {
         }
 
         if (response.ok) {
-            // 토큰 유효 - 대시보드 렌더링
-            console.log('[Admin.js] Token valid, rendering dashboard...');
+            // 토큰 유효 - 관리자 패널 렌더링
+            console.log('[Admin.js] Token valid, rendering admin panel...');
             renderAdminDashboard();
         } else {
             throw new Error('Token verification failed');
@@ -72,7 +72,7 @@ async function apiRequest(url, options = {}) {
     return data;
 }
 
-// 관리자 대시보드 렌더링
+// 관리자 패널 렌더링
 function renderAdminDashboard() {
     const root = document.getElementById('root');
 
@@ -85,10 +85,7 @@ function renderAdminDashboard() {
                     <p>AI Chat Interface</p>
                 </div>
                 <div class="sidebar-menu">
-                    <button class="menu-item active" data-section="dashboard">
-                        <i>📊</i> 대시보드
-                    </button>
-                    <button class="menu-item" data-section="users">
+                    <button class="menu-item active" data-section="users">
                         <i>👥</i> 사용자 관리
                     </button>
                     <button class="menu-item" data-section="llm">
@@ -103,8 +100,8 @@ function renderAdminDashboard() {
             <!-- 메인 콘텐츠 -->
             <div class="admin-main">
                 <div class="admin-header-tab">
-                    <h1 id="headerTitle">대시보드</h1>
-                    <p id="headerSubtitle">시스템 현황 및 주요 지표</p>
+                    <h1 id="headerTitle">사용자 관리</h1>
+                    <p id="headerSubtitle">사용자 계정 관리 및 권한 설정</p>
                 </div>
                 <div class="admin-content-tab" id="contentArea">
                     <!-- 콘텐츠가 여기에 동적으로 로드됩니다 -->
@@ -122,15 +119,19 @@ function renderAdminDashboard() {
         });
     });
 
-    // 초기 대시보드 로드
-    loadDashboardContent();
+    // 초기 사용자 섹션 로드
+    switchSection('users');
 }
 
 // 섹션 전환 함수
 function switchSection(section) {
+    const allowedSections = ['users', 'llm', 'system'];
+    if (!allowedSections.includes(section)) {
+        section = 'users';
+    }
+
     window.currentSection = section;
 
-    // 메뉴 활성화 상태 업데이트
     const menuItems = document.querySelectorAll('.menu-item');
     menuItems.forEach(item => {
         item.classList.remove('active');
@@ -139,16 +140,10 @@ function switchSection(section) {
         }
     });
 
-    // 헤더 업데이트 및 콘텐츠 로드
     const headerTitle = document.getElementById('headerTitle');
     const headerSubtitle = document.getElementById('headerSubtitle');
 
     switch (section) {
-        case 'dashboard':
-            headerTitle.textContent = '대시보드';
-            headerSubtitle.textContent = '시스템 현황 및 주요 지표';
-            loadDashboardContent();
-            break;
         case 'users':
             headerTitle.textContent = '사용자 관리';
             headerSubtitle.textContent = '사용자 계정 관리 및 권한 설정';
@@ -156,117 +151,15 @@ function switchSection(section) {
             break;
         case 'llm':
             headerTitle.textContent = 'LLM 관리';
-            headerSubtitle.textContent = 'AI 모델 관리 및 설정';
+            headerSubtitle.textContent = 'AI 모델 구성 및 상태 관리';
             loadLLMContent();
             break;
         case 'system':
             headerTitle.textContent = '시스템 설정';
-            headerSubtitle.textContent = '서버 설정 및 환경 관리';
+            headerSubtitle.textContent = '보안 설정 및 환경 구성';
             loadSystemContent();
             break;
     }
-}
-
-// 대시보드 콘텐츠 로드
-async function loadDashboardContent() {
-    const contentArea = document.getElementById('contentArea');
-
-    contentArea.innerHTML = `
-        <div class="stats-grid">
-            <div class="stat-card stat-blue">
-                <div class="stat-number" id="systemStatus">로딩중...</div>
-                <div class="stat-label">시스템 상태</div>
-            </div>
-            <div class="stat-card stat-red">
-                <div class="stat-number" id="projectCount">로딩중...</div>
-                <div class="stat-label">총 프로젝트</div>
-            </div>
-            <div class="stat-card stat-green">
-                <div class="stat-number" id="llmCount">로딩중...</div>
-                <div class="stat-label">LLM 모델</div>
-            </div>
-            <div class="stat-card stat-orange">
-                <div class="stat-number" id="userCount">로딩중...</div>
-                <div class="stat-label">총 사용자</div>
-            </div>
-        </div>
-
-        <div class="info-grid">
-            <div class="info-card">
-                <h3>📊 시스템 정보</h3>
-                <div id="systemInfo">
-                    <div class="info-item">
-                        <span class="info-label">전체 시스템 상태:</span>
-                        <span class="info-value status-healthy" id="fullSystemStatus">로딩중...</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">데이터베이스:</span>
-                        <span class="info-value status-healthy" id="dbStatus">로딩중...</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Flask 서버:</span>
-                        <span class="info-value status-healthy" id="flaskStatus">로딩중...</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">WebSocket:</span>
-                        <span class="info-value status-healthy" id="wsStatus">로딩중...</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">마지막 업데이트:</span>
-                        <span class="info-value" id="lastUpdate">로딩중...</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="info-card">
-                <h3>🔗 빠른 액세스</h3>
-                <div class="quick-access">
-                    <a href="#dashboard" class="quick-link quick-link-purple">
-                        <span class="quick-icon">🏠</span>
-                        <div>
-                            <div class="quick-title">메인 대시보드</div>
-                            <div class="quick-subtitle">통합 AI 시스템 접속</div>
-                        </div>
-                    </a>
-                    <a href="#crewai" class="quick-link quick-link-purple">
-                        <span class="quick-icon">👥</span>
-                        <div>
-                            <div class="quick-title">CrewAI</div>
-                            <div class="quick-subtitle">3역할 협업 AI 시스템</div>
-                        </div>
-                    </a>
-                    <a href="#metagpt" class="quick-link quick-link-green">
-                        <span class="quick-icon">🏗️</span>
-                        <div>
-                            <div class="quick-title">MetaGPT</div>
-                            <div class="quick-subtitle">5단계 개발 프로세스</div>
-                        </div>
-                    </a>
-                    <a href="/api/templates/" target="_blank" class="quick-link quick-link-orange">
-                        <span class="quick-icon">📋</span>
-                        <div>
-                            <div class="quick-title">프로젝트 템플릿</div>
-                            <div class="quick-subtitle">사전 정의된 템플릿</div>
-                        </div>
-                    </a>
-                    <a href="/api/templates/projects" target="_blank" class="quick-link quick-link-red">
-                        <span class="quick-icon">📁</span>
-                        <div>
-                            <div class="quick-title">프로젝트 관리</div>
-                            <div class="quick-subtitle">생성된 프로젝트 관리</div>
-                        </div>
-                    </a>
-                </div>
-            </div>
-        </div>
-    `;
-
-    // 실제 데이터 로드
-    loadSystemStatus();
-    loadProjectStats();
-    loadLLMCount();
-    loadUserCount();
-    updateLastUpdateTime();
 }
 
 // 사용자 관리 콘텐츠
@@ -476,93 +369,6 @@ async function loadSystemContent() {
 
     // 시스템 설정 로드
     await loadSystemSettings();
-}
-
-// 시스템 상태 로드
-async function loadSystemStatus() {
-    try {
-        const response = await fetch('/api/health');
-        if (response.ok) {
-            const data = await response.json();
-            const statusText = data.status === 'healthy' ? '정상' : '오류';
-
-            // 간단 상태 카드 업데이트
-            const statusEl = document.getElementById('systemStatus');
-            if (statusEl) statusEl.textContent = statusText;
-
-            // 상세 시스템 정보 업데이트
-            const fullStatusEl = document.getElementById('fullSystemStatus');
-            const dbStatusEl = document.getElementById('dbStatus');
-            const flaskStatusEl = document.getElementById('flaskStatus');
-            const wsStatusEl = document.getElementById('wsStatus');
-
-            if (fullStatusEl) fullStatusEl.textContent = data.status || '알 수 없음';
-            if (dbStatusEl) dbStatusEl.textContent = data.database || '알 수 없음';
-            if (flaskStatusEl) flaskStatusEl.textContent = data.flask || 'running';
-            if (wsStatusEl) wsStatusEl.textContent = data.websocket || 'active';
-        }
-    } catch (error) {
-        console.error('시스템 상태 로드 실패:', error);
-        const statusEl = document.getElementById('systemStatus');
-        if (statusEl) statusEl.textContent = '오류';
-    }
-}
-
-// 프로젝트 통계 로드
-async function loadProjectStats() {
-    try {
-        const data = await apiRequest('/api/admin/projects');
-        const projectCountEl = document.getElementById('projectCount');
-
-        if (projectCountEl) {
-            projectCountEl.textContent = data.total || '0';
-        }
-    } catch (error) {
-        console.error('프로젝트 통계 로드 실패:', error);
-        const projectCountEl = document.getElementById('projectCount');
-        if (projectCountEl) projectCountEl.textContent = '오류';
-    }
-}
-
-// LLM 모델 수 로드
-async function loadLLMCount() {
-    try {
-        const data = await apiRequest('/api/admin/llm-models');
-        const llmCountEl = document.getElementById('llmCount');
-
-        if (llmCountEl) {
-            llmCountEl.textContent = data.count || data.length || '0';
-        }
-    } catch (error) {
-        console.error('LLM 모델 수 로드 실패:', error);
-        const llmCountEl = document.getElementById('llmCount');
-        if (llmCountEl) llmCountEl.textContent = '오류';
-    }
-}
-
-// 사용자 수 로드
-async function loadUserCount() {
-    try {
-        const data = await apiRequest('/api/admin/users');
-        const userCountEl = document.getElementById('userCount');
-
-        if (userCountEl) {
-            userCountEl.textContent = data.total || data.count || '0';
-        }
-    } catch (error) {
-        console.error('사용자 수 로드 실패:', error);
-        const userCountEl = document.getElementById('userCount');
-        if (userCountEl) userCountEl.textContent = '오류';
-    }
-}
-
-// 마지막 업데이트 시간 업데이트
-function updateLastUpdateTime() {
-    const lastUpdateEl = document.getElementById('lastUpdate');
-    if (lastUpdateEl) {
-        const now = new Date();
-        lastUpdateEl.textContent = now.toLocaleString('ko-KR');
-    }
 }
 
 // 사용자 목록 로드 함수

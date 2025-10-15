@@ -1,7 +1,7 @@
 {
   "summary": {
-    "total_tests": 16,
-    "passed_tests": 16,
+    "total_tests": 15,
+    "passed_tests": 15,
     "failed_tests": 0,
     "success_rate": 100.0,
     "timestamp": "2025-09-18T10:46:54.465356"
@@ -111,13 +111,6 @@
       "message": "crewai.html에 API 유틸리티 포함됨",
       "details": null,
       "timestamp": "2025-09-18T10:46:54.464802"
-    },
-    {
-      "test_name": "API Utils in metagpt.html",
-      "success": true,
-      "message": "metagpt.html에 API 유틸리티 포함됨",
-      "details": null,
-      "timestamp": "2025-09-18T10:46:54.465356"
     }
   ]
 }

@@ -145,10 +145,10 @@ class ProjectTemplateManager:
                 "features": ["activity tracking", "health metrics", "goal setting", "social sharing"]
             },
             llm_mappings=[
-                LLMMapping("Product Manager", "gpt-4", "제품 요구사항 분석", "GPT-4는 사용자 니즈 분석과 기능 정의에 탁월"),
-                LLMMapping("Architect", "claude-3", "시스템 아키텍처 설계", "Claude-3는 모바일 앱 아키텍처 설계에 우수"),
-                LLMMapping("Engineer", "deepseek-coder", "React Native 개발", "DeepSeek Coder는 모바일 개발 코드 생성에 특화"),
-                LLMMapping("QA Engineer", "llama-3", "테스트 케이스 작성", "Llama-3는 포괄적인 테스트 시나리오 생성에 적합")
+                LLMMapping("Product Manager", "gemini-2.5-flash", "제품 요구사항 분석", "Gemini 2.5 Flash는 사용자 니즈 분석과 기능 정의에 빠르게 대응"),
+                LLMMapping("Architect", "gemini-2.5-flash", "시스템 아키텍처 설계", "Gemini 2.5 Flash는 복잡한 아키텍처 요구사항 요약에 강점"),
+                LLMMapping("Engineer", "gemini-2.5-flash", "React Native 개발", "Gemini 2.5 Flash는 코드 생성과 검토에 안정적인 결과 제공"),
+                LLMMapping("QA Engineer", "gemini-2.5-flash", "테스트 케이스 작성", "Gemini 2.5 Flash는 테스트 시나리오 자동화에 적합")
             ],
             required_skills=["React Native", "Mobile UI/UX", "Firebase", "API Integration"],
             deliverables=["PRD 문서", "시스템 설계서", "구현 코드", "테스트 계획서"],
@@ -179,10 +179,10 @@ class ProjectTemplateManager:
                 "features": ["CRUD operations", "authentication", "documentation", "rate limiting"]
             },
             llm_mappings=[
-                LLMMapping("Product Manager", "gpt-4", "API 요구사항 정의", "GPT-4는 API 스펙 정의에 우수함"),
-                LLMMapping("Architect", "claude-3", "API 설계 및 아키텍처", "Claude-3는 API 아키텍처 설계에 특화"),
-                LLMMapping("Engineer", "deepseek-coder", "FastAPI 코드 구현", "DeepSeek Coder는 Python/FastAPI 개발에 최적화"),
-                LLMMapping("QA Engineer", "gemini-pro", "API 테스트 자동화", "Gemini Pro는 테스트 자동화 구현에 효과적")
+                LLMMapping("Product Manager", "gemini-2.5-flash", "API 요구사항 정의", "Gemini 2.5 Flash는 API 요구사항 문서화를 신속히 지원"),
+                LLMMapping("Architect", "gemini-2.5-flash", "API 설계 및 아키텍처", "Gemini 2.5 Flash는 API 설계 패턴 요약과 검토에 유용"),
+                LLMMapping("Engineer", "gemini-2.5-flash", "FastAPI 코드 구현", "Gemini 2.5 Flash는 Python/FastAPI 코드 제안에 안정적"),
+                LLMMapping("QA Engineer", "gemini-2.5-flash", "API 테스트 자동화", "Gemini 2.5 Flash는 테스트 자동화 스크립트 생성에 효과적")
             ],
             required_skills=["Python", "FastAPI", "Database Design", "API Design"],
             deliverables=["API 명세서", "데이터베이스 스키마", "구현 코드", "테스트 슈트"],
@@ -242,10 +242,10 @@ class ProjectTemplateManager:
                 "evaluation_metrics": ["Accuracy", "Precision", "Recall", "F1-Score"]
             },
             llm_mappings=[
-                LLMMapping("Product Manager", "gpt-4", "ML 프로젝트 요구사항 정의", "GPT-4는 비즈니스 요구사항을 ML 문제로 정의하는데 탁월"),
-                LLMMapping("Architect", "claude-3", "ML 파이프라인 아키텍처", "Claude-3는 ML 시스템 아키텍처 설계에 우수"),
-                LLMMapping("Engineer", "deepseek-coder", "ML 모델 구현", "DeepSeek Coder는 ML 코드 구현에 특화"),
-                LLMMapping("QA Engineer", "gemini-pro", "모델 검증 및 테스트", "Gemini Pro는 ML 모델 평가와 검증에 효과적")
+                LLMMapping("Product Manager", "gemini-2.5-flash", "ML 프로젝트 요구사항 정의", "Gemini 2.5 Flash는 ML 요구사항을 구조화된 문서로 정리"),
+                LLMMapping("Architect", "gemini-2.5-flash", "ML 파이프라인 아키텍처", "Gemini 2.5 Flash는 ML 파이프라인 구성안 작성에 적합"),
+                LLMMapping("Engineer", "gemini-2.5-flash", "ML 모델 구현", "Gemini 2.5 Flash는 모델 코드 스니펫과 리팩토링에 도움"),
+                LLMMapping("QA Engineer", "gemini-2.5-flash", "모델 검증 및 테스트", "Gemini 2.5 Flash는 ML 모델 검증 보고서 작성에 효과적")
             ],
             required_skills=["Machine Learning", "Python", "Statistics", "Data Preprocessing"],
             deliverables=["데이터 분석 보고서", "ML 모델", "평가 리포트", "배포 가이드"],

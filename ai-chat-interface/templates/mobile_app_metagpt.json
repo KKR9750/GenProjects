@@ -31,27 +31,27 @@
   "llm_mappings": [
     {
       "role": "Product Manager",
-      "llm_model": "gpt-4",
+      "llm_model": "gemini-2.5-flash",
       "description": "제품 요구사항 분석",
-      "reason": "GPT-4는 사용자 니즈 분석과 기능 정의에 탁월"
+      "reason": "Gemini 2.5 Flash는 사용자 니즈 분석과 기능 정의에 빠르게 대응"
     },
     {
       "role": "Architect",
-      "llm_model": "claude-3",
+      "llm_model": "gemini-2.5-flash",
       "description": "시스템 아키텍처 설계",
-      "reason": "Claude-3는 모바일 앱 아키텍처 설계에 우수"
+      "reason": "Gemini 2.5 Flash는 복잡한 아키텍처 요구사항 요약에 강점"
     },
     {
       "role": "Engineer",
-      "llm_model": "deepseek-coder",
+      "llm_model": "gemini-2.5-flash",
       "description": "React Native 개발",
-      "reason": "DeepSeek Coder는 모바일 개발 코드 생성에 특화"
+      "reason": "Gemini 2.5 Flash는 코드 생성과 검토에 안정적인 결과 제공"
     },
     {
       "role": "QA Engineer",
-      "llm_model": "llama-3",
+      "llm_model": "gemini-2.5-flash",
       "description": "테스트 케이스 작성",
-      "reason": "Llama-3는 포괄적인 테스트 시나리오 생성에 적합"
+      "reason": "Gemini 2.5 Flash는 테스트 시나리오 자동화에 적합"
     }
   ],
   "required_skills": [
@@ -66,8 +66,8 @@
     "구현 코드",
     "테스트 계획서"
   ],
-  "created_at": "2025-10-10T23:56:34.632164",
-  "updated_at": "2025-10-10T23:56:34.632164",
+  "created_at": "2025-10-15T12:21:09.612304",
+  "updated_at": "2025-10-15T12:21:09.612304",
   "author": "AI Chat Interface",
   "version": "1.0",
   "is_featured": true,

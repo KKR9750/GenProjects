@@ -46,11 +46,11 @@ CREATE TABLE IF NOT EXISTS metagpt_role_llm_mapping (
     projects_project_id VARCHAR(13) REFERENCES projects(project_id) ON DELETE CASCADE,
 
     -- MetaGPT 5개 역할
-    product_manager_llm VARCHAR(50) DEFAULT 'gpt-4',
-    architect_llm VARCHAR(50) DEFAULT 'claude-3-sonnet',
-    project_manager_llm VARCHAR(50) DEFAULT 'gpt-4o',
-    engineer_llm VARCHAR(50) DEFAULT 'deepseek-coder',
-    qa_engineer_llm VARCHAR(50) DEFAULT 'claude-3-haiku',
+    product_manager_llm VARCHAR(50) DEFAULT 'gemini-2.5-flash',
+    architect_llm VARCHAR(50) DEFAULT 'gemini-2.5-flash',
+    project_manager_llm VARCHAR(50) DEFAULT 'gemini-2.5-flash',
+    engineer_llm VARCHAR(50) DEFAULT 'gemini-2.5-flash',
+    qa_engineer_llm VARCHAR(50) DEFAULT 'gemini-2.5-flash',
 
     -- 설정 메타데이터
     configuration_notes TEXT,
@@ -249,7 +249,7 @@ ON CONFLICT (projects_project_id, stage_number) DO NOTHING;
 -- 샘플 MetaGPT LLM 매핑 (project_id SERIAL 사용)
 INSERT INTO metagpt_role_llm_mapping (projects_project_id, product_manager_llm, architect_llm, project_manager_llm, engineer_llm, qa_engineer_llm)
 VALUES
-    ('project_00001', 'gpt-4', 'claude-3-sonnet', 'gpt-4o', 'deepseek-coder', 'claude-3-haiku')
+    ('project_00001', 'gemini-2.5-flash', 'gemini-2.5-flash', 'gemini-2.5-flash', 'gemini-2.5-flash', 'gemini-2.5-flash')
 ON CONFLICT (projects_project_id) DO NOTHING;
 
 -- ==================== VIEWS FOR METAGPT ====================

@@ -80,7 +80,7 @@ CREATE TABLE project_role_llm_mapping (
     )),
     llm_model VARCHAR(50) NOT NULL CHECK (llm_model IN (
         'gpt-4', 'gpt-4o', 'claude-3', 'claude-3-haiku', 'claude-3-sonnet',
-        'gemini-pro', 'gemini-ultra', 'gemini-flash', 'llama-3', 'llama-3-8b',
+        'gemini-pro', 'gemini-ultra', 'gemini-flash', 'gemini-2.5-flash', 'llama-3', 'llama-3-8b',
         'mistral-large', 'mistral-7b', 'deepseek-coder', 'codellama'
     )),
     llm_config JSONB DEFAULT '{}',
@@ -187,11 +187,11 @@ CREATE TABLE metagpt_workflow_stages (
 CREATE TABLE metagpt_role_llm_mapping (
     project_id SERIAL PRIMARY KEY,
     projects_project_id VARCHAR(13) REFERENCES projects(project_id) ON DELETE CASCADE,
-    product_manager_llm VARCHAR(50) DEFAULT 'gpt-4',
-    architect_llm VARCHAR(50) DEFAULT 'claude-3-sonnet',
-    project_manager_llm VARCHAR(50) DEFAULT 'gpt-4o',
-    engineer_llm VARCHAR(50) DEFAULT 'deepseek-coder',
-    qa_engineer_llm VARCHAR(50) DEFAULT 'claude-3-haiku',
+    product_manager_llm VARCHAR(50) DEFAULT 'gemini-2.5-flash',
+    architect_llm VARCHAR(50) DEFAULT 'gemini-2.5-flash',
+    project_manager_llm VARCHAR(50) DEFAULT 'gemini-2.5-flash',
+    engineer_llm VARCHAR(50) DEFAULT 'gemini-2.5-flash',
+    qa_engineer_llm VARCHAR(50) DEFAULT 'gemini-2.5-flash',
     configuration_notes TEXT,
     performance_preferences JSONB DEFAULT '{}',
     created_at TIMESTAMP DEFAULT NOW(),
@@ -596,8 +596,8 @@ BEGIN
     IF project1_id IS NOT NULL THEN
         INSERT INTO project_role_llm_mapping (projects_project_id, role_name, llm_model, is_active)
         VALUES
-            (project1_id, 'Product Manager', 'gpt-4', true),
-            (project1_id, 'Architect', 'claude-3-sonnet', true),
+            (project1_id, 'Product Manager', 'gemini-2.5-flash', true),
+            (project1_id, 'Architect', 'gemini-2.5-flash', true),
             (project1_id, 'Engineer', 'deepseek-coder', true),
             (project1_id, 'QA Engineer', 'claude-3-haiku', true)
         ON CONFLICT (projects_project_id, role_name) DO NOTHING;
@@ -606,7 +606,7 @@ BEGIN
     IF project2_id IS NOT NULL THEN
         INSERT INTO project_role_llm_mapping (projects_project_id, role_name, llm_model, is_active)
         VALUES
-            (project2_id, 'Planner', 'claude-3-sonnet', true),
+            (project2_id, 'Planner', 'gemini-2.5-flash', true),
             (project2_id, 'Researcher', 'gemini-pro', true),
             (project2_id, 'Writer', 'gpt-4', true)
         ON CONFLICT (projects_project_id, role_name) DO NOTHING;
@@ -626,7 +626,7 @@ BEGIN
         -- MetaGPT role mapping 샘플 데이터
         INSERT INTO metagpt_role_llm_mapping (projects_project_id, product_manager_llm, architect_llm, project_manager_llm, engineer_llm, qa_engineer_llm)
         VALUES
-            (project1_id, 'gpt-4', 'claude-3-sonnet', 'gpt-4o', 'deepseek-coder', 'claude-3-haiku')
+            (project1_id, 'gemini-2.5-flash', 'gemini-2.5-flash', 'gemini-2.5-flash', 'gemini-2.5-flash', 'gemini-2.5-flash')
         ON CONFLICT (projects_project_id) DO NOTHING;
 
         -- MetaGPT project metrics 샘플 데이터

@@ -378,7 +378,7 @@ class IntegrationTester:
                 )
 
             # HTML 파일들 확인
-            html_files = ['dashboard.html', 'crewai.html', 'metagpt.html']
+            html_files = ['dashboard.html', 'crewai.html']
 
             for html_file in html_files:
                 file_path = os.path.join(current_dir, html_file)

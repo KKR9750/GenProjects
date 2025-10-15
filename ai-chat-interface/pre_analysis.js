@@ -41,7 +41,7 @@
 
     let conversationHistory = [];
     let selectedFramework = activeFrameworkBtn && activeFrameworkBtn.dataset.framework ? activeFrameworkBtn.dataset.framework : 'crewai';
-    let currentModel = 'gemini-2.0-flash-exp';
+    let currentModel = 'gemini-2.5-flash';
     let suggestedRequirement = null;
     let currentProjectId = null;
     let agents = [];
@@ -569,13 +569,15 @@
       }
     }
 
-    function resetConversation() {
+    function resetConversation(persist = true) {
       conversationHistory = [];
       suggestedRequirement = null;
       messagesArea.innerHTML = '';
       finalizeSection.classList.remove('show');
       finalRequirementText.textContent = '';
-      saveConversation();
+      if (persist) {
+        saveConversation();
+      }
       if (!currentProjectId) {
         resetAgentPanel();
       }
@@ -617,11 +619,19 @@
       btn.addEventListener('click', () => {
         frameworkButtons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        const previousFramework = selectedFramework;
         selectedFramework = btn.dataset.framework || 'crewai';
         if (frameworkDisplay) {
           frameworkDisplay.textContent = `Framework: ${selectedFramework}`;
         }
-        resetConversation();
+        sharedRequirement = '';
+        currentProjectId = null;
+        resetConversation(false);
+        if (!loadConversation()) {
+          messagesArea.innerHTML = '';
+          finalizeSection.classList.remove('show');
+          finalRequirementText.textContent = '';
+        }
         resetAgentPanel();
         initializePreAnalysis();
       });

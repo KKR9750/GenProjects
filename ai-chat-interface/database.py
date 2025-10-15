@@ -15,8 +15,10 @@ from dotenv import load_dotenv
 import jwt
 import bcrypt
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from the correct .env file
+import pathlib
+_current_dir = pathlib.Path(__file__).parent
+load_dotenv(dotenv_path=_current_dir / '.env', override=True)
 
 class Database:
     """Database connection and operations handler"""
@@ -899,11 +901,11 @@ class Database:
             # 3. Create default LLM mapping
             llm_mapping = {
                 "projects_project_id": project_id,
-                "product_manager_llm": "gpt-4",
-                "architect_llm": "claude-3-sonnet",
-                "project_manager_llm": "gpt-4o",
-                "engineer_llm": "deepseek-coder",
-                "qa_engineer_llm": "claude-3-haiku",
+                "product_manager_llm": "gemini-2.5-flash",
+                "architect_llm": "gemini-2.5-flash",
+                "project_manager_llm": "gemini-2.5-flash",
+                "engineer_llm": "gemini-2.5-flash",
+                "qa_engineer_llm": "gemini-2.5-flash",
                 "created_at": datetime.now().isoformat(),
                 "updated_at": datetime.now().isoformat()
             }

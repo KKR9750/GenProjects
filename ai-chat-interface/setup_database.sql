@@ -304,8 +304,8 @@ ON CONFLICT (project_id) DO NOTHING;
 -- Insert sample role mappings for first project (using new project_id SERIAL structure)
 INSERT INTO project_role_llm_mapping (projects_project_id, role_name, llm_model)
 VALUES
-    ('project_00001', 'Product Manager', 'gpt-4'),
-    ('project_00001', 'Architect', 'claude-3-sonnet'),
+    ('project_00001', 'Product Manager', 'gemini-2.5-flash'),
+    ('project_00001', 'Architect', 'gemini-2.5-flash'),
     ('project_00001', 'Engineer', 'deepseek-coder'),
     ('project_00001', 'QA Engineer', 'llama-3')
 ON CONFLICT (projects_project_id, role_name) DO NOTHING;
@@ -315,7 +315,7 @@ INSERT INTO project_role_llm_mapping (projects_project_id, role_name, llm_model)
 VALUES
     ('project_00002', 'Researcher', 'gemini-pro'),
     ('project_00002', 'Writer', 'gpt-4'),
-    ('project_00002', 'Planner', 'claude-3-sonnet')
+    ('project_00002', 'Planner', 'gemini-2.5-flash')
 ON CONFLICT (projects_project_id, role_name) DO NOTHING;
 
 -- ==================== VIEWS ====================

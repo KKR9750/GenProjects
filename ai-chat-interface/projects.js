@@ -63,28 +63,19 @@ function renderProjectsPage() {
     html += '          <h2>검색 필터</h2>';
     html += '        </header>';
     html += '        <div class="sidebar-card__body">';
-    html += '          <div class="form-control">';
-    html += '            <label for="statusFilter">실행 상태</label>';
-    html += '            <select id="statusFilter">';
-    html += '              <option value="">전체</option>';
-    html += '              <option value="pending">대기중</option>';
-    html += '              <option value="running">실행중</option>';
-    html += '              <option value="completed">완료</option>';
-    html += '              <option value="failed">실패</option>';
-    html += '              <option value="cancelled">취소됨</option>';
-    html += '            </select>';
-    html += '          </div>';
-    html += '          <div class="form-control">';
-    html += '            <label for="frameworkFilter">AI 프레임워크</label>';
-    html += '            <select id="frameworkFilter">';
-    html += '              <option value="">전체</option>';
-    html += '              <option value="crew_ai">CrewAI</option>';
-    html += '              <option value="meta_gpt">MetaGPT</option>';
-    html += '            </select>';
-    html += '          </div>';
-    html += '          <div class="form-control">';
-    html += '            <label for="searchInput">🔍 프로젝트 검색</label>';
-    html += '            <input type="text" id="searchInput" placeholder="프로젝트 이름 또는 설명">';
+    html += '          <div class="form-control-inline">';
+    html += '            <div class="form-control-group">';
+    html += '              <label for="frameworkFilter">AI 프레임워크</label>';
+    html += '              <select id="frameworkFilter">';
+    html += '                <option value="">전체</option>';
+    html += '                <option value="crew_ai">CrewAI</option>';
+    html += '                <option value="meta_gpt">MetaGPT</option>';
+    html += '              </select>';
+    html += '            </div>';
+    html += '            <div class="form-control-group">';
+    html += '              <label for="searchInput">🔍 프로젝트 검색</label>';
+    html += '              <input type="text" id="searchInput" placeholder="프로젝트 이름 또는 설명">';
+    html += '            </div>';
     html += '          </div>';
     html += '        </div>';
     html += '        <footer class="sidebar-card__footer">';
@@ -304,20 +295,18 @@ async function updateExecutionStatuses() {
     }
 }
 function applyFilters() {
-    const statusValue = (document.getElementById('statusFilter') || {}).value || '';
     const frameworkValue = (document.getElementById('frameworkFilter') || {}).value || '';
     const searchInput = document.getElementById('searchInput');
     const searchValue = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
     filteredProjects = projects.filter(function (project) {
-        const statusMatch = !statusValue || (project.execution && project.execution.status ? project.execution.status : 'pending') === statusValue;
         const frameworkMatch = !frameworkValue || project.framework === frameworkValue;
 
         const name = (project.name || '').toLowerCase();
         const description = (project.description || '').toLowerCase();
         const searchMatch = !searchValue || name.indexOf(searchValue) > -1 || description.indexOf(searchValue) > -1;
 
-        return statusMatch && frameworkMatch && searchMatch;
+        return frameworkMatch && searchMatch;
     });
 
     updateProjectCount();
@@ -339,11 +328,9 @@ function applyFilters() {
 }
 
 function resetFilters() {
-    const statusFilter = document.getElementById('statusFilter');
     const frameworkFilter = document.getElementById('frameworkFilter');
     const searchInput = document.getElementById('searchInput');
 
-    if (statusFilter) statusFilter.value = '';
     if (frameworkFilter) frameworkFilter.value = '';
     if (searchInput) searchInput.value = '';
 
@@ -367,23 +354,22 @@ function renderProjectList() {
     }
 
     const cards = filteredProjects.map(function (project) {
-        const executionStatus = project.execution && project.execution.status ? project.execution.status : 'pending';
         const createdAt = formatDateLabel(project.created_at);
         const deliverables = project.execution && project.execution.deliverables_count ? project.execution.deliverables_count : 0;
         const isActive = project.id === selectedProjectId;
+        const description = project.description || project.requirement || '설명이 없습니다.';
 
         return `
             <article class="project-list-item ${isActive ? 'active' : ''}" data-project-id="${project.id}">
                 <div class="project-list-item__header">
                     <h3 class="project-list-item__title">${escapeHtml(project.name || '이름 없는 프로젝트')}</h3>
-                    <span class="status-badge status-${executionStatus}">${getProjectStatusText(executionStatus)}</span>
                 </div>
                 <p class="project-list-item__id">ID: ${project.id}</p>
                 <p class="project-list-item__meta">
                     <span>${createdAt}</span>
                     <span>${formatFramework(project.framework)}</span>
                 </p>
-                <p class="project-list-item__description">${escapeHtml(project.description || '설명이 없습니다.')}</p>
+                <p class="project-list-item__description">${escapeHtml(description)}</p>
                 <div class="project-list-item__footer">
                     <span>산출물 ${deliverables}개</span>
                     <button class="btn btn-danger btn-xs btn-delete-individual" data-delete-id="${project.id}">삭제</button>
@@ -453,6 +439,9 @@ async function loadFullProjectData(projectId) {
             projects[projectIndex].deliverables = deliverablesData.deliverables;
         }
 
+        // Re-render project summary to show agents
+        renderProjectSummary();
+
     } catch (error) {
         console.error('Failed to load full project data:', error);
     }
@@ -478,7 +467,6 @@ function renderProjectSummary() {
     const detailContainer = document.getElementById('projectDetailContainer');
     if (detailContainer) detailContainer.style.display = 'grid';
 
-    const executionStatus = project.execution && project.execution.status ? project.execution.status : 'pending';
     const projectType = project.project_type || '-';
     const createdAt = project.created_at ? new Date(project.created_at).toLocaleString('ko-KR') : '-';
     const deliverables = project.execution && project.execution.deliverables_count ? project.execution.deliverables_count : 0;
@@ -487,18 +475,61 @@ function renderProjectSummary() {
         <header class="panel-header">
             <div>
                 <h2>${escapeHtml(project.name || '이름 없는 프로젝트')}</h2>
-                <p class="panel-subtitle">${escapeHtml(project.description || '설명 없음')}</p>
+                <p class="panel-subtitle">${escapeHtml(project.description || project.requirement || '설명 없음')}</p>
             </div>
-            <span class="status-badge status-${executionStatus}">${getProjectStatusText(executionStatus)}</span>
         </header>
-        <dl class="summary-grid">
-            <div><dt>Project ID</dt><dd>${project.id}</dd></div>
-            <div><dt>프레임워크</dt><dd>${formatFramework(project.framework)}</dd></div>
-            <div><dt>프로젝트 유형</dt><dd>${formatProjectType(projectType)}</dd></div>
-            <div><dt>생성일</dt><dd>${createdAt}</dd></div>
-            <div><dt>산출물</dt><dd>${deliverables}개</dd></div>
-        </dl>
+        <div class="summary-compact">
+            <span><strong>Project ID:</strong> ${project.id}</span>
+            <span><strong>프레임워크:</strong> ${formatFramework(project.framework)}</span>
+            <span><strong>프로젝트 유형:</strong> ${formatProjectType(projectType)}</span>
+            <span><strong>생성일:</strong> ${createdAt}</span>
+            <span><strong>산출물:</strong> ${deliverables}개</span>
+        </div>
     `;
+
+    // Add CrewAI Agent information if available
+    if (project.framework === 'crewai' && project.agents && project.agents.length > 0) {
+        summary += '<div class="agents-section">';
+        summary += '<h3>정의된 Agent 정보</h3>';
+        summary += '<div class="agents-list">';
+
+        project.agents.forEach(function(agent) {
+            const tools = agent.tools ? JSON.parse(agent.tools) : [];
+            const toolsText = Array.isArray(tools) && tools.length > 0 ? tools.join(', ') : '없음';
+
+            summary += `
+                <div class="agent-card">
+                    <div class="agent-header">
+                        <h4>${escapeHtml(agent.role || 'Unknown Role')}</h4>
+                        <span class="agent-order">#${agent.agent_order}</span>
+                    </div>
+                    <div class="agent-details">
+                        <div class="agent-detail-item">
+                            <strong>Goal:</strong>
+                            <p>${escapeHtml(agent.goal || '-')}</p>
+                        </div>
+                        <div class="agent-detail-item">
+                            <strong>Backstory:</strong>
+                            <p>${escapeHtml(agent.backstory || '-')}</p>
+                        </div>
+                        <div class="agent-detail-row">
+                            <div class="agent-detail-item">
+                                <strong>LLM Model:</strong>
+                                <span>${escapeHtml(agent.llm_model || '-')}</span>
+                            </div>
+                            <div class="agent-detail-item">
+                                <strong>Tools:</strong>
+                                <span>${escapeHtml(toolsText)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        summary += '</div>';
+        summary += '</div>';
+    }
 
     container.innerHTML = summary;
 }
